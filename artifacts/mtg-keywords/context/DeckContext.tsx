@@ -10,6 +10,8 @@ export type DeckCard = {
   name: string;
   printed_name?: string;
   mana_cost?: string;
+  type_line?: string;
+  produced_mana?: string[];
   count: number;
 };
 
@@ -26,7 +28,7 @@ type DeckContextType = {
   createDeck: (name: string) => Deck;
   updateDeck: (deck: Deck) => void;
   deleteDeck: (id: string) => void;
-  addCardToDeck: (deckId: string, card: Omit<DeckCard, "count">) => void;
+  addCardToDeck: (deckId: string, card: Omit<DeckCard, "count">, count?: number) => void;
   removeCardFromDeck: (deckId: string, cardId: string) => void;
   adjustCardCount: (deckId: string, cardId: string, delta: number) => void;
 };
@@ -35,6 +37,14 @@ type DeckContextType = {
 
 const STORAGE_KEY = "mtg_decks_v3";
 const EMPTY_LANDS: LandCounts = { W: 0, U: 0, B: 0, R: 0, G: 0 };
+
+function isLand(typeLine?: string) {
+  return !!typeLine && typeLine.toLowerCase().includes("land");
+}
+
+function maxCount(typeLine?: string) {
+  return isLand(typeLine) ? 99 : 4;
+}
 
 const DeckContext = createContext<DeckContextType>({
   decks: [],
@@ -85,14 +95,17 @@ export function DeckProvider({ children }: { children: React.ReactNode }) {
     persist(decks.filter((d) => d.id !== id));
   }
 
-  function addCardToDeck(deckId: string, card: Omit<DeckCard, "count">) {
+  function addCardToDeck(deckId: string, card: Omit<DeckCard, "count">, count = 1) {
     persist(decks.map((d) => {
       if (d.id !== deckId) return d;
       const existing = d.cards.find((c) => c.id === card.id);
+      const max = maxCount(card.type_line);
       if (existing) {
-        return { ...d, cards: d.cards.map((c) => c.id === card.id ? { ...c, count: Math.min(4, c.count + 1) } : c) };
+        return { ...d, cards: d.cards.map((c) =>
+          c.id === card.id ? { ...c, count: Math.min(max, c.count + count) } : c
+        )};
       }
-      return { ...d, cards: [...d.cards, { ...card, count: 1 }] };
+      return { ...d, cards: [...d.cards, { ...card, count: Math.min(max, Math.max(1, count)) }] };
     }));
   }
 
@@ -103,7 +116,11 @@ export function DeckProvider({ children }: { children: React.ReactNode }) {
   function adjustCardCount(deckId: string, cardId: string, delta: number) {
     persist(decks.map((d) => {
       if (d.id !== deckId) return d;
-      return { ...d, cards: d.cards.map((c) => c.id === cardId ? { ...c, count: Math.max(1, Math.min(4, c.count + delta)) } : c) };
+      return { ...d, cards: d.cards.map((c) => {
+        if (c.id !== cardId) return c;
+        const max = maxCount(c.type_line);
+        return { ...c, count: Math.max(1, Math.min(max, c.count + delta)) };
+      })};
     }));
   }
 

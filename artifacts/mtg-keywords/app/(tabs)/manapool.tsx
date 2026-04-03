@@ -14,25 +14,50 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LanguageToggle } from "@/components/LanguageToggle";
-import { type Deck, type LandCounts, useDecks } from "@/context/DeckContext";
+import { type Deck, type DeckCard, useDecks } from "@/context/DeckContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useColors } from "@/hooks/useColors";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const LAND_CONFIG = [
-  { key: "W" as const, nameDe: "Ebene",  nameEn: "Plains",   hex: "#f5f0dc", text: "#1a1a1a", symbol: "W" },
-  { key: "U" as const, nameDe: "Insel",  nameEn: "Island",   hex: "#0e68ab", text: "#ffffff", symbol: "U" },
-  { key: "B" as const, nameDe: "Sumpf",  nameEn: "Swamp",    hex: "#2c2c2c", text: "#e0e0e0", symbol: "B" },
-  { key: "R" as const, nameDe: "Berg",   nameEn: "Mountain", hex: "#d3202a", text: "#ffffff", symbol: "R" },
-  { key: "G" as const, nameDe: "Wald",   nameEn: "Forest",   hex: "#00733e", text: "#ffffff", symbol: "G" },
-];
-
 const COLOR_HEX: Record<string, string> = { W: "#f5f0dc", U: "#0e68ab", B: "#2c2c2c", R: "#d3202a", G: "#00733e" };
 const COLOR_TEXT: Record<string, string> = { W: "#1a1a1a", U: "#fff", B: "#e0e0e0", R: "#fff", G: "#fff" };
-const EMPTY_LANDS: LandCounts = { W: 0, U: 0, B: 0, R: 0, G: 0 };
+const COLORS = ["W", "U", "B", "R", "G"] as const;
 
 type ManaCounts = { W: number; U: number; B: number; R: number; G: number; generic: number; cmc: number };
+
+function isLand(card: DeckCard) {
+  return !!card.type_line?.toLowerCase().includes("land");
+}
+
+// Derive what colors a land produces from produced_mana or type_line
+function landColors(card: DeckCard): string[] {
+  if (card.produced_mana && card.produced_mana.length > 0) {
+    return card.produced_mana.filter((c) => COLORS.includes(c as typeof COLORS[number]));
+  }
+  // Fallback: parse from type_line subtype
+  const tl = (card.type_line ?? "").toLowerCase();
+  const derived: string[] = [];
+  if (tl.includes("plains"))   derived.push("W");
+  if (tl.includes("island"))   derived.push("U");
+  if (tl.includes("swamp"))    derived.push("B");
+  if (tl.includes("mountain")) derived.push("R");
+  if (tl.includes("forest"))   derived.push("G");
+  return derived;
+}
+
+// Compute available colored mana from land cards in the deck
+function computeLandMana(cards: DeckCard[]): Record<string, number> {
+  const avail: Record<string, number> = { W: 0, U: 0, B: 0, R: 0, G: 0 };
+  for (const c of cards) {
+    if (!isLand(c)) continue;
+    const cols = landColors(c);
+    for (const col of cols) {
+      avail[col] = (avail[col] ?? 0) + c.count;
+    }
+  }
+  return avail;
+}
 
 function parseMana(manaCost: string): ManaCounts {
   const r: ManaCounts = { W: 0, U: 0, B: 0, R: 0, G: 0, generic: 0, cmc: 0 };
@@ -51,7 +76,7 @@ function parseMana(manaCost: string): ManaCounts {
 function sumMana(cards: Deck["cards"]): ManaCounts {
   const total: ManaCounts = { W: 0, U: 0, B: 0, R: 0, G: 0, generic: 0, cmc: 0 };
   for (const c of cards) {
-    if (!c.mana_cost) continue;
+    if (!c.mana_cost || isLand(c)) continue;
     const m = parseMana(c.mana_cost);
     total.W += m.W * c.count;
     total.U += m.U * c.count;
@@ -74,7 +99,6 @@ export default function ManapoolScreen() {
 
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-  const [editLands, setEditLands] = useState<LandCounts>({ ...EMPTY_LANDS });
   const [showNewDeckModal, setShowNewDeckModal] = useState(false);
   const [newDeckName, setNewDeckName] = useState("");
 
@@ -86,13 +110,11 @@ export default function ManapoolScreen() {
   function openDeck(deck: Deck) {
     setActiveDeckId(deck.id);
     setEditName(deck.name);
-    setEditLands({ ...deck.lands });
   }
 
   function closeDeck() {
     setActiveDeckId(null);
     setEditName("");
-    setEditLands({ ...EMPTY_LANDS });
   }
 
   function handleCreateDeck() {
@@ -103,23 +125,9 @@ export default function ManapoolScreen() {
     openDeck(deck);
   }
 
-  function saveLands() {
-    if (!activeDeck) return;
-    updateDeck({ ...activeDeck, lands: { ...editLands } });
-  }
-
   function saveName() {
     if (!activeDeck || !editName.trim()) return;
     updateDeck({ ...activeDeck, name: editName.trim() });
-  }
-
-  function adjustLand(key: keyof LandCounts, delta: number) {
-    setEditLands((prev) => ({ ...prev, [key]: Math.max(0, Math.min(40, prev[key] + delta)) }));
-  }
-
-  function setLandDirect(key: keyof LandCounts, val: string) {
-    const n = parseInt(val, 10);
-    if (!isNaN(n)) setEditLands((prev) => ({ ...prev, [key]: Math.max(0, Math.min(40, n)) }));
   }
 
   return (
@@ -150,7 +158,6 @@ export default function ManapoolScreen() {
         {/* ══ DECK LIST VIEW ══ */}
         {!activeDeck && (
           <>
-            {/* New deck button */}
             <TouchableOpacity
               style={[styles.newDeckBtn, { backgroundColor: colors.primary }]}
               onPress={() => setShowNewDeckModal(true)}
@@ -175,8 +182,11 @@ export default function ManapoolScreen() {
               </View>
             ) : (
               decks.map((deck) => {
-                const landTotal = Object.values(deck.lands).reduce((a, b) => a + b, 0);
-                const cardTotal = deck.cards.reduce((a, c) => a + c.count, 0);
+                const landCards = deck.cards.filter(isLand);
+                const landTotal = landCards.reduce((a, c) => a + c.count, 0);
+                const spellTotal = deck.cards.filter((c) => !isLand(c)).reduce((a, c) => a + c.count, 0);
+                const availMana = computeLandMana(deck.cards);
+                const hasColors = COLORS.some((k) => availMana[k] > 0);
                 return (
                   <TouchableOpacity
                     key={deck.id}
@@ -187,23 +197,23 @@ export default function ManapoolScreen() {
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.deckCardName, { color: colors.foreground }]}>{deck.name}</Text>
                         <Text style={[styles.deckCardMeta, { color: colors.mutedForeground }]}>
-                          {landTotal} {showEnglish ? "lands" : "Länder"} · {cardTotal} {showEnglish ? "cards" : "Karten"}
+                          {landTotal} {showEnglish ? "lands" : "Länder"} · {spellTotal} {showEnglish ? "spells" : "Spells"}
                         </Text>
                       </View>
                       <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
                     </View>
-                    {landTotal > 0 && (
+                    {hasColors && (
                       <View style={styles.miniBar}>
-                        {LAND_CONFIG.filter((lc) => deck.lands[lc.key] > 0).map((lc) => (
-                          <View key={lc.key} style={[styles.miniBarSeg, { backgroundColor: lc.hex, flex: deck.lands[lc.key] }]} />
+                        {COLORS.filter((k) => availMana[k] > 0).map((k) => (
+                          <View key={k} style={[styles.miniBarSeg, { backgroundColor: COLOR_HEX[k], flex: availMana[k] }]} />
                         ))}
                       </View>
                     )}
-                    {landTotal > 0 && (
+                    {hasColors && (
                       <View style={styles.colorChips}>
-                        {LAND_CONFIG.filter((lc) => deck.lands[lc.key] > 0).map((lc) => (
-                          <View key={lc.key} style={[styles.colorChipSm, { backgroundColor: lc.hex }]}>
-                            <Text style={[styles.colorChipSmText, { color: lc.text }]}>{deck.lands[lc.key]}{lc.symbol}</Text>
+                        {COLORS.filter((k) => availMana[k] > 0).map((k) => (
+                          <View key={k} style={[styles.colorChipSm, { backgroundColor: COLOR_HEX[k] }]}>
+                            <Text style={[styles.colorChipSmText, { color: COLOR_TEXT[k] }]}>{availMana[k]}{k}</Text>
                           </View>
                         ))}
                       </View>
@@ -234,48 +244,11 @@ export default function ManapoolScreen() {
               />
             </View>
 
-            {/* ── Länder ── */}
-            <View style={styles.sectionRow}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                {showEnglish ? "Lands" : "Länder"}
-              </Text>
-              {Object.values(editLands).some((v, _, arr) => v !== activeDeck.lands[LAND_CONFIG[arr.indexOf(v)]?.key ?? "W"]) && (
-                <TouchableOpacity style={[styles.saveLandsBtn, { backgroundColor: colors.primary }]} onPress={saveLands}>
-                  <Text style={styles.saveLandsBtnText}>{showEnglish ? "Save" : "Speichern"}</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            <View style={[styles.landBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              {LAND_CONFIG.map((lc, i) => (
-                <View key={lc.key} style={[styles.landRow,
-                  i < LAND_CONFIG.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth }]}>
-                  <View style={[styles.colorDot, { backgroundColor: lc.hex }]}>
-                    <Text style={[styles.colorDotText, { color: lc.text }]}>{lc.symbol}</Text>
-                  </View>
-                  <View style={styles.landNameCol}>
-                    <Text style={[styles.landName, { color: colors.foreground }]}>{showEnglish ? lc.nameEn : lc.nameDe}</Text>
-                    <Text style={[styles.landSub, { color: colors.mutedForeground }]}>{showEnglish ? lc.nameDe : lc.nameEn}</Text>
-                  </View>
-                  <View style={styles.stepper}>
-                    <TouchableOpacity style={[styles.stepBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
-                      onPress={() => { adjustLand(lc.key, -1); }}>
-                      <Ionicons name="remove" size={18} color={colors.foreground} />
-                    </TouchableOpacity>
-                    <TextInput style={[styles.stepValue, { color: colors.foreground, borderColor: colors.border }]}
-                      value={String(editLands[lc.key])} onChangeText={(v) => setLandDirect(lc.key, v)}
-                      keyboardType="number-pad" selectTextOnFocus onBlur={saveLands} />
-                    <TouchableOpacity style={[styles.stepBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
-                      onPress={() => { adjustLand(lc.key, 1); }}>
-                      <Ionicons name="add" size={18} color={colors.foreground} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
-            </View>
-
             {/* ── Karten ── */}
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              {showEnglish ? `Cards (${activeDeck.cards.reduce((a,c)=>a+c.count,0)})` : `Karten (${activeDeck.cards.reduce((a,c)=>a+c.count,0)})`}
+              {showEnglish
+                ? `Cards (${activeDeck.cards.reduce((a,c)=>a+c.count,0)})`
+                : `Karten (${activeDeck.cards.reduce((a,c)=>a+c.count,0)})`}
             </Text>
 
             {activeDeck.cards.length === 0 ? (
@@ -290,8 +263,10 @@ export default function ManapoolScreen() {
             ) : (
               <View style={[styles.cardList, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 {activeDeck.cards.map((c, i) => {
+                  const land = isLand(c);
                   const mana = c.mana_cost ? parseMana(c.mana_cost) : null;
-                  const cols = mana ? (["W","U","B","R","G"] as const).filter((k) => mana[k] > 0) : [];
+                  const cols = mana ? COLORS.filter((k) => mana[k] > 0) : [];
+                  const lCols = land ? landColors(c) : [];
                   return (
                     <View key={c.id} style={[styles.cardRow,
                       i < activeDeck.cards.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth }]}>
@@ -300,12 +275,27 @@ export default function ManapoolScreen() {
                           {c.printed_name ?? c.name}
                         </Text>
                         <View style={styles.cardRowMeta}>
-                          {c.mana_cost ? <Text style={[styles.cardRowMana, { color: colors.mutedForeground }]}>{c.mana_cost}</Text> : null}
-                          {cols.map((cl) => (
-                            <View key={cl} style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX[cl] }]}>
-                              <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT[cl] }]}>{cl}</Text>
-                            </View>
-                          ))}
+                          {land ? (
+                            <>
+                              <Text style={[styles.cardRowMana, { color: colors.mutedForeground }]}>
+                                {showEnglish ? "Land" : "Land"}
+                              </Text>
+                              {lCols.map((cl) => (
+                                <View key={cl} style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX[cl] }]}>
+                                  <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT[cl] }]}>{cl}</Text>
+                                </View>
+                              ))}
+                            </>
+                          ) : (
+                            <>
+                              {c.mana_cost ? <Text style={[styles.cardRowMana, { color: colors.mutedForeground }]}>{c.mana_cost}</Text> : null}
+                              {cols.map((cl) => (
+                                <View key={cl} style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX[cl] }]}>
+                                  <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT[cl] }]}>{cl}</Text>
+                                </View>
+                              ))}
+                            </>
+                          )}
                         </View>
                       </View>
                       <View style={styles.stepper}>
@@ -330,9 +320,11 @@ export default function ManapoolScreen() {
 
             {/* ── Manapool-Analyse ── */}
             {(() => {
-              const landTotal = Object.values(editLands).reduce((a, b) => a + b, 0);
+              const availMana = computeLandMana(activeDeck.cards);
+              const landTotal = activeDeck.cards.filter(isLand).reduce((a, c) => a + c.count, 0);
               const required = sumMana(activeDeck.cards);
               if (landTotal === 0 && required.cmc === 0) return null;
+              const hasColors = COLORS.some((k) => availMana[k] > 0);
               return (
                 <>
                   <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -343,21 +335,21 @@ export default function ManapoolScreen() {
                     <View style={styles.analysisRow}>
                       <Ionicons name="water" size={15} color={colors.primary} />
                       <Text style={[styles.analysisLabel, { color: colors.foreground }]}>
-                        {showEnglish ? "Available" : "Verfügbar"}
+                        {showEnglish ? "Lands" : "Länder"}
                       </Text>
                       <Text style={[styles.analysisValue, { color: colors.primary }]}>{landTotal}</Text>
                     </View>
-                    {landTotal > 0 && (
+                    {hasColors && (
                       <>
                         <View style={styles.colorBar}>
-                          {LAND_CONFIG.filter((lc) => editLands[lc.key] > 0).map((lc) => (
-                            <View key={lc.key} style={[styles.colorBarSeg, { backgroundColor: lc.hex, flex: editLands[lc.key] }]} />
+                          {COLORS.filter((k) => availMana[k] > 0).map((k) => (
+                            <View key={k} style={[styles.colorBarSeg, { backgroundColor: COLOR_HEX[k], flex: availMana[k] }]} />
                           ))}
                         </View>
                         <View style={styles.colorChips}>
-                          {LAND_CONFIG.filter((lc) => editLands[lc.key] > 0).map((lc) => (
-                            <View key={lc.key} style={[styles.colorChipSm, { backgroundColor: lc.hex }]}>
-                              <Text style={[styles.colorChipSmText, { color: lc.text }]}>{editLands[lc.key]}{lc.symbol}</Text>
+                          {COLORS.filter((k) => availMana[k] > 0).map((k) => (
+                            <View key={k} style={[styles.colorChipSm, { backgroundColor: COLOR_HEX[k] }]}>
+                              <Text style={[styles.colorChipSmText, { color: COLOR_TEXT[k] }]}>{availMana[k]}{k}</Text>
                             </View>
                           ))}
                         </View>
@@ -370,12 +362,12 @@ export default function ManapoolScreen() {
                         <View style={styles.analysisRow}>
                           <Ionicons name="flash" size={15} color="#f59e0b" />
                           <Text style={[styles.analysisLabel, { color: colors.foreground }]}>
-                            {showEnglish ? "Required" : "Benötigt"}
+                            {showEnglish ? "Required (spells)" : "Benötigt (Spells)"}
                           </Text>
                           <Text style={[styles.analysisValue, { color: "#f59e0b" }]}>{required.cmc}</Text>
                         </View>
                         <View style={styles.colorChips}>
-                          {(["W","U","B","R","G"] as const).filter((k) => required[k] > 0).map((k) => (
+                          {COLORS.filter((k) => required[k] > 0).map((k) => (
                             <View key={k} style={[styles.colorChipSm, { backgroundColor: COLOR_HEX[k] }]}>
                               <Text style={[styles.colorChipSmText, { color: COLOR_TEXT[k] }]}>{required[k]}{k}</Text>
                             </View>
@@ -387,57 +379,61 @@ export default function ManapoolScreen() {
                           )}
                         </View>
 
-                        {/* Coverage */}
-                        <View style={[styles.divider, { backgroundColor: colors.border }]} />
-                        {(["W","U","B","R","G"] as const).map((k) => {
-                          const have = editLands[k];
-                          const need = required[k];
-                          if (need === 0) return null;
-                          const ok = have >= need;
-                          return (
-                            <View key={k} style={styles.coverageRow}>
-                              <View style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX[k] }]}>
-                                <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT[k] }]}>{k}</Text>
-                              </View>
-                              <View style={styles.coverageBar}>
-                                <View style={[styles.coverageFill, { backgroundColor: ok ? "#16a34a" : "#dc2626", flex: Math.min(have, need) }]} />
-                                {!ok && <View style={[styles.coverageMissing, { flex: need - have }]} />}
-                              </View>
-                              <Text style={[styles.coverageText, { color: ok ? "#16a34a" : "#dc2626" }]}>
-                                {have}/{need} {ok ? "✓" : `−${need-have}`}
-                              </Text>
-                            </View>
-                          );
-                        })}
+                        {/* Coverage — only show if we have color info */}
+                        {hasColors && (
+                          <>
+                            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                            {COLORS.map((k) => {
+                              const have = availMana[k] ?? 0;
+                              const need = required[k];
+                              if (need === 0) return null;
+                              const ok = have >= need;
+                              return (
+                                <View key={k} style={styles.coverageRow}>
+                                  <View style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX[k] }]}>
+                                    <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT[k] }]}>{k}</Text>
+                                  </View>
+                                  <View style={styles.coverageBar}>
+                                    <View style={[styles.coverageFill, { backgroundColor: ok ? "#16a34a" : "#dc2626", flex: Math.min(have, need) }]} />
+                                    {!ok && <View style={[styles.coverageMissing, { flex: need - have }]} />}
+                                  </View>
+                                  <Text style={[styles.coverageText, { color: ok ? "#16a34a" : "#dc2626" }]}>
+                                    {have}/{need} {ok ? "✓" : `−${need-have}`}
+                                  </Text>
+                                </View>
+                              );
+                            })}
 
-                        {/* Verdict */}
-                        {(() => {
-                          const lacking = (["W","U","B","R","G"] as const).filter((k) => required[k] > 0 && editLands[k] < required[k]);
-                          if (lacking.length === 0) {
-                            return (
-                              <View style={[styles.verdict, { backgroundColor: "#16a34a22", borderColor: "#16a34a" }]}>
-                                <Ionicons name="checkmark-circle" size={16} color="#16a34a" />
-                                <Text style={[styles.verdictText, { color: "#16a34a" }]}>
-                                  {showEnglish ? "Mana pool covers all costs!" : "Manapool deckt alle Kosten!"}
-                                </Text>
-                              </View>
-                            );
-                          }
-                          return (
-                            <View style={[styles.verdict, { backgroundColor: "#dc262622", borderColor: "#dc2626" }]}>
-                              <Ionicons name="alert-circle" size={16} color="#dc2626" />
-                              <Text style={[styles.verdictText, { color: "#dc2626" }]}>
-                                {showEnglish ? `Need more ${lacking.join("/")} sources` : `Mehr ${lacking.join("/")} Quellen nötig`}
-                              </Text>
-                            </View>
-                          );
-                        })()}
+                            {/* Verdict */}
+                            {(() => {
+                              const lacking = COLORS.filter((k) => required[k] > 0 && (availMana[k] ?? 0) < required[k]);
+                              if (lacking.length === 0) {
+                                return (
+                                  <View style={[styles.verdict, { backgroundColor: "#16a34a22", borderColor: "#16a34a" }]}>
+                                    <Ionicons name="checkmark-circle" size={16} color="#16a34a" />
+                                    <Text style={[styles.verdictText, { color: "#16a34a" }]}>
+                                      {showEnglish ? "Mana pool covers all costs!" : "Manapool deckt alle Kosten!"}
+                                    </Text>
+                                  </View>
+                                );
+                              }
+                              return (
+                                <View style={[styles.verdict, { backgroundColor: "#dc262622", borderColor: "#dc2626" }]}>
+                                  <Ionicons name="alert-circle" size={16} color="#dc2626" />
+                                  <Text style={[styles.verdictText, { color: "#dc2626" }]}>
+                                    {showEnglish ? `Need more ${lacking.join("/")} sources` : `Mehr ${lacking.join("/")} Quellen nötig`}
+                                  </Text>
+                                </View>
+                              );
+                            })()}
+                          </>
+                        )}
 
                         {/* Mana curve */}
                         {(() => {
                           const curve: Record<number, number> = {};
                           for (const c of activeDeck.cards) {
-                            if (!c.mana_cost) continue;
+                            if (!c.mana_cost || isLand(c)) continue;
                             const cmc = parseMana(c.mana_cost).cmc;
                             curve[cmc] = (curve[cmc] ?? 0) + c.count;
                           }
@@ -548,21 +544,9 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
   nameBox: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10 },
   nameInput: { flex: 1, fontSize: 16, fontFamily: "Inter_600SemiBold", padding: 0 },
-  sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   sectionTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  saveLandsBtn: { borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 },
-  saveLandsBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#fff" },
-  landBox: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
-  landRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 11, gap: 12 },
-  colorDot: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
-  colorDotText: { fontSize: 13, fontFamily: "Inter_700Bold" },
-  landNameCol: { flex: 1 },
-  landName: { fontSize: 14, fontFamily: "Inter_500Medium" },
-  landSub: { fontSize: 11, fontFamily: "Inter_400Regular" },
   stepper: { flexDirection: "row", alignItems: "center", gap: 5 },
-  stepBtn: { width: 34, height: 34, borderRadius: 8, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   stepBtnSm: { width: 28, height: 28, borderRadius: 6, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-  stepValue: { width: 38, height: 34, borderRadius: 8, borderWidth: 1, textAlign: "center", fontSize: 15, fontFamily: "Inter_600SemiBold" },
   stepValSm: { fontSize: 14, fontFamily: "Inter_600SemiBold", width: 28, textAlign: "center" },
   emptyCards: { borderRadius: 12, borderWidth: 1, borderStyle: "dashed", padding: 20, alignItems: "center", gap: 8 },
   emptyCardsText: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 18 },

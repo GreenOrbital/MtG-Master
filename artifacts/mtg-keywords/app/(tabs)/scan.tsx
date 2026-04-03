@@ -51,6 +51,7 @@ type CardData = {
     flavor_text?: string;
   }>;
   legalities?: Record<string, string>;
+  produced_mana?: string[];
 };
 
 type SimilarCard = {
@@ -241,6 +242,8 @@ export default function CardSearchScreen() {
   const [tipFailed, setTipFailed] = useState(false);
   const [showDeckPicker, setShowDeckPicker] = useState(false);
   const [addedToDeck, setAddedToDeck] = useState<string | null>(null);
+  const [pickedDeckId, setPickedDeckId] = useState<string | null>(null);
+  const [addCount, setAddCount] = useState(1);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -683,49 +686,118 @@ export default function CardSearchScreen() {
         )}
 
         {/* ── Deck Picker Modal ── */}
-        <Modal visible={showDeckPicker} transparent animationType="slide">
-          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowDeckPicker(false)}>
+        <Modal visible={showDeckPicker} transparent animationType="slide"
+          onRequestClose={() => { setShowDeckPicker(false); setPickedDeckId(null); setAddCount(1); }}>
+          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1}
+            onPress={() => { setShowDeckPicker(false); setPickedDeckId(null); setAddCount(1); }}>
             <View style={[styles.modalSheet, { backgroundColor: colors.card }]} onStartShouldSetResponder={() => true}>
               <View style={styles.modalHandle} />
-              <Text style={[styles.modalTitle, { color: colors.foreground }]}>
-                {showEnglish ? "Add to deck" : "Zu Deck hinzufügen"}
-              </Text>
-              {decks.length === 0 ? (
-                <View style={styles.modalEmpty}>
-                  <Ionicons name="albums-outline" size={32} color={colors.mutedForeground} />
-                  <Text style={[styles.modalEmptyText, { color: colors.mutedForeground }]}>
-                    {showEnglish
-                      ? "No decks yet. Create a deck first in the Deck Builder tab."
-                      : "Noch keine Decks. Zuerst im Deck-Builder Tab ein Deck anlegen."}
+
+              {/* Step 1: Choose deck */}
+              {!pickedDeckId && (
+                <>
+                  <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+                    {showEnglish ? "Add to deck" : "Zu Deck hinzufügen"}
                   </Text>
-                </View>
-              ) : (
-                decks.map((d) => (
-                  <TouchableOpacity key={d.id}
-                    style={[styles.modalDeckRow, { borderColor: colors.border, backgroundColor: colors.background }]}
-                    onPress={() => {
-                      if (!card) return;
-                      addCardToDeck(d.id, {
-                        id: card.id,
-                        name: card.name,
-                        printed_name: card.printed_name,
-                        mana_cost: card.mana_cost,
-                      });
-                      setAddedToDeck(d.name);
-                      setShowDeckPicker(false);
-                      setTimeout(() => setAddedToDeck(null), 3000);
-                    }}>
-                    <Ionicons name="albums-outline" size={18} color={colors.primary} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.modalDeckName, { color: colors.foreground }]}>{d.name}</Text>
-                      <Text style={[styles.modalDeckMeta, { color: colors.mutedForeground }]}>
-                        {d.cards.reduce((a, c) => a + c.count, 0)} {showEnglish ? "cards" : "Karten"}
+                  {decks.length === 0 ? (
+                    <View style={styles.modalEmpty}>
+                      <Ionicons name="albums-outline" size={32} color={colors.mutedForeground} />
+                      <Text style={[styles.modalEmptyText, { color: colors.mutedForeground }]}>
+                        {showEnglish
+                          ? "No decks yet. Create a deck first in the Deck Builder tab."
+                          : "Noch keine Decks. Zuerst im Deck-Builder Tab ein Deck anlegen."}
                       </Text>
                     </View>
-                    <Ionicons name="add-circle" size={22} color={colors.primary} />
-                  </TouchableOpacity>
-                ))
+                  ) : (
+                    decks.map((d) => (
+                      <TouchableOpacity key={d.id}
+                        style={[styles.modalDeckRow, { borderColor: colors.border, backgroundColor: colors.background }]}
+                        onPress={() => {
+                          const cardIsLand = !!card?.type_line?.toLowerCase().includes("land");
+                          setPickedDeckId(d.id);
+                          setAddCount(cardIsLand ? 4 : 1);
+                        }}>
+                        <Ionicons name="albums-outline" size={18} color={colors.primary} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.modalDeckName, { color: colors.foreground }]}>{d.name}</Text>
+                          <Text style={[styles.modalDeckMeta, { color: colors.mutedForeground }]}>
+                            {d.cards.reduce((a, c) => a + c.count, 0)} {showEnglish ? "cards" : "Karten"}
+                          </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
+                      </TouchableOpacity>
+                    ))
+                  )}
+                </>
               )}
+
+              {/* Step 2: Set count */}
+              {pickedDeckId && card && (() => {
+                const deck = decks.find((d) => d.id === pickedDeckId);
+                const cardIsLand = !!card.type_line?.toLowerCase().includes("land");
+                const maxC = cardIsLand ? 99 : 4;
+                return (
+                  <>
+                    <TouchableOpacity style={styles.modalBack} onPress={() => { setPickedDeckId(null); setAddCount(1); }}>
+                      <Ionicons name="chevron-back" size={16} color={colors.primary} />
+                      <Text style={[styles.modalBackText, { color: colors.primary }]}>{deck?.name}</Text>
+                    </TouchableOpacity>
+                    <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+                      {card.printed_name ?? card.name}
+                    </Text>
+                    <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>
+                      {showEnglish ? "How many copies?" : "Wie viele Exemplare?"}
+                    </Text>
+                    <View style={styles.countRow}>
+                      <TouchableOpacity
+                        style={[styles.countBtn, { backgroundColor: colors.secondary, borderColor: colors.border, opacity: addCount <= 1 ? 0.4 : 1 }]}
+                        onPress={() => setAddCount((c) => Math.max(1, c - 1))} disabled={addCount <= 1}>
+                        <Ionicons name="remove" size={22} color={colors.foreground} />
+                      </TouchableOpacity>
+                      <Text style={[styles.countVal, { color: colors.foreground }]}>{addCount}</Text>
+                      <TouchableOpacity
+                        style={[styles.countBtn, { backgroundColor: colors.secondary, borderColor: colors.border, opacity: addCount >= maxC ? 0.4 : 1 }]}
+                        onPress={() => setAddCount((c) => Math.min(maxC, c + 1))} disabled={addCount >= maxC}>
+                        <Ionicons name="add" size={22} color={colors.foreground} />
+                      </TouchableOpacity>
+                    </View>
+                    {cardIsLand && (
+                      <View style={styles.quickCounts}>
+                        {[4, 8, 12, 16, 20, 24].map((n) => (
+                          <TouchableOpacity key={n} style={[styles.quickCountBtn, { borderColor: addCount === n ? colors.primary : colors.border, backgroundColor: addCount === n ? colors.primary + "22" : "transparent" }]}
+                            onPress={() => setAddCount(n)}>
+                            <Text style={[styles.quickCountText, { color: addCount === n ? colors.primary : colors.mutedForeground }]}>{n}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                    <TouchableOpacity
+                      style={[styles.confirmBtn, { backgroundColor: colors.primary }]}
+                      onPress={() => {
+                        if (!card || !pickedDeckId) return;
+                        addCardToDeck(pickedDeckId, {
+                          id: card.id,
+                          name: card.name,
+                          printed_name: card.printed_name,
+                          mana_cost: card.mana_cost,
+                          type_line: card.type_line,
+                          produced_mana: card.produced_mana,
+                        }, addCount);
+                        const deckName = deck?.name ?? "";
+                        setAddedToDeck(deckName);
+                        setShowDeckPicker(false);
+                        setPickedDeckId(null);
+                        setAddCount(1);
+                        setTimeout(() => setAddedToDeck(null), 3000);
+                      }}>
+                      <Ionicons name="checkmark" size={18} color="#fff" />
+                      <Text style={styles.confirmBtnText}>
+                        {showEnglish ? `Add ${addCount}×` : `${addCount}× hinzufügen`}
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                );
+              })()}
             </View>
           </TouchableOpacity>
         </Modal>
@@ -897,4 +969,15 @@ const styles = StyleSheet.create({
   modalDeckRow: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 12, borderWidth: 1, padding: 14 },
   modalDeckName: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   modalDeckMeta: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+  modalBack: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: -4 },
+  modalBackText: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  modalSubtitle: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  countRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 24, paddingVertical: 8 },
+  countBtn: { width: 50, height: 50, borderRadius: 12, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  countVal: { fontSize: 36, fontFamily: "Inter_700Bold", minWidth: 60, textAlign: "center" },
+  quickCounts: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
+  quickCountBtn: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 7 },
+  quickCountText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  confirmBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 12, paddingVertical: 14, marginTop: 4 },
+  confirmBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
 });
