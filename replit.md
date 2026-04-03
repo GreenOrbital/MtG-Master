@@ -23,20 +23,36 @@ Expo mobile app for Magic: The Gathering keyword lookup.
 
 **Features:**
 - 60+ MtG keywords with full German and English explanations
-- Searchable keyword list with category filters
-- Language toggle (DE/EN) for all keyword names and explanations
-- Card scanner tab using expo-image-picker to photograph cards and detect keywords
-- Settings screen with stats and data source info
-- Dark theme with purple/arcane MtG-inspired color palette
-- AsyncStorage for persisting language preference
+- Searchable keyword list with category filters (Fähigkeiten, Aktionen, Fähigkeitswörter)
+- Language toggle (DE/EN) persisted via AsyncStorage
+- Card search tab with German + English autocomplete (Scryfall API)
+- Format legality badges (Standard, Pioneer, Modern, Legacy, Commander)
+- AI-generated Spieltipp (when to play) via GPT on API server
+- Similar cards suggestions (horizontal scroll, Scryfall EDHREC order)
+- Favorites (star button, persisted in AsyncStorage)
+- Recently searched cards (last 10, persisted in AsyncStorage)
+- Direct Scryfall link for prices, rulings, and all editions
+- Settings screen with language toggle and DB stats
+- Dark purple/arcane theme
 
 **Key files:**
 - `artifacts/mtg-keywords/data/keywords.ts` — full keyword dataset
-- `artifacts/mtg-keywords/app/(tabs)/index.tsx` — main keyword browser
-- `artifacts/mtg-keywords/app/(tabs)/scan.tsx` — card scanner
+- `artifacts/mtg-keywords/app/(tabs)/index.tsx` — keyword browser
+- `artifacts/mtg-keywords/app/(tabs)/scan.tsx` — card search (main feature screen)
 - `artifacts/mtg-keywords/app/(tabs)/settings.tsx` — settings
-- `artifacts/mtg-keywords/context/SettingsContext.tsx` — language preference context
+- `artifacts/mtg-keywords/context/SettingsContext.tsx` — language preference
+- `artifacts/mtg-keywords/context/CardHistoryContext.tsx` — favorites + recent cards
 - `artifacts/mtg-keywords/constants/colors.ts` — dark purple theme tokens
+
+### API Server (artifacts/api-server)
+Express API powering AI features.
+
+**Routes:**
+- `POST /api/card-tips` — GPT-generated German play tip for a card
+- `POST /api/scan-card` — (legacy) GPT vision card name detection
+- `GET /api/health` — health check
+
+**Config:** 20MB body limit for base64 images, OpenAI via Replit AI Integrations proxy
 
 ## Key Commands
 
