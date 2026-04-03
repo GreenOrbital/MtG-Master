@@ -126,6 +126,9 @@ function matchLocalKeywords(scryfallKeywords: string[], oracleText: string): Mtg
 }
 
 function getApiBase(): string {
+  // On web (dev + production): use relative URL so the reverse proxy routes correctly
+  if (Platform.OS === "web") return "";
+  // On native (Expo Go / standalone): need absolute URL
   const domain = process.env["EXPO_PUBLIC_DOMAIN"];
   return domain ? `https://${domain}` : "";
 }
@@ -244,6 +247,7 @@ export default function CardSearchScreen() {
   const [addedToDeck, setAddedToDeck] = useState<string | null>(null);
   const [pickedDeckId, setPickedDeckId] = useState<string | null>(null);
   const [addCount, setAddCount] = useState(1);
+  const [showImageZoom, setShowImageZoom] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -482,7 +486,12 @@ export default function CardSearchScreen() {
                   </View>
                 </View>
                 {cardImageUri && (
-                  <Image source={{ uri: cardImageUri }} style={styles.cardThumb} resizeMode="contain" />
+                  <TouchableOpacity onPress={() => setShowImageZoom(true)} activeOpacity={0.85}>
+                    <Image source={{ uri: cardImageUri }} style={styles.cardThumb} resizeMode="contain" />
+                    <View style={styles.zoomHint}>
+                      <Ionicons name="expand-outline" size={12} color="#ffffff99" />
+                    </View>
+                  </TouchableOpacity>
                 )}
               </View>
 
@@ -626,30 +635,50 @@ export default function CardSearchScreen() {
             )}
 
             {/* ── Spieltipp ── */}
-            {(loadingTip || playTip.length > 0 || tipFailed) && (
-              <View style={[styles.tipBox, { backgroundColor: colors.card, borderColor: tipFailed ? colors.border : colors.primary }]}>
-                <View style={styles.tipHeader}>
-                  <Ionicons name="bulb-outline" size={18} color={tipFailed ? colors.mutedForeground : colors.primary} />
-                  <Text style={[styles.tipLabel, { color: tipFailed ? colors.mutedForeground : colors.primary }]}>
-                    {showEnglish ? "When & How to Play" : "Wann & Wie spielen?"}
-                  </Text>
-                </View>
-                {loadingTip ? (
-                  <View style={styles.tipLoading}>
-                    <ActivityIndicator size="small" color={colors.primary} />
-                    <Text style={[styles.tipLoadingText, { color: colors.mutedForeground }]}>
-                      {showEnglish ? "Generating tip…" : "Spielhinweis wird erstellt…"}
-                    </Text>
-                  </View>
-                ) : tipFailed ? (
-                  <Text style={[styles.tipLoadingText, { color: colors.mutedForeground }]}>
-                    {showEnglish ? "Tip not available right now." : "Spielhinweis momentan nicht verfügbar."}
-                  </Text>
-                ) : (
-                  <Text style={[styles.tipText, { color: colors.cardForeground }]}>{playTip}</Text>
+            <View style={[styles.tipBox, { backgroundColor: colors.card, borderColor: tipFailed ? colors.border : loadingTip ? colors.border : colors.primary }]}>
+              <View style={styles.tipHeader}>
+                <Ionicons name="bulb-outline" size={18} color={tipFailed || loadingTip ? colors.mutedForeground : colors.primary} />
+                <Text style={[styles.tipLabel, { color: tipFailed || loadingTip ? colors.mutedForeground : colors.primary }]}>
+                  {showEnglish ? "When & How to Play" : "Wann & Wie spielen?"}
+                </Text>
+                {tipFailed && !loadingTip && (
+                  <TouchableOpacity style={styles.retryBtn} onPress={async () => {
+                    if (!card) return;
+                    setTipFailed(false); setLoadingTip(true); setPlayTip("");
+                    const oracleText = card.oracle_text ?? card.card_faces?.map((f) => f.oracle_text).join(" ") ?? "";
+                    try {
+                      const r = await fetch(`${getApiBase()}/api/card-tips`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ cardName: card.name, typeLine: card.type_line, oracleText, keywords: card.keywords ?? [], manaCost: card.mana_cost, power: card.power, toughness: card.toughness, colors: card.colors ?? [], rarity: card.rarity }),
+                      });
+                      if (r.ok) {
+                        const t = ((await r.json()) as { tip: string }).tip ?? "";
+                        if (t) { setPlayTip(t); } else { setTipFailed(true); }
+                      } else { setTipFailed(true); }
+                    } catch { setTipFailed(true); }
+                    setLoadingTip(false);
+                  }}>
+                    <Ionicons name="refresh-outline" size={15} color={colors.primary} />
+                    <Text style={[styles.retryText, { color: colors.primary }]}>{showEnglish ? "Retry" : "Erneut"}</Text>
+                  </TouchableOpacity>
                 )}
               </View>
-            )}
+              {loadingTip ? (
+                <View style={styles.tipLoading}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={[styles.tipLoadingText, { color: colors.mutedForeground }]}>
+                    {showEnglish ? "Generating tip…" : "KI erstellt Spielhinweis…"}
+                  </Text>
+                </View>
+              ) : tipFailed ? (
+                <Text style={[styles.tipLoadingText, { color: colors.mutedForeground }]}>
+                  {showEnglish ? "Tip not available right now." : "Spielhinweis momentan nicht verfügbar."}
+                </Text>
+              ) : playTip ? (
+                <Text style={[styles.tipText, { color: colors.cardForeground }]}>{playTip}</Text>
+              ) : null}
+            </View>
 
             {/* ── Ähnliche Karten ── */}
             {(loadingSimilar || similarCards.length > 0) && (
@@ -684,6 +713,21 @@ export default function CardSearchScreen() {
             )}
           </View>
         )}
+
+        {/* ── Image Zoom Modal ── */}
+        <Modal visible={showImageZoom} transparent animationType="fade"
+          onRequestClose={() => setShowImageZoom(false)}>
+          <TouchableOpacity style={styles.zoomOverlay} activeOpacity={1} onPress={() => setShowImageZoom(false)}>
+            <Image
+              source={{ uri: card?.image_uris?.normal ?? card?.card_faces?.[0]?.image_uris?.normal }}
+              style={styles.zoomImage}
+              resizeMode="contain"
+            />
+            <TouchableOpacity style={styles.zoomClose} onPress={() => setShowImageZoom(false)}>
+              <Ionicons name="close-circle" size={34} color="#ffffffcc" />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
 
         {/* ── Deck Picker Modal ── */}
         <Modal visible={showDeckPicker} transparent animationType="slide"
@@ -926,7 +970,7 @@ const styles = StyleSheet.create({
   noKwText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
   tipBox: { borderRadius: 14, borderWidth: 1.5, padding: 14, gap: 8 },
   tipHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
-  tipLabel: { fontSize: 13, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.5 },
+  tipLabel: { fontSize: 13, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.5, flex: 1 },
   tipLoading: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 },
   tipLoadingText: { fontSize: 13, fontFamily: "Inter_400Regular", fontStyle: "italic" },
   tipText: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 21 },
@@ -955,6 +999,12 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: "center", paddingTop: 40, gap: 12, paddingHorizontal: 24 },
   emptyTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold" },
   emptyHint: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
+  retryBtn: { flexDirection: "row", alignItems: "center", gap: 4, flex: 0, marginLeft: 8 },
+  retryText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  zoomHint: { position: "absolute", bottom: 4, right: 4, backgroundColor: "#00000044", borderRadius: 8, padding: 3 },
+  zoomOverlay: { flex: 1, backgroundColor: "#000000ee", justifyContent: "center", alignItems: "center" },
+  zoomImage: { width: "90%", height: "80%", borderRadius: 16 },
+  zoomClose: { position: "absolute", top: 52, right: 16 },
   addToDeckBtn: {
     borderTopWidth: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 8, paddingHorizontal: 14, paddingVertical: 12,
