@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Modal,
   Platform,
@@ -102,10 +101,6 @@ export default function ManapoolScreen() {
   const [editName, setEditName] = useState("");
   const [showNewDeckModal, setShowNewDeckModal] = useState(false);
   const [newDeckName, setNewDeckName] = useState("");
-  const [deckAnalysis, setDeckAnalysis] = useState("");
-  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
-  const [analysisFailed, setAnalysisFailed] = useState(false);
-
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 84 + 34 : insets.bottom + 84;
 
@@ -119,38 +114,6 @@ export default function ManapoolScreen() {
   function closeDeck() {
     setActiveDeckId(null);
     setEditName("");
-    setDeckAnalysis("");
-    setLoadingAnalysis(false);
-    setAnalysisFailed(false);
-  }
-
-  async function runDeckAnalysis(deck: Deck) {
-    if (loadingAnalysis || deck.cards.length === 0) return;
-    setDeckAnalysis("");
-    setAnalysisFailed(false);
-    setLoadingAnalysis(true);
-    try {
-      const availMana = computeLandMana(deck.cards);
-      const required = sumMana(deck.cards);
-      const lacking = COLORS.filter((k) => required[k] > 0 && (availMana[k] ?? 0) < required[k]);
-      const manaOk = lacking.length === 0 && deck.cards.some(isLand);
-      const apiBase = Platform.OS === "web" ? "" : (process.env["EXPO_PUBLIC_DOMAIN"] ? `https://${process.env["EXPO_PUBLIC_DOMAIN"]}` : "");
-      const r = await fetch(`${apiBase}/api/deck-analysis`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          deckName: deck.name,
-          cards: deck.cards.map((c) => ({ name: c.name, count: c.count, type_line: c.type_line, mana_cost: c.mana_cost })),
-          totalCards: deck.cards.reduce((a, c) => a + c.count, 0),
-          manaOk,
-        }),
-      });
-      if (!r.ok) { setAnalysisFailed(true); } else {
-        const { analysis } = (await r.json()) as { analysis: string };
-        if (analysis) setDeckAnalysis(analysis); else setAnalysisFailed(true);
-      }
-    } catch { setAnalysisFailed(true); }
-    setLoadingAnalysis(false);
   }
 
   function handleCreateDeck() {
@@ -507,75 +470,23 @@ export default function ManapoolScreen() {
               );
             })()}
 
-            {/* ── KI Deck-Analyse ── */}
-            {activeDeck.cards.length > 0 && (
-              <>
-                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                  {showEnglish ? "AI Deck Analysis" : "KI Deck-Analyse"}
-                </Text>
-
-                {!deckAnalysis && !loadingAnalysis && !analysisFailed && (
-                  <TouchableOpacity
-                    style={[styles.analysisBtn, { backgroundColor: colors.primary }]}
-                    onPress={() => runDeckAnalysis(activeDeck)}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="analytics-outline" size={18} color="#fff" />
-                    <Text style={styles.analysisBtnText}>
-                      {showEnglish ? "Analyse this Deck" : "Deck analysieren"}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {loadingAnalysis && (
-                  <View style={[styles.analysisResultBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                    <ActivityIndicator size="small" color={colors.primary} />
-                    <Text style={[styles.analysisHint, { color: colors.mutedForeground }]}>
-                      {showEnglish ? "KI is analysing your deck…" : "KI analysiert dein Deck…"}
-                    </Text>
-                  </View>
-                )}
-
-                {analysisFailed && !loadingAnalysis && (
-                  <View style={[styles.analysisResultBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                    <Ionicons name="alert-circle-outline" size={16} color={colors.mutedForeground} />
-                    <Text style={[styles.analysisHint, { color: colors.mutedForeground, flex: 1 }]}>
-                      {showEnglish ? "Analysis unavailable." : "Analyse nicht verfügbar."}
-                    </Text>
-                    <TouchableOpacity onPress={() => runDeckAnalysis(activeDeck)}>
-                      <Ionicons name="refresh-outline" size={16} color={colors.primary} />
-                    </TouchableOpacity>
-                  </View>
-                )}
-
-                {deckAnalysis ? (
-                  <View style={[styles.analysisTextBox, { backgroundColor: colors.card, borderColor: colors.primary }]}>
-                    <View style={styles.analysisTextHeader}>
-                      <Ionicons name="analytics-outline" size={16} color={colors.primary} />
-                      <Text style={[styles.analysisTextLabel, { color: colors.primary, flex: 1 }]}>
-                        {showEnglish ? "KI Assessment" : "KI-Bewertung"}
-                      </Text>
-                      <TouchableOpacity onPress={() => runDeckAnalysis(activeDeck)}>
-                        <Ionicons name="refresh-outline" size={15} color={colors.mutedForeground} />
-                      </TouchableOpacity>
-                    </View>
-                    <Text style={[styles.analysisText, { color: colors.cardForeground }]}>{deckAnalysis}</Text>
-                  </View>
-                ) : null}
-              </>
-            )}
-
             {/* ── Delete Deck ── */}
             <TouchableOpacity style={[styles.deleteDeckBtn, { borderColor: colors.destructive }]}
-              onPress={() => Alert.alert(
-                showEnglish ? "Delete deck?" : "Deck löschen?",
-                `"${activeDeck.name}"`,
-                [
-                  { text: showEnglish ? "Cancel" : "Abbrechen", style: "cancel" },
-                  { text: showEnglish ? "Delete" : "Löschen", style: "destructive",
-                    onPress: () => { deleteDeck(activeDeck.id); closeDeck(); } },
-                ]
-              )}>
+              onPress={() => {
+                const doDelete = () => { deleteDeck(activeDeck.id); closeDeck(); };
+                if (Platform.OS === "web") {
+                  if (window.confirm(`${showEnglish ? "Delete deck?" : "Deck löschen?"} "${activeDeck.name}"`)) doDelete();
+                } else {
+                  Alert.alert(
+                    showEnglish ? "Delete deck?" : "Deck löschen?",
+                    `"${activeDeck.name}"`,
+                    [
+                      { text: showEnglish ? "Cancel" : "Abbrechen", style: "cancel" },
+                      { text: showEnglish ? "Delete" : "Löschen", style: "destructive", onPress: doDelete },
+                    ]
+                  );
+                }
+              }}>
               <Ionicons name="trash-outline" size={16} color={colors.destructive} />
               <Text style={[styles.deleteDeckText, { color: colors.destructive }]}>
                 {showEnglish ? "Delete Deck" : "Deck löschen"}
@@ -675,14 +586,6 @@ const styles = StyleSheet.create({
   curveCmc: { fontSize: 9, fontFamily: "Inter_400Regular", marginTop: 2 },
   deleteDeckBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 12, borderWidth: 1, paddingVertical: 12 },
   deleteDeckText: { fontSize: 14, fontFamily: "Inter_500Medium" },
-  analysisBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 12, paddingVertical: 13 },
-  analysisBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
-  analysisResultBox: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 12, borderWidth: 1, padding: 14 },
-  analysisHint: { fontSize: 13, fontFamily: "Inter_400Regular", fontStyle: "italic" },
-  analysisTextBox: { borderRadius: 14, borderWidth: 1.5, padding: 14, gap: 10 },
-  analysisTextHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
-  analysisTextLabel: { fontSize: 13, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.5 },
-  analysisText: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 21 },
   modalOverlay: { flex: 1, backgroundColor: "#00000080", justifyContent: "center", alignItems: "center", padding: 24 },
   modalSheet: { borderRadius: 16, padding: 20, width: "100%", gap: 14 },
   modalTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },

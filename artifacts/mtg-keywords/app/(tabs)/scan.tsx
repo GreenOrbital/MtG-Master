@@ -54,14 +54,6 @@ type CardData = {
   produced_mana?: string[];
 };
 
-type SimilarCard = {
-  id: string;
-  name: string;
-  printed_name?: string;
-  imageUri?: string;
-  type_line?: string;
-};
-
 type Suggestion = {
   display: string;
   resolveByName?: string;
@@ -190,27 +182,6 @@ async function fetchCardByName(name: string): Promise<CardData | null> {
   } catch { return null; }
 }
 
-async function fetchSynergyCards(data: CardData): Promise<SimilarCard[]> {
-  try {
-    const oracleText = data.oracle_text ?? data.card_faces?.map((f) => f.oracle_text).join(" ") ?? "";
-    const r = await fetch(`${getApiBase()}/api/card-synergies`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        cardName: data.name,
-        typeLine: data.type_line,
-        oracleText,
-        keywords: data.keywords ?? [],
-        colors: data.colors ?? [],
-      }),
-    });
-    if (!r.ok) return [];
-    // Server already resolved names → Scryfall card data; no extra fetch needed
-    const { cards } = (await r.json()) as { cards: SimilarCard[] };
-    return cards ?? [];
-  } catch { return []; }
-}
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function CardSearchScreen() {
@@ -229,8 +200,6 @@ export default function CardSearchScreen() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [synergyCards, setSynergyCards] = useState<SimilarCard[]>([]);
-  const [loadingSynergy, setLoadingSynergy] = useState(false);
   const [showFormatInfo, setShowFormatInfo] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
   const [showDeckPicker, setShowDeckPicker] = useState(false);
@@ -257,12 +226,10 @@ export default function CardSearchScreen() {
     }, 300);
   }, [query]);
 
-  // Show card immediately; synergy cards load in background via AI
   function applyCard(data: CardData) {
     const oracleText = data.oracle_text ?? data.card_faces?.map((f) => f.oracle_text).join(" ") ?? "";
     setCard(data);
     setMatchedKeywords(matchLocalKeywords(data.keywords ?? [], oracleText));
-    setSynergyCards([]); setLoadingSynergy(true);
 
     const compact: CompactCard = {
       id: data.id, name: data.name, printed_name: data.printed_name,
@@ -271,10 +238,6 @@ export default function CardSearchScreen() {
       imageUri: data.image_uris?.normal ?? data.card_faces?.[0]?.image_uris?.normal,
     };
     addToRecent(compact);
-
-    fetchSynergyCards(data)
-      .then((cards) => { setSynergyCards(cards); setLoadingSynergy(false); })
-      .catch(() => { setLoadingSynergy(false); });
   }
 
   async function selectSuggestion(s: Suggestion) {
@@ -311,8 +274,7 @@ export default function CardSearchScreen() {
   }
 
   function resetCardState() {
-    setCard(null); setMatchedKeywords([]); setExpandedId(null);
-    setErrorMsg(""); setSynergyCards([]); setLoadingSynergy(false);
+    setCard(null); setMatchedKeywords([]); setExpandedId(null); setErrorMsg("");
   }
 
   function clearAll() { setQuery(""); setSuggestions([]); setShowSuggestions(false); setInputFocused(false); resetCardState(); }
@@ -605,44 +567,6 @@ export default function CardSearchScreen() {
               </View>
             )}
 
-            {/* ── Synergiekarten ── */}
-            {(loadingSynergy || synergyCards.length > 0) && (
-              <View style={styles.similarSection}>
-                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                  {showEnglish ? "Synergy Cards" : "Synergiekarten"}
-                </Text>
-                <Text style={[styles.similarHint, { color: colors.mutedForeground }]}>
-                  {showEnglish
-                    ? "Cards that combo or chain well with this card (AI suggestions)"
-                    : "Karten die gut harmonieren oder Sequenzen auslösen können (KI-Vorschläge)"}
-                </Text>
-                {loadingSynergy ? (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 }}>
-                    <ActivityIndicator size="small" color={colors.primary} />
-                    <Text style={[styles.similarHint, { color: colors.mutedForeground }]}>
-                      {showEnglish ? "KI is thinking…" : "KI denkt nach…"}
-                    </Text>
-                  </View>
-                ) : (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.similarScroll} contentContainerStyle={styles.similarContent}>
-                    {synergyCards.map((sc) => (
-                      <TouchableOpacity key={sc.id} style={styles.similarCard} onPress={() => selectCompact({ id: sc.id, name: sc.name, printed_name: sc.printed_name, imageUri: sc.imageUri })}>
-                        {sc.imageUri ? (
-                          <Image source={{ uri: sc.imageUri }} style={styles.similarImage} resizeMode="contain" />
-                        ) : (
-                          <View style={[styles.similarImagePlaceholder, { backgroundColor: colors.secondary }]}>
-                            <Ionicons name="card-outline" size={24} color={colors.mutedForeground} />
-                          </View>
-                        )}
-                        <Text style={[styles.similarName, { color: colors.foreground }]} numberOfLines={2}>
-                          {sc.printed_name ?? sc.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                )}
-              </View>
-            )}
           </View>
         )}
 
@@ -900,22 +824,6 @@ const styles = StyleSheet.create({
   kwSection: { gap: 4 },
   noKwBox: { borderRadius: 14, borderWidth: 1, padding: 20, alignItems: "center", gap: 8 },
   noKwText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
-  tipBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 20 },
-  tipBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" },
-  tipBox: { borderRadius: 14, borderWidth: 1.5, padding: 14, gap: 8 },
-  tipHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
-  tipLabel: { fontSize: 13, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.5, flex: 1 },
-  tipLoading: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 },
-  tipLoadingText: { fontSize: 13, fontFamily: "Inter_400Regular", fontStyle: "italic" },
-  tipText: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 21 },
-  similarSection: { gap: 6 },
-  similarHint: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  similarScroll: { marginHorizontal: -4 },
-  similarContent: { paddingHorizontal: 4, gap: 10 },
-  similarCard: { width: 90, alignItems: "center", gap: 4 },
-  similarImage: { width: 90, height: 126, borderRadius: 6 },
-  similarImagePlaceholder: { width: 90, height: 126, borderRadius: 6, alignItems: "center", justifyContent: "center" },
-  similarName: { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 14 },
   emptyContent: { gap: 20 },
   historySection: { gap: 10 },
   historySectionRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
