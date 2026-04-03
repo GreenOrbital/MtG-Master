@@ -190,31 +190,42 @@ async function fetchCardByName(name: string): Promise<CardData | null> {
   } catch { return null; }
 }
 
-async function fetchSimilarCards(keywords: string[], excludeName: string, typeLine?: string): Promise<SimilarCard[]> {
+async function fetchSynergyCards(data: CardData): Promise<SimilarCard[]> {
   try {
-    let q: string;
-    if (keywords.length > 0) {
-      const kwParts = keywords.slice(0, 2).map((k) => `keyword:"${k}"`).join(" OR ");
-      q = `(${kwParts}) -!"${excludeName}"`;
-    } else if (typeLine) {
-      // Fallback: search by main card type (e.g. "Creature", "Instant", "Sorcery")
-      const mainType = typeLine.replace(/[—–].*/,"").trim().split(" ").pop() ?? "";
-      if (!mainType) return [];
-      q = `type:${mainType} -!"${excludeName}"`;
-    } else {
-      return [];
-    }
-    const url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(q)}&order=edhrec&unique=cards`;
-    const res = await fetch(url, { headers: HEADERS });
-    if (!res.ok) return [];
-    const data = (await res.json()) as { data: CardData[] };
-    return data.data.slice(0, 8).map((c) => ({
-      id: c.id,
-      name: c.name,
-      printed_name: c.printed_name,
-      imageUri: c.image_uris?.normal ?? c.card_faces?.[0]?.image_uris?.normal,
-      type_line: c.type_line,
-    }));
+    const oracleText = data.oracle_text ?? data.card_faces?.map((f) => f.oracle_text).join(" ") ?? "";
+    const r = await fetch(`${getApiBase()}/api/card-synergies`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cardName: data.name,
+        typeLine: data.type_line,
+        oracleText,
+        keywords: data.keywords ?? [],
+        colors: data.colors ?? [],
+      }),
+    });
+    if (!r.ok) return [];
+    const { cards: names } = (await r.json()) as { cards: string[] };
+    const results = await Promise.allSettled(
+      names.map(async (name) => {
+        const res = await fetch(
+          `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`,
+          { headers: HEADERS },
+        );
+        if (!res.ok) return null;
+        const c = (await res.json()) as CardData;
+        return {
+          id: c.id,
+          name: c.name,
+          printed_name: c.printed_name,
+          imageUri: c.image_uris?.normal ?? c.card_faces?.[0]?.image_uris?.normal,
+          type_line: c.type_line,
+        } satisfies SimilarCard;
+      }),
+    );
+    return results
+      .filter((r) => r.status === "fulfilled" && r.value !== null)
+      .map((r) => (r as PromiseFulfilledResult<SimilarCard>).value);
   } catch { return []; }
 }
 
@@ -236,13 +247,10 @@ export default function CardSearchScreen() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [playTip, setPlayTip] = useState("");
-  const [loadingTip, setLoadingTip] = useState(false);
-  const [similarCards, setSimilarCards] = useState<SimilarCard[]>([]);
-  const [loadingSimilar, setLoadingSimilar] = useState(false);
+  const [synergyCards, setSynergyCards] = useState<SimilarCard[]>([]);
+  const [loadingSynergy, setLoadingSynergy] = useState(false);
   const [showFormatInfo, setShowFormatInfo] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
-  const [tipFailed, setTipFailed] = useState(false);
   const [showDeckPicker, setShowDeckPicker] = useState(false);
   const [addedToDeck, setAddedToDeck] = useState<string | null>(null);
   const [pickedDeckId, setPickedDeckId] = useState<string | null>(null);
@@ -267,13 +275,12 @@ export default function CardSearchScreen() {
     }, 300);
   }, [query]);
 
-  // Show card immediately — tip loads only on button press
+  // Show card immediately; synergy cards load in background via AI
   function applyCard(data: CardData) {
     const oracleText = data.oracle_text ?? data.card_faces?.map((f) => f.oracle_text).join(" ") ?? "";
     setCard(data);
     setMatchedKeywords(matchLocalKeywords(data.keywords ?? [], oracleText));
-    setPlayTip(""); setLoadingTip(false); setTipFailed(false);
-    setSimilarCards([]); setLoadingSimilar(true);
+    setSynergyCards([]); setLoadingSynergy(true);
 
     const compact: CompactCard = {
       id: data.id, name: data.name, printed_name: data.printed_name,
@@ -283,32 +290,9 @@ export default function CardSearchScreen() {
     };
     addToRecent(compact);
 
-    fetchSimilarCards(data.keywords ?? [], data.name, data.type_line)
-      .then((similar) => { setSimilarCards(similar); setLoadingSimilar(false); })
-      .catch(() => { setLoadingSimilar(false); });
-  }
-
-  async function fetchTip(data: CardData) {
-    if (loadingTip) return;
-    setPlayTip(""); setTipFailed(false); setLoadingTip(true);
-    const oracleText = data.oracle_text ?? data.card_faces?.map((f) => f.oracle_text).join(" ") ?? "";
-    try {
-      const r = await fetch(`${getApiBase()}/api/card-tips`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cardName: data.name, typeLine: data.type_line, oracleText,
-          keywords: data.keywords ?? [], manaCost: data.mana_cost,
-          power: data.power, toughness: data.toughness,
-          colors: data.colors ?? [], rarity: data.rarity,
-        }),
-      });
-      if (!r.ok) { setTipFailed(true); } else {
-        const t = ((await r.json()) as { tip: string }).tip?.trim() ?? "";
-        if (t) setPlayTip(t); else setTipFailed(true);
-      }
-    } catch { setTipFailed(true); }
-    setLoadingTip(false);
+    fetchSynergyCards(data)
+      .then((cards) => { setSynergyCards(cards); setLoadingSynergy(false); })
+      .catch(() => { setLoadingSynergy(false); });
   }
 
   async function selectSuggestion(s: Suggestion) {
@@ -346,8 +330,7 @@ export default function CardSearchScreen() {
 
   function resetCardState() {
     setCard(null); setMatchedKeywords([]); setExpandedId(null);
-    setErrorMsg(""); setPlayTip(""); setLoadingTip(false);
-    setSimilarCards([]); setLoadingSimilar(false); setTipFailed(false);
+    setErrorMsg(""); setSynergyCards([]); setLoadingSynergy(false);
   }
 
   function clearAll() { setQuery(""); setSuggestions([]); setShowSuggestions(false); setInputFocused(false); resetCardState(); }
@@ -640,72 +623,27 @@ export default function CardSearchScreen() {
               </View>
             )}
 
-            {/* ── KI Spieltipp (on demand) ── */}
-            {!playTip && !loadingTip && !tipFailed && (
-              <TouchableOpacity
-                style={[styles.tipBtn, { backgroundColor: colors.primary }]}
-                onPress={() => card && fetchTip(card)}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="bulb-outline" size={18} color="#fff" />
-                <Text style={styles.tipBtnText}>
-                  {showEnglish ? "Get AI Play Tip" : "KI Spieltipp anfragen"}
-                </Text>
-              </TouchableOpacity>
-            )}
-            {loadingTip && (
-              <View style={[styles.tipBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <View style={styles.tipLoading}>
-                  <ActivityIndicator size="small" color={colors.primary} />
-                  <Text style={[styles.tipLoadingText, { color: colors.mutedForeground }]}>
-                    {showEnglish ? "Generating tip…" : "KI denkt nach…"}
-                  </Text>
-                </View>
-              </View>
-            )}
-            {tipFailed && !loadingTip && (
-              <View style={[styles.tipBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <View style={styles.tipHeader}>
-                  <Ionicons name="alert-circle-outline" size={16} color={colors.mutedForeground} />
-                  <Text style={[styles.tipLoadingText, { color: colors.mutedForeground, flex: 1 }]}>
-                    {showEnglish ? "Tip unavailable." : "Tipp nicht verfügbar."}
-                  </Text>
-                  <TouchableOpacity style={styles.retryBtn} onPress={() => card && fetchTip(card)}>
-                    <Ionicons name="refresh-outline" size={15} color={colors.primary} />
-                    <Text style={[styles.retryText, { color: colors.primary }]}>{showEnglish ? "Retry" : "Erneut"}</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-            {playTip ? (
-              <View style={[styles.tipBox, { backgroundColor: colors.card, borderColor: colors.primary }]}>
-                <View style={styles.tipHeader}>
-                  <Ionicons name="bulb-outline" size={18} color={colors.primary} />
-                  <Text style={[styles.tipLabel, { color: colors.primary, flex: 1 }]}>
-                    {showEnglish ? "When & How to Play" : "Wann & Wie spielen?"}
-                  </Text>
-                  <TouchableOpacity style={styles.retryBtn} onPress={() => card && fetchTip(card)}>
-                    <Ionicons name="refresh-outline" size={15} color={colors.mutedForeground} />
-                  </TouchableOpacity>
-                </View>
-                <Text style={[styles.tipText, { color: colors.cardForeground }]}>{playTip}</Text>
-              </View>
-            ) : null}
-
-            {/* ── Ähnliche Karten ── */}
-            {(loadingSimilar || similarCards.length > 0) && (
+            {/* ── Synergiekarten ── */}
+            {(loadingSynergy || synergyCards.length > 0) && (
               <View style={styles.similarSection}>
                 <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                  {showEnglish ? "Similar Cards" : "Passende Karten"}
+                  {showEnglish ? "Synergy Cards" : "Synergiekarten"}
                 </Text>
                 <Text style={[styles.similarHint, { color: colors.mutedForeground }]}>
-                  {showEnglish ? "Cards with the same keywords (by popularity)" : "Karten mit gleichen Schlüsselwörtern (nach Beliebtheit)"}
+                  {showEnglish
+                    ? "Cards that combo or chain well with this card (AI suggestions)"
+                    : "Karten die gut harmonieren oder Sequenzen auslösen können (KI-Vorschläge)"}
                 </Text>
-                {loadingSimilar ? (
-                  <ActivityIndicator size="small" color={colors.primary} style={{ alignSelf: "flex-start", marginTop: 8 }} />
+                {loadingSynergy ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 }}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={[styles.similarHint, { color: colors.mutedForeground }]}>
+                      {showEnglish ? "KI is thinking…" : "KI denkt nach…"}
+                    </Text>
+                  </View>
                 ) : (
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.similarScroll} contentContainerStyle={styles.similarContent}>
-                    {similarCards.map((sc) => (
+                    {synergyCards.map((sc) => (
                       <TouchableOpacity key={sc.id} style={styles.similarCard} onPress={() => selectCompact({ id: sc.id, name: sc.name, printed_name: sc.printed_name, imageUri: sc.imageUri })}>
                         {sc.imageUri ? (
                           <Image source={{ uri: sc.imageUri }} style={styles.similarImage} resizeMode="contain" />
