@@ -16,13 +16,13 @@ function NativeTabLayout() {
         <Icon sf={{ default: "magnifyingglass.circle", selected: "magnifyingglass.circle.fill" }} />
         <Label>Karte suchen</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="index">
+      <NativeTabs.Trigger name="keywords">
         <Icon sf={{ default: "list.bullet", selected: "list.bullet" }} />
         <Label>Schlüsselwörter</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="manapool">
-        <Icon sf={{ default: "drop.circle", selected: "drop.circle.fill" }} />
-        <Label>Manapool</Label>
+        <Icon sf={{ default: "rectangle.stack", selected: "rectangle.stack.fill" }} />
+        <Label>Decks</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
         <Icon sf={{ default: "gear", selected: "gear" }} />
@@ -41,6 +41,7 @@ function ClassicTabLayout() {
 
   return (
     <Tabs
+      initialRouteName="scan"
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
@@ -62,6 +63,10 @@ function ClassicTabLayout() {
       }}
     >
       <Tabs.Screen
+        name="index"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
         name="scan"
         options={{
           title: "Karte suchen",
@@ -74,7 +79,7 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="index"
+        name="keywords"
         options={{
           title: "Schlüsselwörter",
           tabBarIcon: ({ color }) =>
@@ -88,12 +93,12 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="manapool"
         options={{
-          title: "Manapool",
+          title: "Decks",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="drop.circle" tintColor={color} size={24} />
+              <SymbolView name="rectangle.stack" tintColor={color} size={24} />
             ) : (
-              <Ionicons name="water-outline" size={22} color={color} />
+              <MaterialCommunityIcons name="cards-outline" size={22} color={color} />
             ),
         }}
       />
