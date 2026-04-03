@@ -14,6 +14,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { CardHistoryProvider } from "@/context/CardHistoryContext";
 import { SettingsProvider } from "@/context/SettingsContext";
 
 SplashScreen.preventAutoHideAsync();
@@ -51,7 +52,9 @@ export default function RootLayout() {
           <GestureHandlerRootView>
             <KeyboardProvider>
               <SettingsProvider>
-                <RootLayoutNav />
+                <CardHistoryProvider>
+                  <RootLayoutNav />
+                </CardHistoryProvider>
               </SettingsProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
