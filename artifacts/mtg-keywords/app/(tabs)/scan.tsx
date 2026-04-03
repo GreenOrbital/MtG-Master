@@ -267,12 +267,12 @@ export default function CardSearchScreen() {
     }, 300);
   }, [query]);
 
-  // Show card immediately; load tip + similar in background without blocking
+  // Show card immediately — tip loads only on button press
   function applyCard(data: CardData) {
     const oracleText = data.oracle_text ?? data.card_faces?.map((f) => f.oracle_text).join(" ") ?? "";
     setCard(data);
     setMatchedKeywords(matchLocalKeywords(data.keywords ?? [], oracleText));
-    setPlayTip(""); setLoadingTip(true); setTipFailed(false);
+    setPlayTip(""); setLoadingTip(false); setTipFailed(false);
     setSimilarCards([]); setLoadingSimilar(true);
 
     const compact: CompactCard = {
@@ -283,26 +283,32 @@ export default function CardSearchScreen() {
     };
     addToRecent(compact);
 
-    // Fire-and-forget: tip + similar load in background
-    fetch(`${getApiBase()}/api/card-tips`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        cardName: data.name, typeLine: data.type_line, oracleText,
-        keywords: data.keywords ?? [], manaCost: data.mana_cost,
-        power: data.power, toughness: data.toughness,
-        colors: data.colors ?? [], rarity: data.rarity,
-      }),
-    }).then(async (r) => {
-      if (!r.ok) { setTipFailed(true); setLoadingTip(false); return; }
-      const t = ((await r.json()) as { tip: string }).tip?.trim() ?? "";
-      if (t) { setPlayTip(t); } else { setTipFailed(true); }
-      setLoadingTip(false);
-    }).catch(() => { setTipFailed(true); setLoadingTip(false); });
-
     fetchSimilarCards(data.keywords ?? [], data.name, data.type_line)
       .then((similar) => { setSimilarCards(similar); setLoadingSimilar(false); })
       .catch(() => { setLoadingSimilar(false); });
+  }
+
+  async function fetchTip(data: CardData) {
+    if (loadingTip) return;
+    setPlayTip(""); setTipFailed(false); setLoadingTip(true);
+    const oracleText = data.oracle_text ?? data.card_faces?.map((f) => f.oracle_text).join(" ") ?? "";
+    try {
+      const r = await fetch(`${getApiBase()}/api/card-tips`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cardName: data.name, typeLine: data.type_line, oracleText,
+          keywords: data.keywords ?? [], manaCost: data.mana_cost,
+          power: data.power, toughness: data.toughness,
+          colors: data.colors ?? [], rarity: data.rarity,
+        }),
+      });
+      if (!r.ok) { setTipFailed(true); } else {
+        const t = ((await r.json()) as { tip: string }).tip?.trim() ?? "";
+        if (t) setPlayTip(t); else setTipFailed(true);
+      }
+    } catch { setTipFailed(true); }
+    setLoadingTip(false);
   }
 
   async function selectSuggestion(s: Suggestion) {
@@ -634,51 +640,57 @@ export default function CardSearchScreen() {
               </View>
             )}
 
-            {/* ── Spieltipp ── */}
-            <View style={[styles.tipBox, { backgroundColor: colors.card, borderColor: tipFailed ? colors.border : loadingTip ? colors.border : colors.primary }]}>
-              <View style={styles.tipHeader}>
-                <Ionicons name="bulb-outline" size={18} color={tipFailed || loadingTip ? colors.mutedForeground : colors.primary} />
-                <Text style={[styles.tipLabel, { color: tipFailed || loadingTip ? colors.mutedForeground : colors.primary }]}>
-                  {showEnglish ? "When & How to Play" : "Wann & Wie spielen?"}
+            {/* ── KI Spieltipp (on demand) ── */}
+            {!playTip && !loadingTip && !tipFailed && (
+              <TouchableOpacity
+                style={[styles.tipBtn, { backgroundColor: colors.primary }]}
+                onPress={() => card && fetchTip(card)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="bulb-outline" size={18} color="#fff" />
+                <Text style={styles.tipBtnText}>
+                  {showEnglish ? "Get AI Play Tip" : "KI Spieltipp anfragen"}
                 </Text>
-                {tipFailed && !loadingTip && (
-                  <TouchableOpacity style={styles.retryBtn} onPress={async () => {
-                    if (!card) return;
-                    setTipFailed(false); setLoadingTip(true); setPlayTip("");
-                    const oracleText = card.oracle_text ?? card.card_faces?.map((f) => f.oracle_text).join(" ") ?? "";
-                    try {
-                      const r = await fetch(`${getApiBase()}/api/card-tips`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ cardName: card.name, typeLine: card.type_line, oracleText, keywords: card.keywords ?? [], manaCost: card.mana_cost, power: card.power, toughness: card.toughness, colors: card.colors ?? [], rarity: card.rarity }),
-                      });
-                      if (r.ok) {
-                        const t = ((await r.json()) as { tip: string }).tip ?? "";
-                        if (t) { setPlayTip(t); } else { setTipFailed(true); }
-                      } else { setTipFailed(true); }
-                    } catch { setTipFailed(true); }
-                    setLoadingTip(false);
-                  }}>
-                    <Ionicons name="refresh-outline" size={15} color={colors.primary} />
-                    <Text style={[styles.retryText, { color: colors.primary }]}>{showEnglish ? "Retry" : "Erneut"}</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-              {loadingTip ? (
+              </TouchableOpacity>
+            )}
+            {loadingTip && (
+              <View style={[styles.tipBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <View style={styles.tipLoading}>
                   <ActivityIndicator size="small" color={colors.primary} />
                   <Text style={[styles.tipLoadingText, { color: colors.mutedForeground }]}>
-                    {showEnglish ? "Generating tip…" : "KI erstellt Spielhinweis…"}
+                    {showEnglish ? "Generating tip…" : "KI denkt nach…"}
                   </Text>
                 </View>
-              ) : tipFailed ? (
-                <Text style={[styles.tipLoadingText, { color: colors.mutedForeground }]}>
-                  {showEnglish ? "Tip not available right now." : "Spielhinweis momentan nicht verfügbar."}
-                </Text>
-              ) : playTip ? (
+              </View>
+            )}
+            {tipFailed && !loadingTip && (
+              <View style={[styles.tipBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={styles.tipHeader}>
+                  <Ionicons name="alert-circle-outline" size={16} color={colors.mutedForeground} />
+                  <Text style={[styles.tipLoadingText, { color: colors.mutedForeground, flex: 1 }]}>
+                    {showEnglish ? "Tip unavailable." : "Tipp nicht verfügbar."}
+                  </Text>
+                  <TouchableOpacity style={styles.retryBtn} onPress={() => card && fetchTip(card)}>
+                    <Ionicons name="refresh-outline" size={15} color={colors.primary} />
+                    <Text style={[styles.retryText, { color: colors.primary }]}>{showEnglish ? "Retry" : "Erneut"}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+            {playTip ? (
+              <View style={[styles.tipBox, { backgroundColor: colors.card, borderColor: colors.primary }]}>
+                <View style={styles.tipHeader}>
+                  <Ionicons name="bulb-outline" size={18} color={colors.primary} />
+                  <Text style={[styles.tipLabel, { color: colors.primary, flex: 1 }]}>
+                    {showEnglish ? "When & How to Play" : "Wann & Wie spielen?"}
+                  </Text>
+                  <TouchableOpacity style={styles.retryBtn} onPress={() => card && fetchTip(card)}>
+                    <Ionicons name="refresh-outline" size={15} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                </View>
                 <Text style={[styles.tipText, { color: colors.cardForeground }]}>{playTip}</Text>
-              ) : null}
-            </View>
+              </View>
+            ) : null}
 
             {/* ── Ähnliche Karten ── */}
             {(loadingSimilar || similarCards.length > 0) && (
@@ -968,6 +980,8 @@ const styles = StyleSheet.create({
   kwSection: { gap: 4 },
   noKwBox: { borderRadius: 14, borderWidth: 1, padding: 20, alignItems: "center", gap: 8 },
   noKwText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
+  tipBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 20 },
+  tipBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" },
   tipBox: { borderRadius: 14, borderWidth: 1.5, padding: 14, gap: 8 },
   tipHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
   tipLabel: { fontSize: 13, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.5, flex: 1 },
