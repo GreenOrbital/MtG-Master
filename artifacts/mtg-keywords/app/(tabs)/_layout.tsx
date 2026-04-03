@@ -12,13 +12,17 @@ import { useColors } from "@/hooks/useColors";
 function NativeTabLayout() {
   return (
     <NativeTabs>
+      <NativeTabs.Trigger name="scan">
+        <Icon sf={{ default: "magnifyingglass.circle", selected: "magnifyingglass.circle.fill" }} />
+        <Label>Karte suchen</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="index">
         <Icon sf={{ default: "list.bullet", selected: "list.bullet" }} />
         <Label>Schlüsselwörter</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="scan">
-        <Icon sf={{ default: "magnifyingglass.circle", selected: "magnifyingglass.circle.fill" }} />
-        <Label>Karte suchen</Label>
+      <NativeTabs.Trigger name="manapool">
+        <Icon sf={{ default: "drop.circle", selected: "drop.circle.fill" }} />
+        <Label>Manapool</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
         <Icon sf={{ default: "gear", selected: "gear" }} />
@@ -51,21 +55,24 @@ function ClassicTabLayout() {
         },
         tabBarBackground: () =>
           isIOS ? (
-            <BlurView
-              intensity={100}
-              tint={isDark ? "dark" : "light"}
-              style={StyleSheet.absoluteFill}
-            />
+            <BlurView intensity={100} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
           ) : isWeb ? (
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: colors.background },
-              ]}
-            />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]} />
           ) : null,
       }}
     >
+      <Tabs.Screen
+        name="scan"
+        options={{
+          title: "Karte suchen",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="magnifyingglass.circle" tintColor={color} size={24} />
+            ) : (
+              <Ionicons name="search-outline" size={22} color={color} />
+            ),
+        }}
+      />
       <Tabs.Screen
         name="index"
         options={{
@@ -79,14 +86,14 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="scan"
+        name="manapool"
         options={{
-          title: "Karte suchen",
+          title: "Manapool",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="magnifyingglass.circle" tintColor={color} size={24} />
+              <SymbolView name="drop.circle" tintColor={color} size={24} />
             ) : (
-              <Ionicons name="search-outline" size={22} color={color} />
+              <Ionicons name="water-outline" size={22} color={color} />
             ),
         }}
       />

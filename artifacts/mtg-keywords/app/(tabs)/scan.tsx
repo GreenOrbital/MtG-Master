@@ -354,6 +354,8 @@ export default function CardSearchScreen() {
             style={[styles.input, { color: colors.foreground }]}
             autoCorrect={false} autoCapitalize="words"
             returnKeyType="search" onSubmitEditing={submitQuery}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+            onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
           />
           {loadingSuggestions && <ActivityIndicator size="small" color={colors.primary} />}
           {query.length > 0 && !loadingSuggestions && (
