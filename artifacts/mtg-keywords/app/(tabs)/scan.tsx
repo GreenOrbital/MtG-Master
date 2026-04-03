@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   Image,
   Platform,
   ScrollView,
@@ -21,15 +20,31 @@ import { MTG_KEYWORDS, type MtgKeyword } from "@/data/keywords";
 import { useColors } from "@/hooks/useColors";
 
 type CardData = {
+  id: string;
   name: string;
+  printed_name?: string;
   keywords: string[];
   oracle_text?: string;
+  printed_text?: string;
   type_line?: string;
+  printed_type_line?: string;
   mana_cost?: string;
   power?: string;
   toughness?: string;
   set_name?: string;
   image_uris?: { normal?: string; small?: string };
+  card_faces?: Array<{
+    image_uris?: { normal?: string; small?: string };
+    oracle_text?: string;
+    printed_text?: string;
+  }>;
+};
+
+type Suggestion = {
+  display: string;
+  resolveByName?: string;
+  resolveById?: string;
+  prefetchedCard?: CardData;
 };
 
 function matchLocalKeywords(scryfallKeywords: string[], oracleText: string): MtgKeyword[] {
@@ -50,13 +65,86 @@ function matchLocalKeywords(scryfallKeywords: string[], oracleText: string): Mtg
   return Array.from(found.values());
 }
 
+const HEADERS = { "User-Agent": "MtGKeywordsApp/1.0" };
+
+async function fetchAutocompleteSuggestions(query: string): Promise<Suggestion[]> {
+  try {
+    const res = await fetch(
+      `https://api.scryfall.com/cards/autocomplete?q=${encodeURIComponent(query)}&include_extras=false`,
+      { headers: HEADERS }
+    );
+    if (!res.ok) return [];
+    const data = (await res.json()) as { data: string[] };
+    return data.data.slice(0, 8).map((name) => ({ display: name, resolveByName: name }));
+  } catch {
+    return [];
+  }
+}
+
+async function fetchGermanSuggestions(query: string): Promise<Suggestion[]> {
+  try {
+    const res = await fetch(
+      `https://api.scryfall.com/cards/search?q=lang%3Ade+${encodeURIComponent(query)}&order=name&unique=names`,
+      { headers: HEADERS }
+    );
+    if (!res.ok) return [];
+    const data = (await res.json()) as { data: CardData[] };
+    return data.data
+      .filter((c) => c.printed_name)
+      .slice(0, 8)
+      .map((c) => ({
+        display: c.printed_name!,
+        resolveById: c.id,
+        prefetchedCard: c,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function mergeSuggestions(en: Suggestion[], de: Suggestion[]): Suggestion[] {
+  const seen = new Set<string>();
+  const result: Suggestion[] = [];
+  for (const s of [...de, ...en]) {
+    const key = s.display.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(s);
+    }
+  }
+  return result.slice(0, 12);
+}
+
+async function fetchCardById(id: string): Promise<CardData | null> {
+  try {
+    const res = await fetch(`https://api.scryfall.com/cards/${id}`, { headers: HEADERS });
+    if (!res.ok) return null;
+    return (await res.json()) as CardData;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchCardByName(name: string): Promise<CardData | null> {
+  try {
+    const res = await fetch(
+      `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`,
+      { headers: HEADERS }
+    );
+    if (!res.ok) return null;
+    return (await res.json()) as CardData;
+  } catch {
+    return null;
+  }
+}
+
 export default function CardSearchScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { showEnglish, setShowEnglish } = useSettings();
 
   const [query, setQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [card, setCard] = useState<CardData | null>(null);
   const [loadingCard, setLoadingCard] = useState(false);
@@ -77,26 +165,25 @@ export default function CardSearchScreen() {
     }
     debounceRef.current = setTimeout(async () => {
       setLoadingSuggestions(true);
-      try {
-        const res = await fetch(
-          `https://api.scryfall.com/cards/autocomplete?q=${encodeURIComponent(trimmed)}&include_extras=false`,
-          { headers: { "User-Agent": "MtGKeywordsApp/1.0" } }
-        );
-        if (res.ok) {
-          const data = (await res.json()) as { data: string[] };
-          setSuggestions(data.data.slice(0, 12));
-          setShowSuggestions(true);
-        }
-      } catch {
-        setSuggestions([]);
-      } finally {
-        setLoadingSuggestions(false);
-      }
+      const [en, de] = await Promise.all([
+        fetchAutocompleteSuggestions(trimmed),
+        fetchGermanSuggestions(trimmed),
+      ]);
+      setSuggestions(mergeSuggestions(en, de));
+      setShowSuggestions(true);
+      setLoadingSuggestions(false);
     }, 300);
   }, [query]);
 
-  async function selectCard(name: string) {
-    setQuery(name);
+  async function applyCard(data: CardData) {
+    setCard(data);
+    const oracleText = data.oracle_text ?? data.card_faces?.map((f) => f.oracle_text).join(" ") ?? "";
+    const matched = matchLocalKeywords(data.keywords ?? [], oracleText);
+    setMatchedKeywords(matched);
+  }
+
+  async function selectSuggestion(s: Suggestion) {
+    setQuery(s.display);
     setSuggestions([]);
     setShowSuggestions(false);
     setCard(null);
@@ -104,31 +191,54 @@ export default function CardSearchScreen() {
     setExpandedId(null);
     setErrorMsg("");
     setLoadingCard(true);
-    try {
-      const res = await fetch(
-        `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`,
-        { headers: { "User-Agent": "MtGKeywordsApp/1.0" } }
-      );
-      if (!res.ok) {
-        setErrorMsg(
-          showEnglish
-            ? `Card "${name}" not found.`
-            : `Karte "${name}" nicht gefunden.`
-        );
-        setLoadingCard(false);
-        return;
-      }
-      const data = (await res.json()) as CardData;
-      setCard(data);
-      const matched = matchLocalKeywords(data.keywords ?? [], data.oracle_text ?? "");
-      setMatchedKeywords(matched);
-    } catch {
-      setErrorMsg(
-        showEnglish ? "Network error. Check your connection." : "Netzwerkfehler. Verbindung prüfen."
-      );
-    } finally {
-      setLoadingCard(false);
+
+    let data: CardData | null = null;
+
+    if (s.prefetchedCard) {
+      data = s.prefetchedCard;
+    } else if (s.resolveById) {
+      data = await fetchCardById(s.resolveById);
+    } else if (s.resolveByName) {
+      data = await fetchCardByName(s.resolveByName);
     }
+
+    if (!data) {
+      setErrorMsg(
+        showEnglish
+          ? `Card "${s.display}" not found.`
+          : `Karte "${s.display}" nicht gefunden.`
+      );
+    } else {
+      await applyCard(data);
+    }
+    setLoadingCard(false);
+  }
+
+  async function submitQuery() {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    if (suggestions.length > 0) {
+      await selectSuggestion(suggestions[0]);
+      return;
+    }
+    setSuggestions([]);
+    setShowSuggestions(false);
+    setCard(null);
+    setMatchedKeywords([]);
+    setExpandedId(null);
+    setErrorMsg("");
+    setLoadingCard(true);
+    const data = await fetchCardByName(trimmed);
+    if (!data) {
+      setErrorMsg(
+        showEnglish
+          ? `Card "${trimmed}" not found.`
+          : `Karte "${trimmed}" nicht gefunden.`
+      );
+    } else {
+      await applyCard(data);
+    }
+    setLoadingCard(false);
   }
 
   function clearAll() {
@@ -144,9 +254,24 @@ export default function CardSearchScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 84 + 34 : insets.bottom + 84;
 
+  const displayName = card?.printed_name ?? card?.name ?? "";
+  const displayTypeLine = card?.printed_type_line ?? card?.type_line ?? "";
+  const displayOracleText =
+    card?.printed_text ??
+    card?.card_faces?.map((f) => f.printed_text ?? f.oracle_text).join("\n—\n") ??
+    card?.oracle_text ??
+    "";
+  const cardImageUri =
+    card?.image_uris?.normal ?? card?.card_faces?.[0]?.image_uris?.normal;
+
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: topPad + 12, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+      <View
+        style={[
+          styles.header,
+          { paddingTop: topPad + 12, backgroundColor: colors.background, borderBottomColor: colors.border },
+        ]}
+      >
         <View style={styles.headerRow}>
           <Text style={[styles.title, { color: colors.foreground }]}>
             {showEnglish ? "Card Search" : "Karte suchen"}
@@ -155,8 +280,8 @@ export default function CardSearchScreen() {
         </View>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
           {showEnglish
-            ? "Type a card name to look up its keywords"
-            : "Kartennamen eingeben — Schlüsselwörter werden automatisch erklärt"}
+            ? "Search by English or German card name"
+            : "Deutschen oder englischen Kartennamen eingeben"}
         </Text>
 
         <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -171,16 +296,13 @@ export default function CardSearchScreen() {
                 setErrorMsg("");
               }
             }}
-            placeholder={showEnglish ? "e.g. Lightning Bolt..." : "z.B. Blitzschlag..."}
+            placeholder={showEnglish ? "e.g. Lightning Bolt or Blitzschlag…" : "z.B. Blitzschlag oder Lightning Bolt…"}
             placeholderTextColor={colors.mutedForeground}
             style={[styles.input, { color: colors.foreground }]}
             autoCorrect={false}
             autoCapitalize="words"
             returnKeyType="search"
-            onSubmitEditing={() => {
-              if (suggestions.length > 0) selectCard(suggestions[0]);
-              else if (query.trim().length > 1) selectCard(query.trim());
-            }}
+            onSubmitEditing={submitQuery}
           />
           {loadingSuggestions && <ActivityIndicator size="small" color={colors.primary} />}
           {query.length > 0 && !loadingSuggestions && (
@@ -191,18 +313,25 @@ export default function CardSearchScreen() {
         </View>
 
         {showSuggestions && suggestions.length > 0 && (
-          <View style={[styles.dropdown, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View
+            style={[styles.dropdown, { backgroundColor: colors.card, borderColor: colors.border }]}
+          >
             {suggestions.map((s, i) => (
               <TouchableOpacity
-                key={s}
+                key={`${s.display}-${i}`}
                 style={[
                   styles.suggestion,
-                  i < suggestions.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
+                  i < suggestions.length - 1 && {
+                    borderBottomColor: colors.border,
+                    borderBottomWidth: StyleSheet.hairlineWidth,
+                  },
                 ]}
-                onPress={() => selectCard(s)}
+                onPress={() => selectSuggestion(s)}
               >
                 <Ionicons name="card-outline" size={14} color={colors.mutedForeground} />
-                <Text style={[styles.suggestionText, { color: colors.foreground }]}>{s}</Text>
+                <Text style={[styles.suggestionText, { color: colors.foreground }]} numberOfLines={1}>
+                  {s.display}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -218,7 +347,7 @@ export default function CardSearchScreen() {
           <View style={styles.loadingBox}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
-              {showEnglish ? "Loading card data..." : "Kartendaten werden geladen..."}
+              {showEnglish ? "Loading card data…" : "Kartendaten werden geladen…"}
             </Text>
           </View>
         )}
@@ -235,9 +364,16 @@ export default function CardSearchScreen() {
             <View style={[styles.cardInfoBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={styles.cardInfoTop}>
                 <View style={styles.cardInfoLeft}>
-                  <Text style={[styles.cardName, { color: colors.foreground }]}>{card.name}</Text>
-                  {card.type_line ? (
-                    <Text style={[styles.cardType, { color: colors.mutedForeground }]}>{card.type_line}</Text>
+                  <Text style={[styles.cardName, { color: colors.foreground }]}>{displayName}</Text>
+                  {card.printed_name && card.name !== card.printed_name && (
+                    <Text style={[styles.cardEnName, { color: colors.mutedForeground }]}>
+                      {card.name}
+                    </Text>
+                  )}
+                  {displayTypeLine ? (
+                    <Text style={[styles.cardType, { color: colors.mutedForeground }]}>
+                      {displayTypeLine}
+                    </Text>
                   ) : null}
                   <View style={styles.cardMeta}>
                     {card.mana_cost ? (
@@ -263,22 +399,22 @@ export default function CardSearchScreen() {
                     ) : null}
                   </View>
                 </View>
-                {card.image_uris?.normal && (
+                {cardImageUri && (
                   <Image
-                    source={{ uri: card.image_uris.normal }}
+                    source={{ uri: cardImageUri }}
                     style={styles.cardThumb}
                     resizeMode="contain"
                   />
                 )}
               </View>
 
-              {card.oracle_text ? (
+              {displayOracleText ? (
                 <View style={[styles.oracleBox, { borderTopColor: colors.border }]}>
                   <Text style={[styles.oracleLabel, { color: colors.mutedForeground }]}>
-                    {showEnglish ? "Oracle Text" : "Kartentext"}
+                    {showEnglish ? "Card Text" : "Kartentext"}
                   </Text>
                   <Text style={[styles.oracleText, { color: colors.cardForeground }]}>
-                    {card.oracle_text}
+                    {displayOracleText}
                   </Text>
                 </View>
               ) : null}
@@ -311,7 +447,7 @@ export default function CardSearchScreen() {
                 </Text>
                 {(card.keywords?.length ?? 0) > 0 && (
                   <Text style={[styles.noKwSub, { color: colors.mutedForeground }]}>
-                    {showEnglish ? "Scryfall keywords: " : "Scryfall: "}
+                    {showEnglish ? "Scryfall: " : "Scryfall: "}
                     {card.keywords?.join(", ")}
                   </Text>
                 )}
@@ -328,8 +464,8 @@ export default function CardSearchScreen() {
             </Text>
             <Text style={[styles.emptyHint, { color: colors.mutedForeground }]}>
               {showEnglish
-                ? "Start typing any card name — suggestions will appear automatically"
-                : "Fang an zu tippen — Vorschläge erscheinen automatisch"}
+                ? "Works with English and German card names"
+                : "Funktioniert mit deutschen und englischen Kartennamen"}
             </Text>
           </View>
         )}
@@ -352,10 +488,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 4,
   },
-  title: {
-    fontSize: 26,
-    fontFamily: "Inter_700Bold",
-  },
+  title: { fontSize: 26, fontFamily: "Inter_700Bold" },
   subtitle: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
@@ -409,19 +542,9 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     flex: 1,
   },
-  scroll: {
-    padding: 16,
-    flexGrow: 1,
-  },
-  loadingBox: {
-    alignItems: "center",
-    paddingTop: 60,
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-  },
+  scroll: { padding: 16, flexGrow: 1 },
+  loadingBox: { alignItems: "center", paddingTop: 60, gap: 12 },
+  loadingText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   errorBox: {
     borderRadius: 14,
     borderWidth: 1,
@@ -430,59 +553,19 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 20,
   },
-  errorText: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-  },
+  errorText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
   content: { gap: 14 },
-  cardInfoBox: {
-    borderRadius: 14,
-    borderWidth: 1,
-    overflow: "hidden",
-  },
-  cardInfoTop: {
-    flexDirection: "row",
-    padding: 14,
-    gap: 12,
-  },
-  cardInfoLeft: {
-    flex: 1,
-    gap: 4,
-  },
-  cardName: {
-    fontSize: 20,
-    fontFamily: "Inter_700Bold",
-  },
-  cardType: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-  },
-  cardMeta: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    marginTop: 4,
-  },
-  metaBadge: {
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  metaBadgeText: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-  },
-  cardThumb: {
-    width: 82,
-    height: 114,
-    borderRadius: 6,
-  },
-  oracleBox: {
-    borderTopWidth: 1,
-    padding: 14,
-    gap: 4,
-  },
+  cardInfoBox: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
+  cardInfoTop: { flexDirection: "row", padding: 14, gap: 12 },
+  cardInfoLeft: { flex: 1, gap: 4 },
+  cardName: { fontSize: 20, fontFamily: "Inter_700Bold" },
+  cardEnName: { fontSize: 13, fontFamily: "Inter_400Regular", fontStyle: "italic" },
+  cardType: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  cardMeta: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 },
+  metaBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  metaBadgeText: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  cardThumb: { width: 82, height: 114, borderRadius: 6 },
+  oracleBox: { borderTopWidth: 1, padding: 14, gap: 4 },
   oracleLabel: {
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
@@ -496,23 +579,9 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
   kwSection: { gap: 4 },
-  kwTitle: {
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-    marginBottom: 4,
-  },
-  noKwBox: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 20,
-    alignItems: "center",
-    gap: 8,
-  },
-  noKwText: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-  },
+  kwTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", marginBottom: 4 },
+  noKwBox: { borderRadius: 14, borderWidth: 1, padding: 20, alignItems: "center", gap: 8 },
+  noKwText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
   noKwSub: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
@@ -525,10 +594,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 24,
   },
-  emptyTitle: {
-    fontSize: 18,
-    fontFamily: "Inter_600SemiBold",
-  },
+  emptyTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold" },
   emptyHint: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
