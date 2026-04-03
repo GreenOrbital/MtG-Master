@@ -183,12 +183,20 @@ async function fetchCardByName(name: string): Promise<CardData | null> {
   } catch { return null; }
 }
 
-async function fetchSimilarCards(keywords: string[], excludeName: string): Promise<SimilarCard[]> {
-  if (keywords.length === 0) return [];
+async function fetchSimilarCards(keywords: string[], excludeName: string, typeLine?: string): Promise<SimilarCard[]> {
   try {
-    // Build a proper Scryfall search query
-    const kwParts = keywords.slice(0, 2).map((k) => `keyword:"${k}"`).join(" OR ");
-    const q = `(${kwParts}) -!"${excludeName}"`;
+    let q: string;
+    if (keywords.length > 0) {
+      const kwParts = keywords.slice(0, 2).map((k) => `keyword:"${k}"`).join(" OR ");
+      q = `(${kwParts}) -!"${excludeName}"`;
+    } else if (typeLine) {
+      // Fallback: search by main card type (e.g. "Creature", "Instant", "Sorcery")
+      const mainType = typeLine.replace(/[—–].*/,"").trim().split(" ").pop() ?? "";
+      if (!mainType) return [];
+      q = `type:${mainType} -!"${excludeName}"`;
+    } else {
+      return [];
+    }
     const url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(q)}&order=edhrec&unique=cards`;
     const res = await fetch(url, { headers: HEADERS });
     if (!res.ok) return [];
@@ -225,6 +233,8 @@ export default function CardSearchScreen() {
   const [similarCards, setSimilarCards] = useState<SimilarCard[]>([]);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [showFormatInfo, setShowFormatInfo] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
+  const [tipFailed, setTipFailed] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -256,7 +266,7 @@ export default function CardSearchScreen() {
       imageUri: data.image_uris?.normal ?? data.card_faces?.[0]?.image_uris?.normal,
     };
     addToRecent(compact);
-    setPlayTip(""); setLoadingTip(true);
+    setPlayTip(""); setLoadingTip(true); setTipFailed(false);
     setSimilarCards([]); setLoadingSimilar(true);
 
     const [tip, similar] = await Promise.all([
@@ -269,8 +279,13 @@ export default function CardSearchScreen() {
           power: data.power, toughness: data.toughness,
           colors: data.colors ?? [], rarity: data.rarity,
         }),
-      }).then(async (r) => r.ok ? ((await r.json()) as { tip: string }).tip ?? "" : "").catch(() => ""),
-      fetchSimilarCards(data.keywords ?? [], data.name),
+      }).then(async (r) => {
+        if (!r.ok) { setTipFailed(true); return ""; }
+        const t = ((await r.json()) as { tip: string }).tip ?? "";
+        if (!t) setTipFailed(true);
+        return t;
+      }).catch(() => { setTipFailed(true); return ""; }),
+      fetchSimilarCards(data.keywords ?? [], data.name, data.type_line),
     ]);
 
     setPlayTip(tip); setLoadingTip(false);
@@ -313,10 +328,12 @@ export default function CardSearchScreen() {
   function resetCardState() {
     setCard(null); setMatchedKeywords([]); setExpandedId(null);
     setErrorMsg(""); setPlayTip(""); setLoadingTip(false);
-    setSimilarCards([]); setLoadingSimilar(false);
+    setSimilarCards([]); setLoadingSimilar(false); setTipFailed(false);
   }
 
-  function clearAll() { setQuery(""); setSuggestions([]); setShowSuggestions(false); resetCardState(); }
+  function clearAll() { setQuery(""); setSuggestions([]); setShowSuggestions(false); setInputFocused(false); resetCardState(); }
+
+  const showDropdown = inputFocused && suggestions.length > 0;
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 84 + 34 : insets.bottom + 84;
@@ -333,8 +350,13 @@ export default function CardSearchScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
+      {/* Backdrop: closes dropdown when tapping outside */}
+      {showDropdown && (
+        <TouchableOpacity style={[StyleSheet.absoluteFillObject, { zIndex: 9 }]} activeOpacity={1}
+          onPress={() => { setInputFocused(false); setShowSuggestions(false); }} />
+      )}
       {/* Header */}
-      <View style={[styles.header, { paddingTop: topPad + 12, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+      <View style={[styles.header, { paddingTop: topPad + 12, backgroundColor: colors.background, borderBottomColor: colors.border, zIndex: 10 }]}>
         <View style={styles.headerRow}>
           <Text style={[styles.title, { color: colors.foreground }]}>
             {showEnglish ? "Card Search" : "Karte suchen"}
@@ -354,8 +376,8 @@ export default function CardSearchScreen() {
             style={[styles.input, { color: colors.foreground }]}
             autoCorrect={false} autoCapitalize="words"
             returnKeyType="search" onSubmitEditing={submitQuery}
-            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-            onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+            onFocus={() => { setInputFocused(true); setShowSuggestions(true); }}
+            onBlur={() => setTimeout(() => setInputFocused(false), 200)}
           />
           {loadingSuggestions && <ActivityIndicator size="small" color={colors.primary} />}
           {query.length > 0 && !loadingSuggestions && (
@@ -364,7 +386,7 @@ export default function CardSearchScreen() {
             </TouchableOpacity>
           )}
         </View>
-        {showSuggestions && suggestions.length > 0 && (
+        {showDropdown && (
           <View style={[styles.dropdown, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {suggestions.map((s, i) => (
               <TouchableOpacity
@@ -569,11 +591,11 @@ export default function CardSearchScreen() {
             )}
 
             {/* ── Spieltipp ── */}
-            {(loadingTip || playTip.length > 0) && (
-              <View style={[styles.tipBox, { backgroundColor: colors.card, borderColor: colors.primary }]}>
+            {(loadingTip || playTip.length > 0 || tipFailed) && (
+              <View style={[styles.tipBox, { backgroundColor: colors.card, borderColor: tipFailed ? colors.border : colors.primary }]}>
                 <View style={styles.tipHeader}>
-                  <Ionicons name="bulb-outline" size={18} color={colors.primary} />
-                  <Text style={[styles.tipLabel, { color: colors.primary }]}>
+                  <Ionicons name="bulb-outline" size={18} color={tipFailed ? colors.mutedForeground : colors.primary} />
+                  <Text style={[styles.tipLabel, { color: tipFailed ? colors.mutedForeground : colors.primary }]}>
                     {showEnglish ? "When & How to Play" : "Wann & Wie spielen?"}
                   </Text>
                 </View>
@@ -584,6 +606,10 @@ export default function CardSearchScreen() {
                       {showEnglish ? "Generating tip…" : "Spielhinweis wird erstellt…"}
                     </Text>
                   </View>
+                ) : tipFailed ? (
+                  <Text style={[styles.tipLoadingText, { color: colors.mutedForeground }]}>
+                    {showEnglish ? "Tip not available right now." : "Spielhinweis momentan nicht verfügbar."}
+                  </Text>
                 ) : (
                   <Text style={[styles.tipText, { color: colors.cardForeground }]}>{playTip}</Text>
                 )}
