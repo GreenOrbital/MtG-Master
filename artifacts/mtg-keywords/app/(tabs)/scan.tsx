@@ -1,11 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useRef, useState } from "react";
+import * as Clipboard from "expo-clipboard";
 import {
   ActivityIndicator,
   Image,
   Linking,
+  Modal,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -17,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeywordCard } from "@/components/KeywordCard";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { type CompactCard, useCardHistory } from "@/context/CardHistoryContext";
+import { useDecks } from "@/context/DeckContext";
 import { useSettings } from "@/context/SettingsContext";
 import { MTG_KEYWORDS, type MtgKeyword } from "@/data/keywords";
 import { useColors } from "@/hooks/useColors";
@@ -218,6 +222,7 @@ export default function CardSearchScreen() {
   const insets = useSafeAreaInsets();
   const { showEnglish, setShowEnglish } = useSettings();
   const { recentCards, favorites, addToRecent, toggleFavorite, isFavorite, clearRecent } = useCardHistory();
+  const { decks, addCardToDeck } = useDecks();
 
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -235,6 +240,8 @@ export default function CardSearchScreen() {
   const [showFormatInfo, setShowFormatInfo] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
   const [tipFailed, setTipFailed] = useState(false);
+  const [showDeckPicker, setShowDeckPicker] = useState(false);
+  const [addedToDeck, setAddedToDeck] = useState<string | null>(null);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -533,6 +540,32 @@ export default function CardSearchScreen() {
                   {showEnglish ? "Prices, all editions & rulings on Scryfall" : "Preise, alle Editionen & Regeln auf Scryfall"}
                 </Text>
               </TouchableOpacity>
+
+              {/* ── Zum Deck hinzufügen ── */}
+              <TouchableOpacity
+                style={[styles.addToDeckBtn, {
+                  borderTopColor: colors.border,
+                  backgroundColor: addedToDeck ? "#16a34a22" : colors.primary + "18",
+                }]}
+                onPress={() => {
+                  if (decks.length === 0) {
+                    setShowDeckPicker(true);
+                  } else {
+                    setShowDeckPicker(true);
+                  }
+                }}
+              >
+                <Ionicons
+                  name={addedToDeck ? "checkmark-circle" : "albums-outline"}
+                  size={16}
+                  color={addedToDeck ? "#16a34a" : colors.primary}
+                />
+                <Text style={[styles.addToDeckText, { color: addedToDeck ? "#16a34a" : colors.primary }]}>
+                  {addedToDeck
+                    ? (showEnglish ? `Added to "${addedToDeck}"` : `Zu "${addedToDeck}" hinzugefügt`)
+                    : (showEnglish ? "Add to Deck" : "Zu Deck hinzufügen")}
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* ── Format Legality ── */}
@@ -616,6 +649,49 @@ export default function CardSearchScreen() {
               </View>
             )}
 
+            {/* ── KI-Prompt ── */}
+            {card && !loadingCard && (() => {
+              const promptDe = `Ich zeige dir eine Magic: The Gathering Karte.\n\nKartenname: ${displayName}${card.printed_name && card.name !== card.printed_name ? ` (EN: ${card.name})` : ""}\nTyp: ${displayTypeLine}\nManakosten: ${card.mana_cost ?? "–"}\n\nBitte erkläre mir auf Deutsch:\n1. Wann und wie spiele ich diese Karte am besten aus?\n2. Welche Synergien hat sie mit anderen Karten?\n3. In welche Deck-Strategien oder Deck-Typen passt sie gut?`;
+              const promptEn = `I'm showing you a Magic: The Gathering card.\n\nCard name: ${card.name}\nType: ${card.type_line ?? ""}\nMana cost: ${card.mana_cost ?? "–"}\n\nPlease explain in German:\n1. When and how to play this card best?\n2. What synergies does it have?\n3. What deck types does it fit into?`;
+              const prompt = showEnglish ? promptEn : promptDe;
+              return (
+                <View style={[styles.kiBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <View style={styles.kiHeader}>
+                    <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.mutedForeground} />
+                    <Text style={[styles.kiTitle, { color: colors.mutedForeground }]}>
+                      {showEnglish ? "Ask an AI" : "KI befragen (z.B. ChatGPT)"}
+                    </Text>
+                  </View>
+                  <Text style={[styles.kiDesc, { color: colors.mutedForeground }]}>
+                    {showEnglish
+                      ? "Show the AI the card photo, then copy this prompt:"
+                      : "Zeige der KI das Kartenfoto, kopiere dann diesen Text:"}
+                  </Text>
+                  <View style={[styles.kiPromptBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                    <Text style={[styles.kiPromptText, { color: colors.foreground }]} selectable>{prompt}</Text>
+                  </View>
+                  <View style={styles.kiActions}>
+                    <TouchableOpacity style={[styles.kiBtn, { backgroundColor: colors.secondary }]}
+                      onPress={async () => {
+                        await Clipboard.setStringAsync(prompt);
+                      }}>
+                      <Ionicons name="copy-outline" size={15} color={colors.foreground} />
+                      <Text style={[styles.kiBtnText, { color: colors.foreground }]}>
+                        {showEnglish ? "Copy" : "Kopieren"}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.kiBtn, { backgroundColor: colors.secondary }]}
+                      onPress={() => Share.share({ message: prompt, title: displayName })}>
+                      <Ionicons name="share-outline" size={15} color={colors.foreground} />
+                      <Text style={[styles.kiBtnText, { color: colors.foreground }]}>
+                        {showEnglish ? "Share" : "Teilen"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })()}
+
             {/* ── Ähnliche Karten ── */}
             {(loadingSimilar || similarCards.length > 0) && (
               <View style={styles.similarSection}>
@@ -649,6 +725,54 @@ export default function CardSearchScreen() {
             )}
           </View>
         )}
+
+        {/* ── Deck Picker Modal ── */}
+        <Modal visible={showDeckPicker} transparent animationType="slide">
+          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowDeckPicker(false)}>
+            <View style={[styles.modalSheet, { backgroundColor: colors.card }]} onStartShouldSetResponder={() => true}>
+              <View style={styles.modalHandle} />
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+                {showEnglish ? "Add to deck" : "Zu Deck hinzufügen"}
+              </Text>
+              {decks.length === 0 ? (
+                <View style={styles.modalEmpty}>
+                  <Ionicons name="albums-outline" size={32} color={colors.mutedForeground} />
+                  <Text style={[styles.modalEmptyText, { color: colors.mutedForeground }]}>
+                    {showEnglish
+                      ? "No decks yet. Create a deck first in the Deck Builder tab."
+                      : "Noch keine Decks. Zuerst im Deck-Builder Tab ein Deck anlegen."}
+                  </Text>
+                </View>
+              ) : (
+                decks.map((d) => (
+                  <TouchableOpacity key={d.id}
+                    style={[styles.modalDeckRow, { borderColor: colors.border, backgroundColor: colors.background }]}
+                    onPress={() => {
+                      if (!card) return;
+                      addCardToDeck(d.id, {
+                        id: card.id,
+                        name: card.name,
+                        printed_name: card.printed_name,
+                        mana_cost: card.mana_cost,
+                      });
+                      setAddedToDeck(d.name);
+                      setShowDeckPicker(false);
+                      setTimeout(() => setAddedToDeck(null), 3000);
+                    }}>
+                    <Ionicons name="albums-outline" size={18} color={colors.primary} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.modalDeckName, { color: colors.foreground }]}>{d.name}</Text>
+                      <Text style={[styles.modalDeckMeta, { color: colors.mutedForeground }]}>
+                        {d.cards.reduce((a, c) => a + c.count, 0)} {showEnglish ? "cards" : "Karten"}
+                      </Text>
+                    </View>
+                    <Ionicons name="add-circle" size={22} color={colors.primary} />
+                  </TouchableOpacity>
+                ))
+              )}
+            </View>
+          </TouchableOpacity>
+        </Modal>
 
         {/* ── Empty state ── */}
         {showEmpty && (
@@ -803,4 +927,27 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: "center", paddingTop: 40, gap: 12, paddingHorizontal: 24 },
   emptyTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold" },
   emptyHint: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
+  addToDeckBtn: {
+    borderTopWidth: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, paddingHorizontal: 14, paddingVertical: 12,
+  },
+  addToDeckText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  kiBox: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 8 },
+  kiHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
+  kiTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.5 },
+  kiDesc: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
+  kiPromptBox: { borderRadius: 10, borderWidth: 1, padding: 12 },
+  kiPromptText: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  kiActions: { flexDirection: "row", gap: 8 },
+  kiBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 10, paddingVertical: 9 },
+  kiBtnText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  modalOverlay: { flex: 1, backgroundColor: "#00000080", justifyContent: "flex-end" },
+  modalSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, gap: 12, paddingBottom: 40 },
+  modalHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: "#66666660", alignSelf: "center", marginBottom: 4 },
+  modalTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  modalEmpty: { alignItems: "center", padding: 20, gap: 10 },
+  modalEmptyText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
+  modalDeckRow: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 12, borderWidth: 1, padding: 14 },
+  modalDeckName: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  modalDeckMeta: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
 });
