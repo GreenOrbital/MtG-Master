@@ -47,6 +47,11 @@ type Suggestion = {
   prefetchedCard?: CardData;
 };
 
+function getApiBase(): string {
+  const domain = process.env["EXPO_PUBLIC_DOMAIN"];
+  return domain ? `https://${domain}` : "";
+}
+
 function matchLocalKeywords(scryfallKeywords: string[], oracleText: string): MtgKeyword[] {
   const found = new Map<string, MtgKeyword>();
   for (const kw of MTG_KEYWORDS) {
@@ -152,6 +157,8 @@ export default function CardSearchScreen() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [playTip, setPlayTip] = useState("");
+  const [loadingTip, setLoadingTip] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -180,6 +187,30 @@ export default function CardSearchScreen() {
     const oracleText = data.oracle_text ?? data.card_faces?.map((f) => f.oracle_text).join(" ") ?? "";
     const matched = matchLocalKeywords(data.keywords ?? [], oracleText);
     setMatchedKeywords(matched);
+    setPlayTip("");
+    setLoadingTip(true);
+    try {
+      const res = await fetch(`${getApiBase()}/api/card-tips`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cardName: data.name,
+          typeLine: data.type_line,
+          oracleText,
+          keywords: data.keywords ?? [],
+          manaCost: data.mana_cost,
+          power: data.power,
+          toughness: data.toughness,
+        }),
+      });
+      if (res.ok) {
+        const json = (await res.json()) as { tip: string };
+        setPlayTip(json.tip ?? "");
+      }
+    } catch {
+    } finally {
+      setLoadingTip(false);
+    }
   }
 
   async function selectSuggestion(s: Suggestion) {
@@ -249,6 +280,8 @@ export default function CardSearchScreen() {
     setMatchedKeywords([]);
     setExpandedId(null);
     setErrorMsg("");
+    setPlayTip("");
+    setLoadingTip(false);
   }
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -453,6 +486,28 @@ export default function CardSearchScreen() {
                 )}
               </View>
             )}
+
+            {/* Spieltipp */}
+            {(loadingTip || playTip.length > 0) && (
+              <View style={[styles.tipBox, { backgroundColor: colors.card, borderColor: colors.primary }]}>
+                <View style={styles.tipHeader}>
+                  <Ionicons name="bulb-outline" size={18} color={colors.primary} />
+                  <Text style={[styles.tipLabel, { color: colors.primary }]}>
+                    {showEnglish ? "When to play this card" : "Wann diese Karte spielen?"}
+                  </Text>
+                </View>
+                {loadingTip ? (
+                  <View style={styles.tipLoading}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={[styles.tipLoadingText, { color: colors.mutedForeground }]}>
+                      {showEnglish ? "Generating tip…" : "Tipp wird erstellt…"}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={[styles.tipText, { color: colors.cardForeground }]}>{playTip}</Text>
+                )}
+              </View>
+            )}
           </View>
         )}
 
@@ -600,5 +655,38 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     lineHeight: 20,
+  },
+  tipBox: {
+    borderRadius: 14,
+    borderWidth: 1.5,
+    padding: 14,
+    gap: 8,
+  },
+  tipHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  tipLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  tipLoading: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 4,
+  },
+  tipLoadingText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    fontStyle: "italic",
+  },
+  tipText: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 21,
   },
 });
