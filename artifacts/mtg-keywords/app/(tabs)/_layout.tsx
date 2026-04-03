@@ -17,8 +17,8 @@ function NativeTabLayout() {
         <Label>Schlüsselwörter</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="scan">
-        <Icon sf={{ default: "camera.viewfinder", selected: "camera.viewfinder" }} />
-        <Label>Scanner</Label>
+        <Icon sf={{ default: "magnifyingglass.circle", selected: "magnifyingglass.circle.fill" }} />
+        <Label>Karte suchen</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
         <Icon sf={{ default: "gear", selected: "gear" }} />
@@ -81,12 +81,12 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="scan"
         options={{
-          title: "Scanner",
+          title: "Karte suchen",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="camera.viewfinder" tintColor={color} size={24} />
+              <SymbolView name="magnifyingglass.circle" tintColor={color} size={24} />
             ) : (
-              <Ionicons name="scan-outline" size={22} color={color} />
+              <Ionicons name="search-outline" size={22} color={color} />
             ),
         }}
       />
