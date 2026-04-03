@@ -42,7 +42,7 @@ router.post("/deck-analysis", async (req, res) => {
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-5-mini",
-      max_completion_tokens: 400,
+      max_completion_tokens: 2000,
       messages: [
         {
           role: "system",

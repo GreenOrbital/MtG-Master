@@ -205,24 +205,9 @@ async function fetchSynergyCards(data: CardData): Promise<SimilarCard[]> {
       }),
     });
     if (!r.ok) return [];
-    const { cards: names } = (await r.json()) as { cards: string[] };
-    if (!names || names.length === 0) return [];
-
-    // Batch-fetch via Scryfall collection endpoint — one request, reliable
-    const collRes = await fetch("https://api.scryfall.com/cards/collection", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...HEADERS },
-      body: JSON.stringify({ identifiers: names.map((name) => ({ name })) }),
-    });
-    if (!collRes.ok) return [];
-    const collData = (await collRes.json()) as { data: CardData[]; not_found: unknown[] };
-    return (collData.data ?? []).map((c) => ({
-      id: c.id,
-      name: c.name,
-      printed_name: c.printed_name,
-      imageUri: c.image_uris?.normal ?? c.card_faces?.[0]?.image_uris?.normal,
-      type_line: c.type_line,
-    }));
+    // Server already resolved names → Scryfall card data; no extra fetch needed
+    const { cards } = (await r.json()) as { cards: SimilarCard[] };
+    return cards ?? [];
   } catch { return []; }
 }
 

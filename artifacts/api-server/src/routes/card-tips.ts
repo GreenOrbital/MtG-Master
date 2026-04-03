@@ -46,7 +46,7 @@ router.post("/card-tips", async (req, res) => {
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-5-mini",
-      max_completion_tokens: 320,
+      max_completion_tokens: 2000,
       messages: [
         {
           role: "system",
