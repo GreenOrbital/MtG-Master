@@ -29,7 +29,12 @@
       ],
       "expo-font",
       "expo-web-browser",
-      "expo-image-picker"
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Kamera-Zugriff um MtG-Karten zu scannen und automatisch zu erkennen."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
