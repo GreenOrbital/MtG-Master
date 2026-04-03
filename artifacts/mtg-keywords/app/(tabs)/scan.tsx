@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -21,12 +22,45 @@ import { useColors } from "@/hooks/useColors";
 
 type ScanState = "idle" | "scanning" | "done" | "error";
 
-function findKeywordsInText(text: string): MtgKeyword[] {
-  const lower = text.toLowerCase();
-  return MTG_KEYWORDS.filter((kw) => {
-    const nameMatch = lower.includes(kw.name.toLowerCase()) || lower.includes(kw.nameEn.toLowerCase());
-    return nameMatch;
-  });
+type ScanResult = {
+  detectedName: string;
+  cardName: string;
+  keywords: string[];
+  oracleText: string;
+  typeLine: string;
+  manaCost: string;
+  power?: string;
+  toughness?: string;
+  setName: string;
+  imageUri?: string;
+};
+
+function matchLocalKeywords(scryfallKeywords: string[], oracleText: string): MtgKeyword[] {
+  const found = new Map<string, MtgKeyword>();
+
+  for (const kw of MTG_KEYWORDS) {
+    const nameEnLower = kw.nameEn.toLowerCase();
+    const nameDeLower = kw.name.toLowerCase();
+
+    for (const sk of scryfallKeywords) {
+      if (sk.toLowerCase() === nameEnLower || sk.toLowerCase() === nameDeLower) {
+        found.set(kw.id, kw);
+      }
+    }
+
+    const oracleLower = oracleText.toLowerCase();
+    if (oracleLower.includes(nameEnLower) || oracleLower.includes(nameDeLower)) {
+      found.set(kw.id, kw);
+    }
+  }
+
+  return Array.from(found.values());
+}
+
+function getApiBase(): string {
+  const domain = process.env["EXPO_PUBLIC_DOMAIN"];
+  if (domain) return `https://${domain}`;
+  return "";
 }
 
 export default function ScanScreen() {
@@ -35,8 +69,9 @@ export default function ScanScreen() {
   const { showEnglish, setShowEnglish } = useSettings();
 
   const [scanState, setScanState] = useState<ScanState>("idle");
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [foundKeywords, setFoundKeywords] = useState<MtgKeyword[]>([]);
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [localImageUri, setLocalImageUri] = useState<string | null>(null);
+  const [matchedKeywords, setMatchedKeywords] = useState<MtgKeyword[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>("");
 
@@ -50,84 +85,98 @@ export default function ScanScreen() {
         const perm = await ImagePicker.requestCameraPermissionsAsync();
         if (!perm.granted) {
           setErrorMsg(
-            showEnglish
-              ? "Camera permission is required."
-              : "Kamera-Berechtigung ist erforderlich."
+            showEnglish ? "Camera permission required." : "Kamera-Berechtigung erforderlich."
           );
           setScanState("error");
           return;
         }
         result = await ImagePicker.launchCameraAsync({
           mediaTypes: "images",
-          quality: 0.9,
+          quality: 0.85,
           base64: true,
         });
       } else {
         result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: "images",
-          quality: 0.9,
+          quality: 0.85,
           base64: true,
         });
       }
 
       if (result.canceled) return;
-
       const asset = result.assets?.[0];
-      if (!asset) return;
+      if (!asset || !asset.base64) {
+        setErrorMsg(showEnglish ? "Could not load image." : "Bild konnte nicht geladen werden.");
+        setScanState("error");
+        return;
+      }
 
-      setImageUri(asset.uri);
-      setScanState("scanning");
-      setFoundKeywords([]);
+      setLocalImageUri(asset.uri);
+      setScanResult(null);
+      setMatchedKeywords([]);
       setExpandedId(null);
+      setScanState("scanning");
 
-      await analyzeImage(asset.base64 ?? "", asset.uri);
-    } catch (e) {
-      setErrorMsg(showEnglish ? "Could not access image." : "Bild konnte nicht geladen werden.");
+      await analyzeCard(asset.base64);
+    } catch {
+      setErrorMsg(showEnglish ? "Could not access image." : "Bild nicht zugänglich.");
       setScanState("error");
     }
   }
 
-  async function analyzeImage(base64: string, uri: string) {
+  async function analyzeCard(base64: string) {
     try {
-      let textContent = "";
+      const apiBase = getApiBase();
+      const response = await fetch(`${apiBase}/api/scan-card`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: base64 }),
+      });
 
-      if (base64) {
-        try {
-          const response = await fetch("/api/scan-card", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ imageBase64: base64 }),
-          });
-          if (response.ok) {
-            const data = await response.json() as { text?: string };
-            textContent = data.text ?? "";
-          }
-        } catch {
-          textContent = uri;
-        }
+      if (response.status === 422) {
+        setErrorMsg(
+          showEnglish
+            ? "Could not recognize the card name. Make sure the card name at the top is clearly visible."
+            : "Kartenname nicht erkannt. Stelle sicher, dass der Name oben auf der Karte gut lesbar ist."
+        );
+        setScanState("error");
+        return;
       }
 
-      const allText = textContent + " " + uri;
-      const found = findKeywordsInText(allText);
-
-      if (found.length === 0) {
-        const randomSample = MTG_KEYWORDS.sort(() => Math.random() - 0.5).slice(0, 3);
-        setFoundKeywords(randomSample);
-      } else {
-        setFoundKeywords(found);
+      if (response.status === 404) {
+        const data = (await response.json()) as { detectedName?: string };
+        setErrorMsg(
+          showEnglish
+            ? `Recognized name "${data.detectedName ?? "?"}" not found in Scryfall database.`
+            : `Erkannter Name "${data.detectedName ?? "?"}" nicht in der Scryfall-Datenbank gefunden.`
+        );
+        setScanState("error");
+        return;
       }
 
+      if (!response.ok) {
+        setErrorMsg(showEnglish ? "Server error during scan." : "Serverfehler beim Scannen.");
+        setScanState("error");
+        return;
+      }
+
+      const data = (await response.json()) as ScanResult;
+      setScanResult(data);
+
+      const matched = matchLocalKeywords(data.keywords, data.oracleText);
+      setMatchedKeywords(matched);
       setScanState("done");
     } catch {
-      setErrorMsg(showEnglish ? "Analysis failed." : "Analyse fehlgeschlagen.");
+      setErrorMsg(showEnglish ? "Network error." : "Netzwerkfehler. Bitte prüfe die Verbindung.");
       setScanState("error");
     }
   }
 
   function reset() {
     setScanState("idle");
-    setImageUri(null);
-    setFoundKeywords([]);
+    setScanResult(null);
+    setLocalImageUri(null);
+    setMatchedKeywords([]);
     setExpandedId(null);
     setErrorMsg("");
   }
@@ -135,7 +184,7 @@ export default function ScanScreen() {
   return (
     <ScrollView
       style={[styles.root, { backgroundColor: colors.background }]}
-      contentContainerStyle={{ paddingBottom: bottomPad }}
+      contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad }]}
       showsVerticalScrollIndicator={false}
     >
       <View style={[styles.header, { paddingTop: topPad + 12 }]}>
@@ -148,28 +197,22 @@ export default function ScanScreen() {
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
           {showEnglish
             ? "Photograph a card to identify its keywords"
-            : "Fotografiere eine Karte zur Schlüsselwort-Erkennung"}
+            : "Fotografiere eine Karte — KI erkennt den Namen und erklärt die Schlüsselwörter"}
         </Text>
       </View>
 
       <View style={styles.content}>
         {scanState === "idle" && (
           <View style={styles.actionArea}>
-            <View
-              style={[
-                styles.placeholder,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name="cards-playing-outline"
-                size={60}
-                color={colors.mutedForeground}
-              />
-              <Text style={[styles.placeholderText, { color: colors.mutedForeground }]}>
+            <View style={[styles.placeholder, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <MaterialCommunityIcons name="cards-playing-outline" size={56} color={colors.mutedForeground} />
+              <Text style={[styles.placeholderTitle, { color: colors.foreground }]}>
+                {showEnglish ? "Scan a Card" : "Karte scannen"}
+              </Text>
+              <Text style={[styles.placeholderHint, { color: colors.mutedForeground }]}>
                 {showEnglish
-                  ? "No card selected yet"
-                  : "Noch keine Karte ausgewählt"}
+                  ? "Make sure the card name at the top is clearly visible"
+                  : "Halte die Kamera so, dass der Name oben gut lesbar ist"}
               </Text>
             </View>
 
@@ -204,10 +247,7 @@ export default function ScanScreen() {
                 <Text
                   style={[
                     styles.btnText,
-                    {
-                      color:
-                        Platform.OS === "web" ? colors.primaryForeground : colors.foreground,
-                    },
+                    { color: Platform.OS === "web" ? colors.primaryForeground : colors.foreground },
                   ]}
                 >
                   {showEnglish ? "Choose from Gallery" : "Aus Galerie wählen"}
@@ -219,63 +259,127 @@ export default function ScanScreen() {
 
         {scanState === "scanning" && (
           <View style={styles.scanningArea}>
-            {imageUri && (
-              <Image source={{ uri: imageUri }} style={styles.previewImage} resizeMode="contain" />
+            {localImageUri && (
+              <Image source={{ uri: localImageUri }} style={styles.previewImage} resizeMode="contain" />
             )}
             <View style={[styles.scanOverlay, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={[styles.scanText, { color: colors.foreground }]}>
+              <Text style={[styles.scanTitle, { color: colors.foreground }]}>
                 {showEnglish ? "Analyzing card..." : "Karte wird analysiert..."}
               </Text>
-              <Text style={[styles.scanSubText, { color: colors.mutedForeground }]}>
-                {showEnglish ? "Detecting keywords" : "Schlüsselwörter werden erkannt"}
+              <Text style={[styles.scanStep, { color: colors.mutedForeground }]}>
+                {showEnglish
+                  ? "Reading card name → querying Scryfall"
+                  : "Name wird gelesen → Scryfall wird abgefragt"}
               </Text>
             </View>
           </View>
         )}
 
-        {scanState === "done" && (
-          <View>
-            {imageUri && (
-              <Image source={{ uri: imageUri }} style={styles.resultImage} resizeMode="contain" />
-            )}
-            <View style={[styles.resultHeader, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={styles.resultHeaderRow}>
-                <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
-                <Text style={[styles.resultTitle, { color: colors.foreground }]}>
-                  {foundKeywords.length}{" "}
-                  {showEnglish ? "keyword(s) detected" : "Schlüsselwort/e erkannt"}
-                </Text>
+        {scanState === "done" && scanResult && (
+          <View style={styles.resultsArea}>
+            <View style={[styles.cardInfoBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.cardInfoTop}>
+                <View style={styles.cardInfoLeft}>
+                  <Text style={[styles.cardName, { color: colors.foreground }]}>
+                    {scanResult.cardName}
+                  </Text>
+                  {scanResult.typeLine ? (
+                    <Text style={[styles.cardType, { color: colors.mutedForeground }]}>
+                      {scanResult.typeLine}
+                    </Text>
+                  ) : null}
+                  <View style={styles.cardMeta}>
+                    {scanResult.manaCost ? (
+                      <Text style={[styles.metaBadge, { backgroundColor: colors.secondary, color: colors.secondaryForeground }]}>
+                        {scanResult.manaCost}
+                      </Text>
+                    ) : null}
+                    {scanResult.power && scanResult.toughness ? (
+                      <Text style={[styles.metaBadge, { backgroundColor: colors.secondary, color: colors.secondaryForeground }]}>
+                        {scanResult.power}/{scanResult.toughness}
+                      </Text>
+                    ) : null}
+                    {scanResult.setName ? (
+                      <Text style={[styles.metaBadge, { backgroundColor: colors.secondary, color: colors.secondaryForeground }]}>
+                        {scanResult.setName}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
+                {scanResult.imageUri && (
+                  <Image
+                    source={{ uri: scanResult.imageUri }}
+                    style={styles.cardThumb}
+                    resizeMode="contain"
+                  />
+                )}
               </View>
-              <TouchableOpacity onPress={reset}>
-                <Text style={[styles.resetText, { color: colors.accent }]}>
-                  {showEnglish ? "Scan another" : "Neue Suche"}
+
+              {scanResult.oracleText ? (
+                <View style={[styles.oracleBox, { borderTopColor: colors.border }]}>
+                  <Text style={[styles.oracleLabel, { color: colors.mutedForeground }]}>
+                    {showEnglish ? "Oracle Text" : "Kartentext"}
+                  </Text>
+                  <Text style={[styles.oracleText, { color: colors.cardForeground }]}>
+                    {scanResult.oracleText}
+                  </Text>
+                </View>
+              ) : null}
+
+              <TouchableOpacity onPress={reset} style={styles.resetRow}>
+                <Ionicons name="scan-outline" size={16} color={colors.primary} />
+                <Text style={[styles.resetText, { color: colors.primary }]}>
+                  {showEnglish ? "Scan another card" : "Neue Karte scannen"}
                 </Text>
               </TouchableOpacity>
             </View>
-            <View style={styles.keywordList}>
-              {foundKeywords.map((kw) => (
-                <KeywordCard
-                  key={kw.id}
-                  keyword={kw}
-                  showEnglish={showEnglish}
-                  expanded={expandedId === kw.id}
-                  onPress={() => setExpandedId((p) => (p === kw.id ? null : kw.id))}
-                />
-              ))}
-            </View>
+
+            {matchedKeywords.length > 0 ? (
+              <View style={styles.kwSection}>
+                <Text style={[styles.kwSectionTitle, { color: colors.foreground }]}>
+                  {showEnglish
+                    ? `${matchedKeywords.length} Keyword(s) found`
+                    : `${matchedKeywords.length} Schlüsselwort/e erklärt`}
+                </Text>
+                {matchedKeywords.map((kw) => (
+                  <KeywordCard
+                    key={kw.id}
+                    keyword={kw}
+                    showEnglish={showEnglish}
+                    expanded={expandedId === kw.id}
+                    onPress={() => setExpandedId((p) => (p === kw.id ? null : kw.id))}
+                  />
+                ))}
+              </View>
+            ) : (
+              <View style={[styles.noKwBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Ionicons name="information-circle-outline" size={28} color={colors.mutedForeground} />
+                <Text style={[styles.noKwText, { color: colors.mutedForeground }]}>
+                  {showEnglish
+                    ? "No keywords from our database found on this card."
+                    : "Keine Schlüsselwörter aus der Datenbank auf dieser Karte gefunden."}
+                </Text>
+                {scanResult.keywords.length > 0 && (
+                  <Text style={[styles.noKwSub, { color: colors.mutedForeground }]}>
+                    {showEnglish ? "Scryfall keywords: " : "Scryfall-Schlüsselwörter: "}
+                    {scanResult.keywords.join(", ")}
+                  </Text>
+                )}
+              </View>
+            )}
           </View>
         )}
 
         {scanState === "error" && (
           <View style={[styles.errorArea, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Ionicons name="alert-circle" size={40} color={colors.destructive} />
+            <Ionicons name="alert-circle" size={44} color={colors.destructive} />
             <Text style={[styles.errorText, { color: colors.destructive }]}>{errorMsg}</Text>
             <TouchableOpacity
-              style={[styles.retryBtn, { backgroundColor: colors.secondary }]}
+              style={[styles.retryBtn, { backgroundColor: colors.primary }]}
               onPress={reset}
             >
-              <Text style={[styles.retryText, { color: colors.foreground }]}>
+              <Text style={[styles.retryText, { color: colors.primaryForeground }]}>
                 {showEnglish ? "Try Again" : "Erneut versuchen"}
               </Text>
             </TouchableOpacity>
@@ -287,9 +391,8 @@ export default function ScanScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
+  root: { flex: 1 },
+  scroll: { flexGrow: 1 },
   header: {
     paddingHorizontal: 16,
     paddingBottom: 12,
@@ -307,30 +410,32 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
+    lineHeight: 18,
   },
   content: {
     paddingHorizontal: 16,
   },
-  actionArea: {
-    gap: 20,
-    paddingTop: 8,
-  },
+  actionArea: { gap: 16 },
   placeholder: {
-    height: 220,
+    height: 200,
     borderRadius: 16,
     borderWidth: 1,
     borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
+    gap: 8,
+    padding: 20,
   },
-  placeholderText: {
-    fontSize: 14,
+  placeholderTitle: {
+    fontSize: 17,
+    fontFamily: "Inter_600SemiBold",
+  },
+  placeholderHint: {
+    fontSize: 13,
     fontFamily: "Inter_400Regular",
+    textAlign: "center",
   },
-  buttons: {
-    gap: 12,
-  },
+  buttons: { gap: 12 },
   btn: {
     flexDirection: "row",
     alignItems: "center",
@@ -343,13 +448,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
   },
-  scanningArea: {
-    gap: 16,
-    alignItems: "center",
-  },
+  scanningArea: { gap: 14, alignItems: "center" },
   previewImage: {
     width: "100%",
-    height: 220,
+    height: 200,
     borderRadius: 12,
   },
   scanOverlay: {
@@ -358,51 +460,114 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 24,
     alignItems: "center",
-    gap: 10,
+    gap: 8,
   },
-  scanText: {
+  scanTitle: {
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
   },
-  scanSubText: {
+  scanStep: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  resultsArea: { gap: 14 },
+  cardInfoBox: {
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  cardInfoTop: {
+    flexDirection: "row",
+    padding: 14,
+    gap: 12,
+  },
+  cardInfoLeft: {
+    flex: 1,
+    gap: 4,
+  },
+  cardName: {
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+  },
+  cardType: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
   },
-  resultImage: {
-    width: "100%",
-    height: 180,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  resultHeader: {
+  cardMeta: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 12,
-    marginBottom: 12,
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 4,
   },
-  resultHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+  metaBadge: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
-  resultTitle: {
-    fontSize: 15,
+  cardThumb: {
+    width: 80,
+    height: 112,
+    borderRadius: 6,
+  },
+  oracleBox: {
+    borderTopWidth: 1,
+    padding: 14,
+    gap: 4,
+  },
+  oracleLabel: {
+    fontSize: 11,
     fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  oracleText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 20,
+    fontStyle: "italic",
+  },
+  resetRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   resetText: {
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
   },
-  keywordList: {
-    gap: 2,
+  kwSection: { gap: 4 },
+  kwSectionTitle: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    marginBottom: 4,
+  },
+  noKwBox: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 20,
+    alignItems: "center",
+    gap: 8,
+  },
+  noKwText: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
+  noKwSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    fontStyle: "italic",
   },
   errorArea: {
     borderRadius: 16,
     borderWidth: 1,
-    padding: 24,
+    padding: 28,
     alignItems: "center",
     gap: 12,
     marginTop: 20,
@@ -411,11 +576,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
+    lineHeight: 20,
   },
   retryBtn: {
-    paddingHorizontal: 24,
-    paddingVertical: 10,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
     borderRadius: 10,
+    marginTop: 4,
   },
   retryText: {
     fontSize: 15,
