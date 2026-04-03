@@ -183,44 +183,6 @@ async function fetchCardByName(name: string): Promise<CardData | null> {
   } catch { return null; }
 }
 
-async function fetchSimilarCards(card: CardData): Promise<CardData[]> {
-  try {
-    const keywords = card.keywords ?? [];
-    const colors = card.colors ?? [];
-    const typeLine = card.type_line ?? "";
-
-    let queryParts: string[] = [];
-
-    if (keywords.length > 0) {
-      const kwParts = keywords.slice(0, 2).map((k) => `o:"${k}"`).join(" OR ");
-      queryParts.push(`(${kwParts})`);
-    } else {
-      if (typeLine.includes("Creature"))      queryParts.push("t:creature");
-      else if (typeLine.includes("Instant"))  queryParts.push("t:instant");
-      else if (typeLine.includes("Sorcery"))  queryParts.push("t:sorcery");
-      else if (typeLine.includes("Enchantment")) queryParts.push("t:enchantment");
-      else if (typeLine.includes("Artifact")) queryParts.push("t:artifact");
-      else if (typeLine.includes("Planeswalker")) queryParts.push("t:planeswalker");
-    }
-
-    if (colors.length > 0 && colors.length <= 2) {
-      queryParts.push(`color<=${colors.join("")}`);
-    }
-
-    queryParts.push(`-name:"${card.name}"`);
-    queryParts.push("order:edhrec");
-
-    const query = queryParts.join(" ");
-    const res = await fetch(
-      `https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}&unique=cards`,
-      { headers: HEADERS }
-    );
-    if (!res.ok) return [];
-    const data = (await res.json()) as { data: CardData[] };
-    return data.data.slice(0, 8);
-  } catch { return []; }
-}
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function CardSearchScreen() {
@@ -248,8 +210,6 @@ export default function CardSearchScreen() {
   const [showImageZoom, setShowImageZoom] = useState(false);
   const [loadingRecognize, setLoadingRecognize] = useState(false);
   const [recognizeError, setRecognizeError] = useState("");
-  const [similarCards, setSimilarCards] = useState<CardData[]>([]);
-  const [loadingSimilar, setLoadingSimilar] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -273,12 +233,6 @@ export default function CardSearchScreen() {
     const oracleText = data.oracle_text ?? data.card_faces?.map((f) => f.oracle_text).join(" ") ?? "";
     setCard(data);
     setMatchedKeywords(matchLocalKeywords(data.keywords ?? [], oracleText));
-    setSimilarCards([]);
-    setLoadingSimilar(true);
-    fetchSimilarCards(data).then((cards) => {
-      setSimilarCards(cards);
-      setLoadingSimilar(false);
-    });
 
     const compact: CompactCard = {
       id: data.id, name: data.name, printed_name: data.printed_name,
@@ -324,7 +278,6 @@ export default function CardSearchScreen() {
 
   function resetCardState() {
     setCard(null); setMatchedKeywords([]); setExpandedId(null); setErrorMsg("");
-    setSimilarCards([]); setLoadingSimilar(false);
   }
 
   async function recognizeCard() {
@@ -681,67 +634,6 @@ export default function CardSearchScreen() {
               </View>
             )}
 
-            {/* ── Ähnliche Karten ── */}
-            {(loadingSimilar || similarCards.length > 0) && (
-              <View style={styles.similarSection}>
-                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                  {showEnglish ? "Similar Cards" : "Ähnliche Karten"}
-                </Text>
-                {loadingSimilar ? (
-                  <View style={styles.similarLoading}>
-                    <ActivityIndicator size="small" color={colors.primary} />
-                    <Text style={[styles.similarLoadingText, { color: colors.mutedForeground }]}>
-                      {showEnglish ? "Searching…" : "Suche läuft…"}
-                    </Text>
-                  </View>
-                ) : (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.similarScroll}
-                    contentContainerStyle={styles.similarScrollContent}
-                  >
-                    {similarCards.map((sc) => {
-                      const imgUri = sc.image_uris?.small ?? sc.card_faces?.[0]?.image_uris?.small;
-                      const displayN = sc.printed_name ?? sc.name;
-                      const scRarity = sc.rarity ? (RARITY_LABEL[sc.rarity] ?? null) : null;
-                      return (
-                        <TouchableOpacity
-                          key={sc.id}
-                          style={[styles.similarCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                          activeOpacity={0.75}
-                          onPress={() => {
-                            setQuery(displayN);
-                            resetCardState();
-                            setLoadingCard(true);
-                            fetchCardById(sc.id).then((data) => {
-                              setLoadingCard(false);
-                              if (data) applyCard(data);
-                              else setErrorMsg(showEnglish ? "Card not found." : "Karte nicht gefunden.");
-                            });
-                          }}
-                        >
-                          {imgUri ? (
-                            <Image source={{ uri: imgUri }} style={styles.similarImage} resizeMode="cover" />
-                          ) : (
-                            <View style={[styles.similarImagePlaceholder, { backgroundColor: colors.secondary }]}>
-                              <Ionicons name="card-outline" size={20} color={colors.mutedForeground} />
-                            </View>
-                          )}
-                          <Text style={[styles.similarName, { color: colors.foreground }]} numberOfLines={2}>{displayN}</Text>
-                          {scRarity && (
-                            <Text style={[styles.similarRarity, { color: scRarity.color }]}>
-                              {showEnglish ? scRarity.en : scRarity.de}
-                            </Text>
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                )}
-              </View>
-            )}
-
           </View>
         )}
 
@@ -1004,16 +896,6 @@ const styles = StyleSheet.create({
   kwSection: { gap: 4 },
   noKwBox: { borderRadius: 14, borderWidth: 1, padding: 20, alignItems: "center", gap: 8 },
   noKwText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
-  similarSection: { gap: 10 },
-  similarLoading: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 12 },
-  similarLoadingText: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  similarScroll: { marginHorizontal: -16 },
-  similarScrollContent: { paddingHorizontal: 16, gap: 10, paddingBottom: 4 },
-  similarCard: { width: 96, borderRadius: 10, borderWidth: 1, padding: 6, alignItems: "center", gap: 4 },
-  similarImage: { width: 84, height: 116, borderRadius: 6 },
-  similarImagePlaceholder: { width: 84, height: 116, borderRadius: 6, alignItems: "center", justifyContent: "center" },
-  similarName: { fontSize: 11, fontFamily: "Inter_500Medium", textAlign: "center", lineHeight: 14 },
-  similarRarity: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
   emptyContent: { gap: 20 },
   historySection: { gap: 10 },
   historySectionRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
