@@ -267,10 +267,13 @@ export default function CardSearchScreen() {
     }, 300);
   }, [query]);
 
-  async function applyCard(data: CardData) {
-    setCard(data);
+  // Show card immediately; load tip + similar in background without blocking
+  function applyCard(data: CardData) {
     const oracleText = data.oracle_text ?? data.card_faces?.map((f) => f.oracle_text).join(" ") ?? "";
+    setCard(data);
     setMatchedKeywords(matchLocalKeywords(data.keywords ?? [], oracleText));
+    setPlayTip(""); setLoadingTip(true); setTipFailed(false);
+    setSimilarCards([]); setLoadingSimilar(true);
 
     const compact: CompactCard = {
       id: data.id, name: data.name, printed_name: data.printed_name,
@@ -279,30 +282,27 @@ export default function CardSearchScreen() {
       imageUri: data.image_uris?.normal ?? data.card_faces?.[0]?.image_uris?.normal,
     };
     addToRecent(compact);
-    setPlayTip(""); setLoadingTip(true); setTipFailed(false);
-    setSimilarCards([]); setLoadingSimilar(true);
 
-    const [tip, similar] = await Promise.all([
-      fetch(`${getApiBase()}/api/card-tips`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cardName: data.name, typeLine: data.type_line, oracleText,
-          keywords: data.keywords ?? [], manaCost: data.mana_cost,
-          power: data.power, toughness: data.toughness,
-          colors: data.colors ?? [], rarity: data.rarity,
-        }),
-      }).then(async (r) => {
-        if (!r.ok) { setTipFailed(true); return ""; }
-        const t = ((await r.json()) as { tip: string }).tip ?? "";
-        if (!t) setTipFailed(true);
-        return t;
-      }).catch(() => { setTipFailed(true); return ""; }),
-      fetchSimilarCards(data.keywords ?? [], data.name, data.type_line),
-    ]);
+    // Fire-and-forget: tip + similar load in background
+    fetch(`${getApiBase()}/api/card-tips`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cardName: data.name, typeLine: data.type_line, oracleText,
+        keywords: data.keywords ?? [], manaCost: data.mana_cost,
+        power: data.power, toughness: data.toughness,
+        colors: data.colors ?? [], rarity: data.rarity,
+      }),
+    }).then(async (r) => {
+      if (!r.ok) { setTipFailed(true); setLoadingTip(false); return; }
+      const t = ((await r.json()) as { tip: string }).tip?.trim() ?? "";
+      if (t) { setPlayTip(t); } else { setTipFailed(true); }
+      setLoadingTip(false);
+    }).catch(() => { setTipFailed(true); setLoadingTip(false); });
 
-    setPlayTip(tip); setLoadingTip(false);
-    setSimilarCards(similar); setLoadingSimilar(false);
+    fetchSimilarCards(data.keywords ?? [], data.name, data.type_line)
+      .then((similar) => { setSimilarCards(similar); setLoadingSimilar(false); })
+      .catch(() => { setLoadingSimilar(false); });
   }
 
   async function selectSuggestion(s: Suggestion) {
@@ -312,18 +312,18 @@ export default function CardSearchScreen() {
       ? s.prefetchedCard
       : s.resolveById ? await fetchCardById(s.resolveById)
       : s.resolveByName ? await fetchCardByName(s.resolveByName) : null;
-    if (!data) setErrorMsg(showEnglish ? `Card "${s.display}" not found.` : `Karte "${s.display}" nicht gefunden.`);
-    else await applyCard(data);
     setLoadingCard(false);
+    if (!data) setErrorMsg(showEnglish ? `Card "${s.display}" not found.` : `Karte "${s.display}" nicht gefunden.`);
+    else applyCard(data); // non-blocking
   }
 
   async function selectCompact(c: CompactCard) {
     setQuery(c.printed_name ?? c.name);
     resetCardState(); setLoadingCard(true);
     const data = await fetchCardById(c.id);
-    if (!data) setErrorMsg(showEnglish ? "Card not found." : "Karte nicht gefunden.");
-    else await applyCard(data);
     setLoadingCard(false);
+    if (!data) setErrorMsg(showEnglish ? "Card not found." : "Karte nicht gefunden.");
+    else applyCard(data); // non-blocking
   }
 
   async function submitQuery() {
@@ -333,9 +333,9 @@ export default function CardSearchScreen() {
     setSuggestions([]); setShowSuggestions(false);
     resetCardState(); setLoadingCard(true);
     const data = await fetchCardByName(trimmed);
-    if (!data) setErrorMsg(showEnglish ? `"${trimmed}" not found.` : `"${trimmed}" nicht gefunden.`);
-    else await applyCard(data);
     setLoadingCard(false);
+    if (!data) setErrorMsg(showEnglish ? `"${trimmed}" not found.` : `"${trimmed}" nicht gefunden.`);
+    else applyCard(data); // non-blocking
   }
 
   function resetCardState() {
