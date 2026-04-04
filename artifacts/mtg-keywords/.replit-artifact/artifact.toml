@@ -10,7 +10,6 @@ name = "expo"
 version = "1.0.0"
 
 [[services]]
-ensurePreviewReachable = "/status"
 name = "expo"
 paths = [ "/" ]
 localPort = 25770
@@ -19,8 +18,11 @@ localPort = 25770
 run = "pnpm --filter @workspace/mtg-keywords run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/mtg-keywords", "run", "build" ]
-run = [ "pnpm", "--filter", "@workspace/mtg-keywords", "run", "serve" ]
+serve = "static"
+publicDir = "dist"
+
+[services.production.build]
+args = ["pnpm", "--filter", "@workspace/mtg-keywords", "run", "build:web"]
 
 [services.env]
 PORT = "25770"
