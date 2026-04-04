@@ -876,10 +876,15 @@ export default function CardSearchScreen() {
               {/* ── Druckvarianten ── */}
               {(loadingPrints || prints.length > 1) && (
                 <View style={[styles.printsSection, { borderTopColor: colors.border }]}>
-                  <Text style={[styles.printsLabel, { color: colors.mutedForeground }]}>
-                    {showEnglish ? "Choose Printing" : "Druckvariante wählen"}
-                    {!loadingPrints && prints.length > 0 && ` (${prints.length})`}
-                  </Text>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                    <Text style={[styles.printsLabel, { color: colors.mutedForeground }]}>
+                      {showEnglish ? "Choose Printing" : "Druckvariante wählen"}
+                      {!loadingPrints && prints.length > 0 && ` (${prints.length})`}
+                    </Text>
+                    <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: "#1da462" }}>
+                      € via Cardmarket
+                    </Text>
+                  </View>
                   {loadingPrints ? (
                     <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 6 }} />
                   ) : (
@@ -889,9 +894,9 @@ export default function CardSearchScreen() {
                         const imgUri = p.image_uris?.normal ?? p.image_uris?.small ?? p.card_faces?.[0]?.image_uris?.normal;
                         const isSelected = selectedPrint ? selectedPrint.id === p.id : p.id === card?.id;
                         const year = p.released_at ? p.released_at.slice(0, 4) : "";
-                        const priceEur = p.prices?.eur ? `€${parseFloat(p.prices.eur).toFixed(2)}` : null;
-                        const priceUsd = p.prices?.usd ? `$${parseFloat(p.prices.usd).toFixed(2)}` : null;
-                        const priceLabel = priceEur ?? priceUsd ?? null;
+                        const priceEur = p.prices?.eur ? parseFloat(p.prices.eur) : null;
+                        const priceEurFoil = p.prices?.eur_foil ? parseFloat(p.prices.eur_foil) : null;
+                        const priceUsd = p.prices?.usd ? parseFloat(p.prices.usd) : null;
                         return (
                           <TouchableOpacity key={p.id}
                             style={[styles.printThumbWrap, isSelected && { borderColor: colors.primary, borderWidth: 2.5 }]}
@@ -906,8 +911,18 @@ export default function CardSearchScreen() {
                             <Text style={[styles.printSetName, { color: isSelected ? colors.primary : colors.mutedForeground }]} numberOfLines={2}>
                               {p.set_name ?? p.set?.toUpperCase() ?? ""}{year ? ` ${year}` : ""}
                             </Text>
-                            {priceLabel && (
-                              <Text style={[styles.printPrice, { color: "#1da462" }]}>{priceLabel}</Text>
+                            {(priceEur != null || priceUsd != null) && (
+                              <View style={styles.printPriceRow}>
+                                {priceEur != null && (
+                                  <Text style={[styles.printPrice, { color: "#1da462" }]}>€{priceEur.toFixed(2)}</Text>
+                                )}
+                                {priceEurFoil != null && (
+                                  <Text style={[styles.printPriceFoil, { color: "#e5b94e" }]}>✦€{priceEurFoil.toFixed(2)}</Text>
+                                )}
+                                {priceEur == null && priceUsd != null && (
+                                  <Text style={[styles.printPrice, { color: "#1da462" }]}>${priceUsd.toFixed(2)}</Text>
+                                )}
+                              </View>
                             )}
                             {isSelected && (
                               <View style={[styles.printCheckmark, { backgroundColor: colors.primary }]}>
@@ -1494,7 +1509,9 @@ const styles = StyleSheet.create({
   printThumbWrap: { width: 134, alignItems: "center", borderRadius: 10, borderWidth: 2, borderColor: "transparent", overflow: "visible", position: "relative" },
   printThumb: { width: 130, height: 182, borderRadius: 8, overflow: "hidden" },
   printSetName: { fontSize: 10, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 5, lineHeight: 14 },
-  printPrice: { fontSize: 12, fontFamily: "Inter_700Bold", textAlign: "center", marginTop: 2 },
+  printPriceRow: { alignItems: "center", marginTop: 3, gap: 1 },
+  printPrice: { fontSize: 12, fontFamily: "Inter_700Bold", textAlign: "center" },
+  printPriceFoil: { fontSize: 10, fontFamily: "Inter_600SemiBold", textAlign: "center" },
   printCheckmark: { position: "absolute", top: -6, right: -6, width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center" },
   formatBox: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10 },
   formatHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },

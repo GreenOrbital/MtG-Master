@@ -65,6 +65,20 @@ function computeLandMana(cards: DeckCard[]): Record<string, number> {
   return avail;
 }
 
+// Collect the distinct mana symbols that appear in card costs (from non-land spells)
+function deckColorIdentity(cards: DeckCard[]): string[] {
+  const seen = new Set<string>();
+  for (const c of cards) {
+    if (isLand(c) || !c.mana_cost) continue;
+    const m = parseMana(c.mana_cost);
+    for (const col of COLORS) { if (m[col] > 0) seen.add(col); }
+    if (m.W === 0 && m.U === 0 && m.B === 0 && m.R === 0 && m.G === 0 && m.generic > 0 && /\{C\}/i.test(c.mana_cost)) seen.add("C");
+  }
+  // Sort in WUBRG order, colorless last
+  const order = ["W","U","B","R","G","C"];
+  return order.filter((k) => seen.has(k));
+}
+
 function parseMana(manaCost: string): ManaCounts {
   const r: ManaCounts = { W: 0, U: 0, B: 0, R: 0, G: 0, generic: 0, cmc: 0 };
   const matches = manaCost.match(/\{([^}]+)\}/g) ?? [];
@@ -229,11 +243,8 @@ export default function ManapoolScreen() {
               </View>
             ) : (
               decks.map((deck) => {
-                const landCards = deck.cards.filter(isLand);
-                const landTotal = landCards.reduce((a, c) => a + c.count, 0);
-                const spellTotal = deck.cards.filter((c) => !isLand(c)).reduce((a, c) => a + c.count, 0);
-                const availMana = computeLandMana(deck.cards);
-                const hasColors = COLORS.some((k) => availMana[k] > 0);
+                const totalCards = deck.cards.reduce((a, c) => a + c.count, 0);
+                const identity = deckColorIdentity(deck.cards);
                 return (
                   <TouchableOpacity
                     key={deck.id}
@@ -244,27 +255,24 @@ export default function ManapoolScreen() {
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.deckCardName, { color: colors.foreground }]}>{deck.name}</Text>
                         <Text style={[styles.deckCardMeta, { color: colors.mutedForeground }]}>
-                          {landTotal} {showEnglish ? "lands" : "Länder"} · {spellTotal} {showEnglish ? "spells" : "Spells"}
+                          {totalCards} {showEnglish ? "cards" : "Karten"}
                         </Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
-                    </View>
-                    {hasColors && (
-                      <View style={styles.miniBar}>
-                        {COLORS.filter((k) => availMana[k] > 0).map((k) => (
-                          <View key={k} style={[styles.miniBarSeg, { backgroundColor: COLOR_HEX[k], flex: availMana[k] }]} />
-                        ))}
-                      </View>
-                    )}
-                    {hasColors && (
-                      <View style={styles.colorChips}>
-                        {COLORS.filter((k) => availMana[k] > 0).map((k) => (
-                          <View key={k} style={[styles.colorChipSm, { backgroundColor: COLOR_HEX[k] }]}>
-                            <Text style={[styles.colorChipSmText, { color: COLOR_TEXT[k] }]}>{availMana[k]}{k}</Text>
+                      <View style={styles.identityDots}>
+                        {identity.length === 0 ? (
+                          <View style={[styles.identityDot, { backgroundColor: colors.secondary }]}>
+                            <Text style={[styles.identityDotText, { color: colors.mutedForeground }]}>—</Text>
                           </View>
-                        ))}
+                        ) : (
+                          identity.map((k) => (
+                            <View key={k} style={[styles.identityDot, { backgroundColor: COLOR_HEX[k] }]}>
+                              <Text style={[styles.identityDotText, { color: COLOR_TEXT[k] }]}>{k}</Text>
+                            </View>
+                          ))
+                        )}
                       </View>
-                    )}
+                      <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} style={{ marginLeft: 8 }} />
+                    </View>
                   </TouchableOpacity>
                 );
               })
@@ -702,6 +710,9 @@ const styles = StyleSheet.create({
   colorChips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   colorChipSm: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   colorChipSmText: { fontSize: 12, fontFamily: "Inter_700Bold" },
+  identityDots: { flexDirection: "row", gap: 5, alignItems: "center" },
+  identityDot: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" },
+  identityDotText: { fontSize: 10, fontFamily: "Inter_700Bold" },
   emptyHint: { alignItems: "center", paddingTop: 40, gap: 14, paddingHorizontal: 24 },
   emptyTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
   emptyText: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
