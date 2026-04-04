@@ -10,6 +10,7 @@ export type DeckCard = {
   name: string;
   printed_name?: string;
   mana_cost?: string;
+  cmc?: number;
   type_line?: string;
   produced_mana?: string[];
   imageUri?: string;

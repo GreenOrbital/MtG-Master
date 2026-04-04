@@ -70,6 +70,29 @@ function parseMana(manaCost: string): ManaCounts {
       r[sym]++; r.cmc++;
     } else if (/^\d+$/.test(sym)) {
       r.generic += parseInt(sym, 10); r.cmc += parseInt(sym, 10);
+    } else if (sym === "C") {
+      // Colorless mana – counts as 1 CMC
+      r.generic++; r.cmc++;
+    } else if (sym === "X" || sym === "Y" || sym === "Z") {
+      // Variable mana – 0 CMC by MtG rules
+    } else if (sym.includes("/")) {
+      // Hybrid or Phyrexian: e.g. {2/W}, {W/B}, {W/P}
+      const parts = sym.split("/");
+      if (parts[1] === "P") {
+        // Phyrexian: colored pip = 1 CMC
+        r.cmc++;
+        const col = parts[0];
+        if (col === "W" || col === "U" || col === "B" || col === "R" || col === "G") r[col]++;
+      } else {
+        // Hybrid: take the higher value for CMC
+        const n = parseInt(parts[0], 10);
+        const cmcVal = isNaN(n) ? 1 : Math.max(n, 1);
+        r.cmc += cmcVal;
+        // Count both colors for pip analysis
+        for (const p of parts) {
+          if (p === "W" || p === "U" || p === "B" || p === "R" || p === "G") r[p]++;
+        }
+      }
     }
   }
   return r;
@@ -78,15 +101,24 @@ function parseMana(manaCost: string): ManaCounts {
 function sumMana(cards: Deck["cards"]): ManaCounts {
   const total: ManaCounts = { W: 0, U: 0, B: 0, R: 0, G: 0, generic: 0, cmc: 0 };
   for (const c of cards) {
-    if (!c.mana_cost || isLand(c)) continue;
-    const m = parseMana(c.mana_cost);
-    total.W += m.W * c.count;
-    total.U += m.U * c.count;
-    total.B += m.B * c.count;
-    total.R += m.R * c.count;
-    total.G += m.G * c.count;
-    total.generic += m.generic * c.count;
-    total.cmc += m.cmc * c.count;
+    if (isLand(c)) continue;
+    // Use Scryfall's CMC if saved, otherwise parse from mana_cost
+    if (c.mana_cost) {
+      const m = parseMana(c.mana_cost);
+      total.W += m.W * c.count;
+      total.U += m.U * c.count;
+      total.B += m.B * c.count;
+      total.R += m.R * c.count;
+      total.G += m.G * c.count;
+      total.generic += m.generic * c.count;
+      // Use Scryfall cmc if available (handles X, split cards, etc.)
+      const cardCmc = c.cmc !== undefined ? c.cmc : m.cmc;
+      total.cmc += cardCmc * c.count;
+    } else if (c.cmc !== undefined && c.cmc > 0) {
+      // Colorless card with no mana_cost string but has cmc (e.g. some artifacts)
+      total.generic += c.cmc * c.count;
+      total.cmc += c.cmc * c.count;
+    }
   }
   return total;
 }
@@ -428,7 +460,7 @@ export default function ManapoolScreen() {
 
                     {required.cmc > 0 && (() => {
                       const nonLandCount = activeDeck.cards
-                        .filter((c) => !isLand(c) && c.mana_cost)
+                        .filter((c) => !isLand(c) && (c.mana_cost || c.cmc !== undefined))
                         .reduce((a, c) => a + c.count, 0);
                       const avgCMC = nonLandCount > 0 ? required.cmc / nonLandCount : 0;
                       const totalColoredPips = COLORS.reduce((a, k) => a + (required[k] ?? 0), 0);
@@ -543,8 +575,13 @@ export default function ManapoolScreen() {
                           {(() => {
                             const curve: Record<number, number> = {};
                             for (const c of activeDeck.cards) {
-                              if (!c.mana_cost || isLand(c)) continue;
-                              const cmc = parseMana(c.mana_cost).cmc;
+                              if (isLand(c)) continue;
+                              // Prefer Scryfall's authoritative cmc; fall back to parseMana
+                              const cmc = c.cmc !== undefined
+                                ? Math.round(c.cmc)
+                                : c.mana_cost
+                                  ? parseMana(c.mana_cost).cmc
+                                  : 0;
                               curve[cmc] = (curve[cmc] ?? 0) + c.count;
                             }
                             const maxCmc = Math.max(...Object.keys(curve).map(Number), 0);

@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   ActivityIndicator,
@@ -39,6 +39,7 @@ type CardData = {
   type_line?: string;
   printed_type_line?: string;
   mana_cost?: string;
+  cmc?: number;
   colors?: string[];
   color_identity?: string[];
   power?: string;
@@ -420,6 +421,11 @@ export default function CardSearchScreen() {
   const [showDeckPicker, setShowDeckPicker] = useState(false);
   const [addedToDeck, setAddedToDeck] = useState<string | null>(null);
   const [pickedDeckId, setPickedDeckId] = useState<string | null>(null);
+
+  const cardInDecks = useMemo(() => {
+    if (!card) return [];
+    return decks.filter((d) => d.cards.some((c) => c.id === card.id));
+  }, [card, decks]);
   const [addCount, setAddCount] = useState(1);
   const [showImageZoom, setShowImageZoom] = useState(false);
   const [loadingRecognize, setLoadingRecognize] = useState(false);
@@ -843,30 +849,36 @@ export default function CardSearchScreen() {
               </View>
 
               {/* ── Zum Deck hinzufügen ── */}
-              <TouchableOpacity
-                style={[styles.addToDeckBtn, {
-                  borderTopColor: colors.border,
-                  backgroundColor: addedToDeck ? "#16a34a22" : colors.primary + "18",
-                }]}
-                onPress={() => {
-                  if (decks.length === 0) {
-                    setShowDeckPicker(true);
-                  } else {
-                    setShowDeckPicker(true);
-                  }
-                }}
-              >
-                <Ionicons
-                  name={addedToDeck ? "checkmark-circle" : "albums-outline"}
-                  size={16}
-                  color={addedToDeck ? "#16a34a" : colors.primary}
-                />
-                <Text style={[styles.addToDeckText, { color: addedToDeck ? "#16a34a" : colors.primary }]}>
-                  {addedToDeck
-                    ? (showEnglish ? `Added to "${addedToDeck}"` : `Zu "${addedToDeck}" hinzugefügt`)
-                    : (showEnglish ? "Add to Deck" : "Zu Deck hinzufügen")}
-                </Text>
-              </TouchableOpacity>
+              {(() => {
+                const justAdded = !!addedToDeck;
+                const alreadyIn = cardInDecks.length > 0;
+                const isGreen = justAdded || alreadyIn;
+                const label = justAdded
+                  ? (showEnglish ? `Added to "${addedToDeck}"` : `Zu "${addedToDeck}" hinzugefügt`)
+                  : alreadyIn
+                  ? (showEnglish
+                      ? `In deck: ${cardInDecks.map((d) => d.name).join(", ")}`
+                      : `Im Deck: ${cardInDecks.map((d) => d.name).join(", ")}`)
+                  : (showEnglish ? "Add to Deck" : "Zu Deck hinzufügen");
+                return (
+                  <TouchableOpacity
+                    style={[styles.addToDeckBtn, {
+                      borderTopColor: colors.border,
+                      backgroundColor: isGreen ? "#16a34a22" : colors.primary + "18",
+                    }]}
+                    onPress={() => setShowDeckPicker(true)}
+                  >
+                    <Ionicons
+                      name={isGreen ? "checkmark-circle" : "albums-outline"}
+                      size={16}
+                      color={isGreen ? "#16a34a" : colors.primary}
+                    />
+                    <Text style={[styles.addToDeckText, { color: isGreen ? "#16a34a" : colors.primary }]} numberOfLines={1}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })()}
             </View>
 
             {/* ── Format Legality ── */}
@@ -1247,6 +1259,7 @@ export default function CardSearchScreen() {
                           name: card.name,
                           printed_name: card.printed_name,
                           mana_cost: card.mana_cost,
+                          cmc: card.cmc,
                           type_line: card.type_line,
                           produced_mana: card.produced_mana,
                           imageUri: card.image_uris?.normal ?? card.card_faces?.[0]?.image_uris?.normal,
@@ -1256,7 +1269,7 @@ export default function CardSearchScreen() {
                         setShowDeckPicker(false);
                         setPickedDeckId(null);
                         setAddCount(1);
-                        setTimeout(() => setAddedToDeck(null), 3000);
+                        setTimeout(() => setAddedToDeck(null), 2000);
                       }}>
                       <Ionicons name="checkmark" size={18} color="#fff" />
                       <Text style={styles.confirmBtnText}>
