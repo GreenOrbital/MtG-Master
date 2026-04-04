@@ -18,7 +18,7 @@ import { useColors } from "@/hooks/useColors";
 import { useSettings } from "@/context/SettingsContext";
 
 export default function SignInScreen() {
-  const { signIn, errors, fetchStatus } = useSignIn();
+  const { isLoaded, signIn, setActive } = useSignIn();
   const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -27,33 +27,34 @@ export default function SignInScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
-
-  const isLoading = fetchStatus === "fetching";
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   async function handleSignIn() {
-    const { error } = await signIn.password({ emailAddress: email, password });
-    if (error) return;
-    if (signIn.status === "complete") {
-      await signIn.finalize({
-        navigate: ({ decorateUrl }) => {
-          const url = decorateUrl("/");
-          if (Platform.OS === "web" && url.startsWith("http")) {
-            window.location.href = url;
-          } else {
-            router.replace("/(tabs)");
-          }
-        },
+    if (!isLoaded || !signIn) return;
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      const result = await signIn.create({
+        identifier: email.trim(),
+        password,
       });
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
+        router.replace("/(tabs)");
+      } else {
+        setErrorMsg(showEnglish ? "Sign in could not be completed." : "Anmeldung konnte nicht abgeschlossen werden.");
+      }
+    } catch (err: any) {
+      const msg =
+        err?.errors?.[0]?.longMessage ??
+        err?.errors?.[0]?.message ??
+        (showEnglish ? "An error occurred." : "Ein Fehler ist aufgetreten.");
+      setErrorMsg(msg);
+    } finally {
+      setLoading(false);
     }
   }
-
-  const errorMsg =
-    errors?.fields?.emailAddress?.message ??
-    errors?.fields?.password?.message ??
-    (errors?.fieldErrors && errors.fieldErrors.length > 0
-      ? errors.fieldErrors[0]?.message
-      : null) ??
-    null;
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -110,6 +111,8 @@ export default function SignInScreen() {
                 placeholder={showEnglish ? "Your password" : "Dein Passwort"}
                 placeholderTextColor={colors.mutedForeground}
                 autoComplete="password"
+                onSubmitEditing={handleSignIn}
+                returnKeyType="go"
               />
               <TouchableOpacity onPress={() => setShowPw(!showPw)} style={styles.eyeBtn}>
                 <Ionicons name={showPw ? "eye-off-outline" : "eye-outline"} size={18} color={colors.mutedForeground} />
@@ -121,12 +124,12 @@ export default function SignInScreen() {
             )}
 
             <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: isLoading || !email || !password ? 0.6 : 1 }]}
+              style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: loading || !email || !password ? 0.6 : 1 }]}
               onPress={handleSignIn}
-              disabled={isLoading || !email || !password}
+              disabled={loading || !email || !password}
               activeOpacity={0.85}
             >
-              {isLoading ? (
+              {loading ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <Text style={styles.primaryBtnText}>

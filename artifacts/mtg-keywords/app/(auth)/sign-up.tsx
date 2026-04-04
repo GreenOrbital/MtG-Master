@@ -18,7 +18,7 @@ import { useColors } from "@/hooks/useColors";
 import { useSettings } from "@/context/SettingsContext";
 
 export default function SignUpScreen() {
-  const { signUp, errors, fetchStatus } = useSignUp();
+  const { isLoaded, signUp, setActive } = useSignUp();
   const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -28,45 +28,64 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [showPw, setShowPw] = useState(false);
-
-  const isLoading = fetchStatus === "fetching";
-  const needsVerification =
-    signUp.status === "missing_requirements" &&
-    signUp.unverifiedFields.includes("email_address") &&
-    signUp.missingFields.length === 0;
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [pendingVerification, setPendingVerification] = useState(false);
 
   async function handleSignUp() {
-    const { error } = await signUp.password({ emailAddress: email, password });
-    if (error) return;
-    await signUp.verifications.sendEmailCode();
-  }
-
-  async function handleVerify() {
-    await signUp.verifications.verifyEmailCode({ code });
-    if (signUp.status === "complete") {
-      await signUp.finalize({
-        navigate: ({ decorateUrl }) => {
-          const url = decorateUrl("/");
-          if (Platform.OS === "web" && url.startsWith("http")) {
-            window.location.href = url;
-          } else {
-            router.replace("/(tabs)");
-          }
-        },
+    if (!isLoaded || !signUp) return;
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      await signUp.create({
+        emailAddress: email.trim(),
+        password,
       });
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      setPendingVerification(true);
+    } catch (err: any) {
+      const msg =
+        err?.errors?.[0]?.longMessage ??
+        err?.errors?.[0]?.message ??
+        (showEnglish ? "An error occurred." : "Ein Fehler ist aufgetreten.");
+      setErrorMsg(msg);
+    } finally {
+      setLoading(false);
     }
   }
 
-  const errorMsg =
-    errors?.fields?.emailAddress?.message ??
-    errors?.fields?.password?.message ??
-    errors?.fields?.code?.message ??
-    (errors?.fieldErrors && errors.fieldErrors.length > 0
-      ? errors.fieldErrors[0]?.message
-      : null) ??
-    null;
+  async function handleVerify() {
+    if (!isLoaded || !signUp) return;
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      const result = await signUp.attemptEmailAddressVerification({ code });
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
+        router.replace("/(tabs)");
+      } else {
+        setErrorMsg(showEnglish ? "Verification could not be completed." : "Bestätigung konnte nicht abgeschlossen werden.");
+      }
+    } catch (err: any) {
+      const msg =
+        err?.errors?.[0]?.longMessage ??
+        err?.errors?.[0]?.message ??
+        (showEnglish ? "Invalid or expired code." : "Ungültiger oder abgelaufener Code.");
+      setErrorMsg(msg);
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  if (needsVerification) {
+  async function resendCode() {
+    if (!isLoaded || !signUp) return;
+    try {
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+    } catch {
+    }
+  }
+
+  if (pendingVerification) {
     return (
       <View style={[styles.root, { backgroundColor: colors.background }]}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
@@ -83,8 +102,8 @@ export default function SignUpScreen() {
               </Text>
               <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
                 {showEnglish
-                  ? `We sent a code to ${email}. Enter it below.`
-                  : `Wir haben einen Code an ${email} gesendet. Bitte eingeben.`}
+                  ? `We sent a 6-digit code to ${email}. Enter it below.`
+                  : `Wir haben einen 6-stelligen Code an ${email} gesendet.`}
               </Text>
             </View>
 
@@ -93,13 +112,15 @@ export default function SignUpScreen() {
                 {showEnglish ? "Verification Code" : "Bestätigungscode"}
               </Text>
               <TextInput
-                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground, textAlign: "center", fontSize: 24, letterSpacing: 8 }]}
+                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground, textAlign: "center", fontSize: 28, letterSpacing: 10 }]}
                 value={code}
                 onChangeText={setCode}
                 keyboardType="number-pad"
                 placeholder="000000"
                 placeholderTextColor={colors.mutedForeground}
                 maxLength={6}
+                onSubmitEditing={handleVerify}
+                returnKeyType="go"
               />
 
               {errorMsg && (
@@ -107,24 +128,21 @@ export default function SignUpScreen() {
               )}
 
               <TouchableOpacity
-                style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: isLoading || code.length < 4 ? 0.6 : 1 }]}
+                style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: loading || code.length < 6 ? 0.6 : 1 }]}
                 onPress={handleVerify}
-                disabled={isLoading || code.length < 4}
+                disabled={loading || code.length < 6}
                 activeOpacity={0.85}
               >
-                {isLoading ? (
+                {loading ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <Text style={styles.primaryBtnText}>
-                    {showEnglish ? "Verify & Sign Up" : "Bestätigen & Registrieren"}
+                    {showEnglish ? "Verify & Create Account" : "Bestätigen & Registrieren"}
                   </Text>
                 )}
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.resendBtn}
-                onPress={() => signUp.verifications.sendEmailCode()}
-              >
+              <TouchableOpacity style={styles.resendBtn} onPress={resendCode}>
                 <Text style={[styles.resendText, { color: colors.primary }]}>
                   {showEnglish ? "Resend code" : "Code erneut senden"}
                 </Text>
@@ -188,6 +206,8 @@ export default function SignUpScreen() {
                 placeholder={showEnglish ? "Min. 8 characters" : "Mind. 8 Zeichen"}
                 placeholderTextColor={colors.mutedForeground}
                 autoComplete="new-password"
+                onSubmitEditing={handleSignUp}
+                returnKeyType="go"
               />
               <TouchableOpacity onPress={() => setShowPw(!showPw)} style={styles.eyeBtn}>
                 <Ionicons name={showPw ? "eye-off-outline" : "eye-outline"} size={18} color={colors.mutedForeground} />
@@ -199,12 +219,12 @@ export default function SignUpScreen() {
             )}
 
             <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: isLoading || !email || !password ? 0.6 : 1 }]}
+              style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: loading || !email || !password ? 0.6 : 1 }]}
               onPress={handleSignUp}
-              disabled={isLoading || !email || !password}
+              disabled={loading || !email || !password}
               activeOpacity={0.85}
             >
-              {isLoading ? (
+              {loading ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <Text style={styles.primaryBtnText}>
