@@ -7,6 +7,7 @@ import deckAnalysisRouter from "./deck-analysis";
 import recognizeCardRouter from "./recognize-card";
 import cardCombosRouter from "./card-combos";
 import userDataRouter from "./user-data";
+import translateTextRouter from "./translate-text";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(deckAnalysisRouter);
 router.use(recognizeCardRouter);
 router.use(cardCombosRouter);
 router.use(userDataRouter);
+router.use(translateTextRouter);
 
 export default router;

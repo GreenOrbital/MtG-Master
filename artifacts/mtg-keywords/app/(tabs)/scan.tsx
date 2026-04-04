@@ -377,8 +377,34 @@ export default function CardSearchScreen() {
   const [combos, setCombos] = useState<ComboData[]>([]);
   const [loadingCombos, setLoadingCombos] = useState(false);
   const [expandedComboId, setExpandedComboId] = useState<string | null>(null);
+  const [translatedDescs, setTranslatedDescs] = useState<Record<string, string>>({});
+  const [translatingId, setTranslatingId] = useState<string | null>(null);
   const [boosterPacks, setBoosterPacks] = useState<BoosterPrint[]>([]);
   const [loadingBooster, setLoadingBooster] = useState(false);
+
+  async function expandCombo(comboId: string, description: string) {
+    const isOpening = expandedComboId !== comboId;
+    setExpandedComboId(isOpening ? comboId : null);
+    if (isOpening && !showEnglish && !translatedDescs[comboId] && description) {
+      setTranslatingId(comboId);
+      try {
+        const base = getApiBase();
+        const res = await fetch(`${base}/api/translate-text`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...HEADERS },
+          body: JSON.stringify({ text: description }),
+        });
+        if (res.ok) {
+          const data = await res.json() as { translated: string };
+          setTranslatedDescs(prev => ({ ...prev, [comboId]: data.translated }));
+        }
+      } catch {
+        // Keep English as fallback
+      } finally {
+        setTranslatingId(null);
+      }
+    }
+  }
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -879,7 +905,7 @@ export default function CardSearchScreen() {
                           key={combo.id}
                           style={[styles.comboCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                           activeOpacity={0.8}
-                          onPress={() => setExpandedComboId((p) => (p === combo.id ? null : combo.id))}
+                          onPress={() => expandCombo(combo.id, combo.description)}
                         >
                           {/* Card images row */}
                           <View style={styles.comboCardImages}>
@@ -914,15 +940,21 @@ export default function CardSearchScreen() {
 
                           {/* Description (expandable) */}
                           {isExpanded && (
-                            <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8, gap: 4 }}>
-                              {!showEnglish && (
-                                <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: colors.mutedForeground, opacity: 0.6 }}>
-                                  Schritte (Englisch von Commander Spellbook):
+                            <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8 }}>
+                              {translatingId === combo.id ? (
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6 }}>
+                                  <ActivityIndicator size="small" color={colors.primary} />
+                                  <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+                                    {showEnglish ? "Translating…" : "Übersetze…"}
+                                  </Text>
+                                </View>
+                              ) : (
+                                <Text style={[styles.comboDesc, { color: colors.mutedForeground, borderTopWidth: 0 }]}>
+                                  {showEnglish
+                                    ? combo.description
+                                    : (translatedDescs[combo.id] ?? combo.description)}
                                 </Text>
                               )}
-                              <Text style={[styles.comboDesc, { color: colors.mutedForeground, borderTopWidth: 0 }]}>
-                                {combo.description}
-                              </Text>
                             </View>
                           )}
                           <View style={styles.comboExpander}>
