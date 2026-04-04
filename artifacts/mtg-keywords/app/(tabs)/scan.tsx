@@ -229,11 +229,8 @@ async function fetchSimilarCards(card: CardData): Promise<CardData[]> {
 
 async function fetchCombos(cardName: string): Promise<ComboData[]> {
   try {
-    const q = `card:"${cardName}"`;
-    const res = await fetch(
-      `https://backend.commanderspellbook.com/variants/?q=${encodeURIComponent(q)}`,
-      { headers: HEADERS }
-    );
+    const base = getApiBase();
+    const res = await fetch(`${base}/api/card-combos?name=${encodeURIComponent(cardName)}`, { headers: HEADERS });
     if (!res.ok) return [];
     const data = (await res.json()) as { results: unknown[] };
     if (!Array.isArray(data.results)) return [];
@@ -247,6 +244,31 @@ async function fetchCombos(cardName: string): Promise<ComboData[]> {
       description: r.description ?? "",
       popularity: r.popularity ?? undefined,
     }));
+  } catch { return []; }
+}
+
+type BoosterPrint = { setName: string; setCode: string; setType: string; releasedAt: string };
+
+async function fetchBoosterPacks(cardName: string): Promise<BoosterPrint[]> {
+  try {
+    const q = `!"${cardName}" booster:true`;
+    const res = await fetch(
+      `https://api.scryfall.com/cards/search?q=${encodeURIComponent(q)}&unique=prints&order=released&dir=desc`,
+      { headers: HEADERS }
+    );
+    if (!res.ok) return [];
+    const data = (await res.json()) as { data: any[] };
+    if (!Array.isArray(data.data)) return [];
+    const boosterTypes = ["core", "expansion", "masters", "draft_innovation", "eternal", "starter"];
+    return data.data
+      .filter((c: any) => c.booster === true && boosterTypes.includes(c.set_type))
+      .slice(0, 12)
+      .map((c: any) => ({
+        setName: c.set_name ?? c.set,
+        setCode: (c.set ?? "").toUpperCase(),
+        setType: c.set_type ?? "",
+        releasedAt: c.released_at ?? "",
+      }));
   } catch { return []; }
 }
 
@@ -282,6 +304,8 @@ export default function CardSearchScreen() {
   const [combos, setCombos] = useState<ComboData[]>([]);
   const [loadingCombos, setLoadingCombos] = useState(false);
   const [expandedComboId, setExpandedComboId] = useState<string | null>(null);
+  const [boosterPacks, setBoosterPacks] = useState<BoosterPrint[]>([]);
+  const [loadingBooster, setLoadingBooster] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -312,6 +336,9 @@ export default function CardSearchScreen() {
     setExpandedComboId(null);
     setLoadingCombos(true);
     fetchCombos(data.name).then((c) => { setCombos(c); setLoadingCombos(false); });
+    setBoosterPacks([]);
+    setLoadingBooster(true);
+    fetchBoosterPacks(data.name).then((b) => { setBoosterPacks(b); setLoadingBooster(false); });
 
     const compact: CompactCard = {
       id: data.id, name: data.name, printed_name: data.printed_name,
@@ -359,6 +386,7 @@ export default function CardSearchScreen() {
     setCard(null); setMatchedKeywords([]); setExpandedId(null); setErrorMsg("");
     setSimilarCards([]); setLoadingSimilar(false);
     setCombos([]); setLoadingCombos(false); setExpandedComboId(null);
+    setBoosterPacks([]); setLoadingBooster(false);
   }
 
   async function recognizeCard() {
@@ -875,6 +903,54 @@ export default function CardSearchScreen() {
               </View>
             )}
 
+            {/* ── Booster Packs ── */}
+            {(loadingBooster || boosterPacks.length > 0) && (
+              <View style={styles.boosterSection}>
+                <View style={styles.boosterHeader}>
+                  <Ionicons name="gift-outline" size={15} color={colors.primary} />
+                  <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                    {showEnglish ? "Available in Boosters" : "In Booster Packs"}
+                  </Text>
+                  {!loadingBooster && boosterPacks.length > 0 && (
+                    <View style={[styles.boosterCount, { backgroundColor: colors.primary }]}>
+                      <Text style={styles.boosterCountText}>{boosterPacks.length}</Text>
+                    </View>
+                  )}
+                </View>
+                {loadingBooster ? (
+                  <View style={styles.boosterLoading}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={[styles.boosterLoadingText, { color: colors.mutedForeground }]}>
+                      {showEnglish ? "Searching sets…" : "Suche Sets…"}
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.boosterList}>
+                    {boosterPacks.map((bp, i) => {
+                      const typeLabel = bp.setType === "core" ? (showEnglish ? "Core" : "Basis")
+                        : bp.setType === "masters" ? "Masters"
+                        : bp.setType === "draft_innovation" ? "Draft"
+                        : bp.setType === "starter" ? "Starter"
+                        : "Expansion";
+                      const year = bp.releasedAt ? bp.releasedAt.slice(0, 4) : "";
+                      return (
+                        <View key={i} style={[styles.boosterRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                          <View style={[styles.boosterSetCode, { backgroundColor: colors.primary + "22" }]}>
+                            <Text style={[styles.boosterSetCodeText, { color: colors.primary }]}>{bp.setCode}</Text>
+                          </View>
+                          <View style={styles.boosterMeta}>
+                            <Text style={[styles.boosterSetName, { color: colors.foreground }]} numberOfLines={1}>{bp.setName}</Text>
+                            <Text style={[styles.boosterSetType, { color: colors.mutedForeground }]}>{typeLabel}{year ? ` · ${year}` : ""}</Text>
+                          </View>
+                          <Ionicons name="bag-handle-outline" size={16} color={colors.mutedForeground} />
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+            )}
+
           </View>
         )}
 
@@ -1158,6 +1234,19 @@ const styles = StyleSheet.create({
   comboDesc: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 8, marginTop: 2 },
   comboExpander: { flexDirection: "row", alignItems: "center", gap: 4 },
   comboExpanderText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  boosterSection: { gap: 8 },
+  boosterHeader: { flexDirection: "row", alignItems: "center", gap: 7 },
+  boosterCount: { borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2, minWidth: 22, alignItems: "center" },
+  boosterCountText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#fff" },
+  boosterLoading: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10 },
+  boosterLoadingText: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  boosterList: { gap: 6 },
+  boosterRow: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 10, borderWidth: 1, padding: 10 },
+  boosterSetCode: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 4, minWidth: 42, alignItems: "center" },
+  boosterSetCodeText: { fontSize: 11, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  boosterMeta: { flex: 1, gap: 1 },
+  boosterSetName: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  boosterSetType: { fontSize: 11, fontFamily: "Inter_400Regular" },
   similarSection: { gap: 8 },
   similarHeader: { flexDirection: "row", alignItems: "baseline", gap: 8 },
   similarSource: { fontSize: 11, fontFamily: "Inter_400Regular" },
