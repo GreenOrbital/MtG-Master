@@ -62,7 +62,11 @@ export default function SignUpScreen() {
       const result = await signUp.attemptEmailAddressVerification({ code });
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
-        router.replace("/(tabs)");
+        if (Platform.OS === "web") {
+          window.location.replace("/");
+        } else {
+          router.replace("/(tabs)");
+        }
       } else {
         setErrorMsg(showEnglish ? "Verification could not be completed." : "Bestätigung konnte nicht abgeschlossen werden.");
       }

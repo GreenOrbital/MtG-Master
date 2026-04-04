@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useSignIn } from "@clerk/expo";
+import { isClerkAPIResponseError, useSignIn } from "@clerk/expo";
 import { Link, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -29,11 +29,39 @@ export default function SignInScreen() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showResend, setShowResend] = useState(false);
+
+  function clerkErrorToGerman(err: any): string {
+    if (isClerkAPIResponseError(err)) {
+      const code = err.errors?.[0]?.code ?? "";
+      const longMsg = err.errors?.[0]?.longMessage ?? "";
+      const shortMsg = err.errors?.[0]?.message ?? "";
+      if (code === "form_password_incorrect") return "Passwort ist falsch.";
+      if (code === "form_identifier_not_found") return "Es wurde kein Konto mit dieser E-Mail gefunden.";
+      if (code === "form_identifier_exists") return "Diese E-Mail ist bereits registriert.";
+      if (code === "session_exists") return "Du bist bereits angemeldet.";
+      if (code === "account_transfer_invalid") return "Konto-Transfer ungültig.";
+      if (code.includes("unverified") || code === "not_allowed_to_sign_in") {
+        setShowResend(true);
+        return "E-Mail-Adresse noch nicht bestätigt. Bitte zuerst registrieren und den Code eingeben.";
+      }
+      if (code.includes("locked")) return "Konto gesperrt. Bitte versuche es später erneut.";
+      if (code.includes("rate_limit")) return "Zu viele Versuche. Bitte warte einen Moment.";
+      return longMsg || shortMsg || `Fehler (${code})`;
+    }
+    const msg = err?.message ?? "";
+    if (msg.includes("Network") || msg.includes("fetch")) return "Keine Verbindung. Bitte Internetverbindung prüfen.";
+    return msg || (showEnglish ? "An error occurred." : "Ein Fehler ist aufgetreten.");
+  }
 
   async function handleSignIn() {
-    if (!isLoaded || !signIn) return;
+    if (!isLoaded || !signIn) {
+      setErrorMsg("Anmeldung noch nicht bereit, bitte kurz warten.");
+      return;
+    }
     setLoading(true);
     setErrorMsg(null);
+    setShowResend(false);
     try {
       const result = await signIn.create({
         identifier: email.trim(),
@@ -41,16 +69,20 @@ export default function SignInScreen() {
       });
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
-        router.replace("/(tabs)");
+        if (Platform.OS === "web") {
+          window.location.replace("/");
+        } else {
+          router.replace("/(tabs)");
+        }
       } else {
-        setErrorMsg(showEnglish ? "Sign in could not be completed." : "Anmeldung konnte nicht abgeschlossen werden.");
+        console.warn("[SignIn] non-complete status:", result.status);
+        setErrorMsg(showEnglish
+          ? `Sign in pending (${result.status}).`
+          : `Anmeldung ausstehend (${result.status}).`);
       }
     } catch (err: any) {
-      const msg =
-        err?.errors?.[0]?.longMessage ??
-        err?.errors?.[0]?.message ??
-        (showEnglish ? "An error occurred." : "Ein Fehler ist aufgetreten.");
-      setErrorMsg(msg);
+      console.error("[SignIn] error:", JSON.stringify(err));
+      setErrorMsg(clerkErrorToGerman(err));
     } finally {
       setLoading(false);
     }
@@ -120,7 +152,16 @@ export default function SignInScreen() {
             </View>
 
             {errorMsg && (
-              <Text style={[styles.errorText, { color: "#ef4444" }]}>{errorMsg}</Text>
+              <View style={{ marginTop: 10, gap: 6 }}>
+                <Text style={[styles.errorText, { color: "#ef4444" }]}>{errorMsg}</Text>
+                {showResend && (
+                  <TouchableOpacity onPress={() => router.push("/(auth)/sign-up")}>
+                    <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: colors.primary }}>
+                      → Jetzt neu registrieren &amp; E-Mail bestätigen
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             )}
 
             <TouchableOpacity
