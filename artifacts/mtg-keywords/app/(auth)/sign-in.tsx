@@ -31,18 +31,14 @@ export default function SignInScreen() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showResend, setShowResend] = useState(false);
-  const [clerkTimedOut, setClerkTimedOut] = useState(false);
 
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Always keep refs up-to-date so the async handler can access latest values
+  const signInRef = useRef(signIn);
+  const setActiveRef = useRef(setActive);
   useEffect(() => {
-    if (isLoaded) {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      setClerkTimedOut(false);
-      return;
-    }
-    timerRef.current = setTimeout(() => setClerkTimedOut(true), 3500);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [isLoaded]);
+    signInRef.current = signIn;
+    setActiveRef.current = setActive;
+  }, [isLoaded, signIn, setActive]);
 
   function clerkErrorToGerman(err: any): string {
     if (isClerkAPIResponseError(err)) {
@@ -68,32 +64,57 @@ export default function SignInScreen() {
   }
 
   async function handleSignIn() {
-    if (!isLoaded || !signIn) return;
+    if (!email || !password) return;
     setLoading(true);
     setErrorMsg(null);
     setShowResend(false);
+
+    // Wait for Clerk to be ready — polls until available or 15s timeout
+    const deadline = Date.now() + 15000;
+    while (!signInRef.current) {
+      if (Date.now() >= deadline) {
+        setErrorMsg(showEnglish
+          ? "Authentication service unavailable. Please reload the page."
+          : "Anmeldedienst nicht verfügbar. Bitte die Seite neu laden.");
+        setLoading(false);
+        return;
+      }
+      await new Promise(r => setTimeout(r, 300));
+    }
+
     try {
-      const result = await signIn.create({
+      // Explicitly pass strategy: "password" — required in Clerk v3 for one-step sign-in
+      let result = await signInRef.current.create({
         identifier: email.trim(),
+        strategy: "password",
         password,
       });
+
+      // Some Clerk setups return needs_first_factor instead of completing immediately
+      if (result.status === "needs_first_factor") {
+        result = await signInRef.current.attemptFirstFactor({
+          strategy: "password",
+          password,
+        });
+      }
+
       if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId });
+        await setActiveRef.current!({ session: result.createdSessionId });
         if (Platform.OS === "web") {
           window.location.replace("/");
         } else {
           router.replace("/(tabs)");
         }
       } else {
-        console.warn("[SignIn] non-complete status:", result.status);
+        console.warn("[SignIn] unexpected status:", result.status);
         setErrorMsg(showEnglish
-          ? `Sign in pending (${result.status}).`
-          : `Anmeldung ausstehend (${result.status}).`);
+          ? "Sign-in could not be completed. Please try again."
+          : "Anmeldung konnte nicht abgeschlossen werden. Bitte erneut versuchen.");
+        setLoading(false);
       }
     } catch (err: any) {
       console.error("[SignIn] error:", JSON.stringify(err));
       setErrorMsg(clerkErrorToGerman(err));
-    } finally {
       setLoading(false);
     }
   }
@@ -174,47 +195,27 @@ export default function SignInScreen() {
               </View>
             )}
 
-            {clerkTimedOut ? (
-              <View style={[styles.timeoutBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Ionicons name="warning-outline" size={18} color="#f59e0b" />
-                <Text style={[styles.timeoutText, { color: colors.mutedForeground }]}>
-                  {showEnglish
-                    ? "Auth service couldn't load in this preview. Please open the app in a new browser tab:"
-                    : "Authentifizierung konnte in dieser Vorschau nicht laden. Bitte die App direkt im Browser öffnen:"}
+            <TouchableOpacity
+              style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: loading || !email || !password ? 0.6 : 1 }]}
+              onPress={handleSignIn}
+              disabled={loading || !email || !password}
+              activeOpacity={0.85}
+            >
+              {loading ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <ActivityIndicator size="small" color="#fff" />
+                  {!isLoaded && (
+                    <Text style={styles.primaryBtnText}>
+                      {showEnglish ? "Connecting…" : "Verbinde…"}
+                    </Text>
+                  )}
+                </View>
+              ) : (
+                <Text style={styles.primaryBtnText}>
+                  {showEnglish ? "Sign In" : "Anmelden"}
                 </Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    if (typeof window !== "undefined") {
-                      const emailParam = email ? `?email=${encodeURIComponent(email)}` : "";
-                      window.open(`${window.location.origin}/(auth)/sign-in${emailParam}`, "_blank");
-                    }
-                  }}
-                  style={[styles.primaryBtn, { backgroundColor: colors.primary, marginTop: 8 }]}
-                >
-                  <Text style={styles.primaryBtnText}>
-                    {showEnglish ? "Sign in in new tab ↗" : "Im Browser anmelden ↗"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: loading || !isLoaded || !email || !password ? 0.6 : 1 }]}
-                onPress={handleSignIn}
-                disabled={loading || !isLoaded || !email || !password}
-                activeOpacity={0.85}
-              >
-                {(loading || !isLoaded) ? (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    <ActivityIndicator size="small" color="#fff" />
-                    {!isLoaded && <Text style={styles.primaryBtnText}>Wird geladen…</Text>}
-                  </View>
-                ) : (
-                  <Text style={styles.primaryBtnText}>
-                    {showEnglish ? "Sign In" : "Anmelden"}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            )}
+              )}
+            </TouchableOpacity>
           </View>
 
           <View style={styles.linkRow}>
@@ -254,6 +255,4 @@ const styles = StyleSheet.create({
   primaryBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
   linkRow: { flexDirection: "row", justifyContent: "center" },
   linkText: { fontSize: 14, fontFamily: "Inter_400Regular" },
-  timeoutBox: { borderRadius: 12, borderWidth: 1, padding: 14, gap: 8 },
-  timeoutText: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
 });
