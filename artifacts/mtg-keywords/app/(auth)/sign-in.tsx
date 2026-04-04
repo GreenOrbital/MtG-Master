@@ -1,6 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { isClerkAPIResponseError, useSignIn } from "@clerk/expo";
+import { isClerkAPIResponseError, useSSO, useSignIn } from "@clerk/expo";
 import { Link, useLocalSearchParams, useRouter } from "expo-router";
+import * as Linking from "expo-linking";
+import * as WebBrowser from "expo-web-browser";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -17,10 +19,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useSettings } from "@/context/SettingsContext";
 
+// Required for iOS to close the browser after OAuth
+WebBrowser.maybeCompleteAuthSession();
+
 type Step = "form" | "otp";
 
 export default function SignInScreen() {
   const { isLoaded, signIn, setActive } = useSignIn();
+  const { startSSOFlow } = useSSO();
   const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -33,10 +39,10 @@ export default function SignInScreen() {
   const [showPw, setShowPw] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [ssoLoading, setSsoLoading] = useState<"google" | "apple" | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showResend, setShowResend] = useState(false);
 
-  // Always keep refs up-to-date so the async handler can access latest values
   const signInRef = useRef(signIn);
   const setActiveRef = useRef(setActive);
   useEffect(() => {
@@ -54,7 +60,7 @@ export default function SignInScreen() {
       if (code === "form_identifier_not_found") return "Es wurde kein Konto mit dieser E-Mail gefunden.";
       if (code === "form_identifier_exists") return "Diese E-Mail ist bereits registriert.";
       if (code === "session_exists") return "Du bist bereits angemeldet.";
-      if (code === "account_transfer_invalid") return "Konto-Transfer ungültig.";
+      if (code === "oauth_callback_verification_failed") return "OAuth-Verifizierung fehlgeschlagen. Bitte erneut versuchen.";
       if (code.includes("unverified") || code === "not_allowed_to_sign_in") {
         setShowResend(true);
         return "E-Mail-Adresse noch nicht bestätigt. Bitte zuerst registrieren und den Code eingeben.";
@@ -89,19 +95,17 @@ export default function SignInScreen() {
     }
 
     if (result.status === "needs_second_factor") {
-      // Prepare email OTP as second factor
       try {
         await signInRef.current!.prepareSecondFactor({ strategy: "email_code" });
       } catch {
-        // Might already be prepared or use phone_code — try anyway
+        // May already be prepared
       }
       setStep("otp");
       setLoading(false);
       return;
     }
 
-    // Fallback: unknown status
-    console.warn("[SignIn] unexpected status:", result.status, JSON.stringify(result));
+    console.warn("[SignIn] unexpected status:", result.status);
     setErrorMsg(showEnglish
       ? "Sign-in could not be completed. Please try again."
       : "Anmeldung konnte nicht abgeschlossen werden. Bitte erneut versuchen.");
@@ -142,6 +146,37 @@ export default function SignInScreen() {
       console.error("[SignIn] error:", JSON.stringify(err));
       setErrorMsg(clerkErrorToGerman(err));
       setLoading(false);
+    }
+  }
+
+  async function handleSSOSignIn(provider: "oauth_google" | "oauth_apple") {
+    setSsoLoading(provider === "oauth_google" ? "google" : "apple");
+    setErrorMsg(null);
+
+    try {
+      const redirectUrl = Linking.createURL("/");
+      const { createdSessionId, setActive: ssoSetActive } = await startSSOFlow({
+        strategy: provider,
+        redirectUrl,
+      });
+
+      if (createdSessionId) {
+        await ssoSetActive!({ session: createdSessionId });
+        if (Platform.OS === "web") {
+          window.location.replace("/");
+        } else {
+          router.replace("/(tabs)");
+        }
+      } else {
+        setErrorMsg(showEnglish
+          ? "Sign-in was cancelled or failed. Please try again."
+          : "Anmeldung wurde abgebrochen oder ist fehlgeschlagen.");
+      }
+    } catch (err: any) {
+      console.error("[SSO] error:", JSON.stringify(err));
+      setErrorMsg(clerkErrorToGerman(err));
+    } finally {
+      setSsoLoading(null);
     }
   }
 
@@ -282,6 +317,55 @@ export default function SignInScreen() {
             </Text>
           </View>
 
+          {/* ── Social Sign-In ──────────────────────────────────────────────── */}
+          <View style={styles.socialGroup}>
+            {/* Google */}
+            <TouchableOpacity
+              style={[styles.socialBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => handleSSOSignIn("oauth_google")}
+              disabled={ssoLoading !== null || loading}
+              activeOpacity={0.8}
+            >
+              {ssoLoading === "google" ? (
+                <ActivityIndicator size="small" color={colors.foreground} />
+              ) : (
+                <Text style={styles.googleG}>G</Text>
+              )}
+              <Text style={[styles.socialBtnText, { color: colors.foreground }]}>
+                {showEnglish ? "Continue with Google" : "Mit Google anmelden"}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Apple — show on iOS and on web */}
+            {(Platform.OS === "ios" || Platform.OS === "web") && (
+              <TouchableOpacity
+                style={[styles.socialBtn, { backgroundColor: "#000", borderColor: "#333" }]}
+                onPress={() => handleSSOSignIn("oauth_apple")}
+                disabled={ssoLoading !== null || loading}
+                activeOpacity={0.8}
+              >
+                {ssoLoading === "apple" ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Ionicons name="logo-apple" size={18} color="#fff" />
+                )}
+                <Text style={[styles.socialBtnText, { color: "#fff" }]}>
+                  {showEnglish ? "Continue with Apple" : "Mit Apple anmelden"}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* ── Divider ─────────────────────────────────────────────────────── */}
+          <View style={styles.dividerRow}>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>
+              {showEnglish ? "or sign in with email" : "oder mit E-Mail"}
+            </Text>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+          </View>
+
+          {/* ── Email/Password form ──────────────────────────────────────────── */}
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.label, { color: colors.mutedForeground }]}>
               {showEnglish ? "Email" : "E-Mail"}
@@ -337,14 +421,7 @@ export default function SignInScreen() {
               activeOpacity={0.85}
             >
               {loading ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <ActivityIndicator size="small" color="#fff" />
-                  {!isLoaded && (
-                    <Text style={styles.primaryBtnText}>
-                      {showEnglish ? "Connecting…" : "Verbinde…"}
-                    </Text>
-                  )}
-                </View>
+                <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <Text style={styles.primaryBtnText}>
                   {showEnglish ? "Sign In" : "Anmelden"}
@@ -375,10 +452,20 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   scroll: { paddingHorizontal: 20, flexGrow: 1 },
   backBtn: { marginBottom: 24, alignSelf: "flex-start" },
-  header: { alignItems: "center", marginBottom: 28 },
+  header: { alignItems: "center", marginBottom: 24 },
   iconCircle: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center", marginBottom: 16 },
   title: { fontSize: 26, fontFamily: "Inter_700Bold", marginBottom: 8 },
   subtitle: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
+
+  socialGroup: { gap: 10, marginBottom: 20 },
+  socialBtn: { flexDirection: "row", alignItems: "center", borderRadius: 12, borderWidth: 1, paddingVertical: 13, paddingHorizontal: 18, gap: 10 },
+  socialBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", flex: 1, textAlign: "center" },
+  googleG: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#4285F4", width: 22, textAlign: "center" },
+
+  dividerRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 20 },
+  dividerLine: { flex: 1, height: 1 },
+  dividerText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+
   card: { borderRadius: 16, borderWidth: 1, padding: 20, marginBottom: 20 },
   label: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 6 },
   input: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 11, fontSize: 15, fontFamily: "Inter_400Regular" },
