@@ -426,116 +426,157 @@ export default function ManapoolScreen() {
                       </>
                     )}
 
-                    {required.cmc > 0 && (
-                      <>
-                        <View style={[styles.divider, { backgroundColor: colors.border }]} />
-                        <View style={styles.analysisRow}>
-                          <Ionicons name="flash" size={15} color="#f59e0b" />
-                          <Text style={[styles.analysisLabel, { color: colors.foreground }]}>
-                            {showEnglish ? "Required (spells)" : "Benötigt (Spells)"}
-                          </Text>
-                          <Text style={[styles.analysisValue, { color: "#f59e0b" }]}>{required.cmc}</Text>
-                        </View>
-                        <View style={styles.colorChips}>
-                          {COLORS.filter((k) => required[k] > 0).map((k) => (
-                            <View key={k} style={[styles.colorChipSm, { backgroundColor: COLOR_HEX[k] }]}>
-                              <Text style={[styles.colorChipSmText, { color: COLOR_TEXT[k] }]}>{required[k]}{k}</Text>
-                            </View>
-                          ))}
-                          {required.generic > 0 && (
-                            <View style={[styles.colorChipSm, { backgroundColor: colors.secondary }]}>
-                              <Text style={[styles.colorChipSmText, { color: colors.secondaryForeground }]}>{required.generic}◇</Text>
-                            </View>
+                    {required.cmc > 0 && (() => {
+                      const nonLandCount = activeDeck.cards
+                        .filter((c) => !isLand(c) && c.mana_cost)
+                        .reduce((a, c) => a + c.count, 0);
+                      const avgCMC = nonLandCount > 0 ? required.cmc / nonLandCount : 0;
+                      const totalColoredPips = COLORS.reduce((a, k) => a + (required[k] ?? 0), 0);
+                      const colorPct: Partial<Record<"W" | "U" | "B" | "R" | "G", number>> = {};
+                      COLORS.forEach((k) => {
+                        if (required[k] > 0 && totalColoredPips > 0)
+                          colorPct[k] = Math.round((required[k] / totalColoredPips) * 100);
+                      });
+                      const recommended: Partial<Record<"W" | "U" | "B" | "R" | "G", number>> = {};
+                      COLORS.forEach((k) => {
+                        if (required[k] > 0 && totalColoredPips > 0)
+                          recommended[k] = Math.max(1, Math.round((required[k] / totalColoredPips) * landTotal));
+                      });
+                      const coloredColors = COLORS.filter((k) => (colorPct[k] ?? 0) > 0);
+
+                      return (
+                        <>
+                          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+                          {/* Ø Manakosten */}
+                          <View style={styles.analysisRow}>
+                            <Ionicons name="flash" size={15} color="#f59e0b" />
+                            <Text style={[styles.analysisLabel, { color: colors.foreground }]}>
+                              {showEnglish ? "Avg. Mana Cost" : "Ø Manakosten"}
+                            </Text>
+                            <Text style={[styles.analysisValue, { color: "#f59e0b" }]}>{avgCMC.toFixed(1)}</Text>
+                          </View>
+
+                          {/* Farbverteilung */}
+                          {totalColoredPips > 0 && coloredColors.length > 0 && (
+                            <>
+                              <View style={styles.colorBar}>
+                                {coloredColors.map((k) => (
+                                  <View key={k} style={[styles.colorBarSeg, { backgroundColor: COLOR_HEX[k], flex: required[k] }]} />
+                                ))}
+                              </View>
+                              <View style={styles.colorChips}>
+                                {coloredColors.map((k) => (
+                                  <View key={k} style={[styles.colorChipSm, { backgroundColor: COLOR_HEX[k] }]}>
+                                    <Text style={[styles.colorChipSmText, { color: COLOR_TEXT[k] }]}>{colorPct[k]}% {k}</Text>
+                                  </View>
+                                ))}
+                              </View>
+                            </>
                           )}
-                        </View>
 
-                        {/* Coverage — only show if we have color info */}
-                        {hasColors && (
-                          <>
-                            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-                            {COLORS.map((k) => {
-                              const have = availMana[k] ?? 0;
-                              const need = required[k];
-                              if (need === 0) return null;
-                              const ok = have >= need;
-                              return (
-                                <View key={k} style={styles.coverageRow}>
-                                  <View style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX[k] }]}>
-                                    <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT[k] }]}>{k}</Text>
+                          {/* Empfohlene Quellen */}
+                          {hasColors && totalColoredPips > 0 && coloredColors.length > 0 && (
+                            <>
+                              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                              <View style={styles.analysisRow}>
+                                <Ionicons name="color-filter" size={15} color={colors.mutedForeground} />
+                                <Text style={[styles.analysisLabel, { color: colors.foreground }]}>
+                                  {showEnglish ? "Recommended Sources" : "Empfohlene Quellen"}
+                                </Text>
+                              </View>
+                              <View style={styles.colorChips}>
+                                {coloredColors.map((k) => (
+                                  <View key={k} style={[styles.colorChipSm, { backgroundColor: COLOR_HEX[k] }]}>
+                                    <Text style={[styles.colorChipSmText, { color: COLOR_TEXT[k] }]}>~{recommended[k]} {k}</Text>
                                   </View>
-                                  <View style={styles.coverageBar}>
-                                    <View style={[styles.coverageFill, { backgroundColor: ok ? "#16a34a" : "#dc2626", flex: Math.min(have, need) }]} />
-                                    {!ok && <View style={[styles.coverageMissing, { flex: need - have }]} />}
-                                  </View>
-                                  <Text style={[styles.coverageText, { color: ok ? "#16a34a" : "#dc2626" }]}>
-                                    {have}/{need} {ok ? "✓" : `−${need-have}`}
-                                  </Text>
-                                </View>
-                              );
-                            })}
+                                ))}
+                              </View>
 
-                            {/* Verdict */}
-                            {(() => {
-                              const lacking = COLORS.filter((k) => required[k] > 0 && (availMana[k] ?? 0) < required[k]);
-                              if (lacking.length === 0) {
+                              {/* Coverage bars */}
+                              {coloredColors.map((k) => {
+                                const have = availMana[k] ?? 0;
+                                const need = recommended[k] ?? 0;
+                                if (need === 0) return null;
+                                const ok = have >= need;
                                 return (
-                                  <View style={[styles.verdict, { backgroundColor: "#16a34a22", borderColor: "#16a34a" }]}>
-                                    <Ionicons name="checkmark-circle" size={16} color="#16a34a" />
-                                    <Text style={[styles.verdictText, { color: "#16a34a" }]}>
-                                      {showEnglish ? "Mana pool covers all costs!" : "Manapool deckt alle Kosten!"}
+                                  <View key={k} style={styles.coverageRow}>
+                                    <View style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX[k] }]}>
+                                      <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT[k] }]}>{k}</Text>
+                                    </View>
+                                    <View style={styles.coverageBar}>
+                                      <View style={[styles.coverageFill, { backgroundColor: ok ? "#16a34a" : "#dc2626", flex: Math.min(have, need) }]} />
+                                      {!ok && <View style={[styles.coverageMissing, { flex: need - have }]} />}
+                                    </View>
+                                    <Text style={[styles.coverageText, { color: ok ? "#16a34a" : "#dc2626" }]}>
+                                      {have}/{need} {ok ? "✓" : `−${need - have}`}
                                     </Text>
                                   </View>
                                 );
-                              }
-                              return (
-                                <View style={[styles.verdict, { backgroundColor: "#dc262622", borderColor: "#dc2626" }]}>
-                                  <Ionicons name="alert-circle" size={16} color="#dc2626" />
-                                  <Text style={[styles.verdictText, { color: "#dc2626" }]}>
-                                    {showEnglish ? `Need more ${lacking.join("/")} sources` : `Mehr ${lacking.join("/")} Quellen nötig`}
-                                  </Text>
-                                </View>
-                              );
-                            })()}
-                          </>
-                        )}
+                              })}
 
-                        {/* Mana curve */}
-                        {(() => {
-                          const curve: Record<number, number> = {};
-                          for (const c of activeDeck.cards) {
-                            if (!c.mana_cost || isLand(c)) continue;
-                            const cmc = parseMana(c.mana_cost).cmc;
-                            curve[cmc] = (curve[cmc] ?? 0) + c.count;
-                          }
-                          const maxCmc = Math.max(...Object.keys(curve).map(Number), 0);
-                          if (maxCmc === 0) return null;
-                          const maxCount = Math.max(...Object.values(curve));
-                          return (
-                            <>
-                              <View style={[styles.divider, { backgroundColor: colors.border }]} />
-                              <Text style={[styles.curveTitle, { color: colors.mutedForeground }]}>
-                                {showEnglish ? "Mana Curve" : "Manakurve"}
-                              </Text>
-                              <View style={styles.curveChart}>
-                                {Array.from({ length: Math.min(maxCmc + 1, 9) }, (_, i) => {
-                                  const count = curve[i] ?? 0;
-                                  const height = maxCount > 0 ? (count / maxCount) * 56 : 0;
+                              {/* Verdict */}
+                              {(() => {
+                                const lacking = coloredColors.filter((k) => (recommended[k] ?? 0) > 0 && (availMana[k] ?? 0) < (recommended[k] ?? 0));
+                                if (lacking.length === 0) {
                                   return (
-                                    <View key={i} style={styles.curveCol}>
-                                      {count > 0 && <Text style={[styles.curveCount, { color: colors.primary }]}>{count}</Text>}
-                                      <View style={styles.curveBarCont}>
-                                        <View style={[styles.curveBar, { height, backgroundColor: count > 0 ? colors.primary : "transparent" }]} />
-                                      </View>
-                                      <Text style={[styles.curveCmc, { color: colors.mutedForeground }]}>{i === 8 ? "8+" : String(i)}</Text>
+                                    <View style={[styles.verdict, { backgroundColor: "#16a34a22", borderColor: "#16a34a" }]}>
+                                      <Ionicons name="checkmark-circle" size={16} color="#16a34a" />
+                                      <Text style={[styles.verdictText, { color: "#16a34a" }]}>
+                                        {showEnglish ? "Mana base covers all colors!" : "Manabase deckt alle Farben!"}
+                                      </Text>
                                     </View>
                                   );
-                                })}
-                              </View>
+                                }
+                                return (
+                                  <View style={[styles.verdict, { backgroundColor: "#dc262622", borderColor: "#dc2626" }]}>
+                                    <Ionicons name="alert-circle" size={16} color="#dc2626" />
+                                    <Text style={[styles.verdictText, { color: "#dc2626" }]}>
+                                      {showEnglish ? `Add more ${lacking.join("/")} sources` : `Mehr ${lacking.join("/")} Quellen hinzufügen`}
+                                    </Text>
+                                  </View>
+                                );
+                              })()}
                             </>
-                          );
-                        })()}
-                      </>
-                    )}
+                          )}
+                          {/* Mana curve */}
+                          {(() => {
+                            const curve: Record<number, number> = {};
+                            for (const c of activeDeck.cards) {
+                              if (!c.mana_cost || isLand(c)) continue;
+                              const cmc = parseMana(c.mana_cost).cmc;
+                              curve[cmc] = (curve[cmc] ?? 0) + c.count;
+                            }
+                            const maxCmc = Math.max(...Object.keys(curve).map(Number), 0);
+                            if (maxCmc === 0) return null;
+                            const maxCount = Math.max(...Object.values(curve));
+                            return (
+                              <>
+                                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                                <Text style={[styles.curveTitle, { color: colors.mutedForeground }]}>
+                                  {showEnglish ? "Mana Curve" : "Manakurve"}
+                                </Text>
+                                <View style={styles.curveChart}>
+                                  {Array.from({ length: Math.min(maxCmc + 1, 9) }, (_, i) => {
+                                    const count = curve[i] ?? 0;
+                                    const height = maxCount > 0 ? (count / maxCount) * 56 : 0;
+                                    return (
+                                      <View key={i} style={styles.curveCol}>
+                                        {count > 0 && <Text style={[styles.curveCount, { color: colors.primary }]}>{count}</Text>}
+                                        <View style={styles.curveBarCont}>
+                                          <View style={[styles.curveBar, { height, backgroundColor: count > 0 ? colors.primary : "transparent" }]} />
+                                        </View>
+                                        <Text style={[styles.curveCmc, { color: colors.mutedForeground }]}>{i === 8 ? "8+" : String(i)}</Text>
+                                      </View>
+                                    );
+                                  })}
+                                </View>
+                              </>
+                            );
+                          })()}
+                        </>
+                      );
+                    })()}
                   </View>
                 </>
               );
