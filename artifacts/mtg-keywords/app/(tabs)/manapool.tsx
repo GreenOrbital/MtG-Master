@@ -26,22 +26,22 @@ const COLOR_HEX: Record<string, string> = { W: "#f5f0dc", U: "#0e68ab", B: "#2c2
 const COLOR_TEXT: Record<string, string> = { W: "#1a1a1a", U: "#fff", B: "#e0e0e0", R: "#fff", G: "#fff", C: "#fff" };
 const COLORS = ["W", "U", "B", "R", "G"] as const;
 
-function hasColorlessMana(manaCost: string): boolean {
-  return /\{C\}/i.test(manaCost);
-}
 
-type ManaCounts = { W: number; U: number; B: number; R: number; G: number; generic: number; cmc: number };
+type ManaCounts = { W: number; U: number; B: number; R: number; G: number; colorless: number; generic: number; cmc: number };
 
 function isLand(card: DeckCard) {
   return !!card.type_line?.toLowerCase().includes("land");
 }
 
-// Derive what colors a land produces from produced_mana or type_line
+// Derive what mana symbols a land produces (WUBRG + C for colorless)
 function landColors(card: DeckCard): string[] {
   if (card.produced_mana && card.produced_mana.length > 0) {
-    return card.produced_mana.filter((c) => COLORS.includes(c as typeof COLORS[number]));
+    // Keep WUBRG and also C (explicit colorless)
+    return card.produced_mana.filter((c) =>
+      COLORS.includes(c as typeof COLORS[number]) || c === "C"
+    );
   }
-  // Fallback: parse from type_line subtype
+  // Fallback: parse from type_line basic land subtype
   const tl = (card.type_line ?? "").toLowerCase();
   const derived: string[] = [];
   if (tl.includes("plains"))   derived.push("W");
@@ -49,16 +49,17 @@ function landColors(card: DeckCard): string[] {
   if (tl.includes("swamp"))    derived.push("B");
   if (tl.includes("mountain")) derived.push("R");
   if (tl.includes("forest"))   derived.push("G");
+  // Wastes fallback (no subtype that matches above, but name is "Wastes")
+  if (derived.length === 0 && (card.name ?? "").toLowerCase() === "wastes") derived.push("C");
   return derived;
 }
 
-// Compute available colored mana from land cards in the deck
+// Compute available mana from land cards (WUBRG + C)
 function computeLandMana(cards: DeckCard[]): Record<string, number> {
-  const avail: Record<string, number> = { W: 0, U: 0, B: 0, R: 0, G: 0 };
+  const avail: Record<string, number> = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
   for (const c of cards) {
     if (!isLand(c)) continue;
-    const cols = landColors(c);
-    for (const col of cols) {
+    for (const col of landColors(c)) {
       avail[col] = (avail[col] ?? 0) + c.count;
     }
   }
@@ -72,15 +73,14 @@ function deckColorIdentity(cards: DeckCard[]): string[] {
     if (isLand(c) || !c.mana_cost) continue;
     const m = parseMana(c.mana_cost);
     for (const col of COLORS) { if (m[col] > 0) seen.add(col); }
-    if (m.W === 0 && m.U === 0 && m.B === 0 && m.R === 0 && m.G === 0 && m.generic > 0 && /\{C\}/i.test(c.mana_cost)) seen.add("C");
+    if (m.colorless > 0) seen.add("C");
   }
-  // Sort in WUBRG order, colorless last
-  const order = ["W","U","B","R","G","C"];
+  const order = ["W", "U", "B", "R", "G", "C"];
   return order.filter((k) => seen.has(k));
 }
 
 function parseMana(manaCost: string): ManaCounts {
-  const r: ManaCounts = { W: 0, U: 0, B: 0, R: 0, G: 0, generic: 0, cmc: 0 };
+  const r: ManaCounts = { W: 0, U: 0, B: 0, R: 0, G: 0, colorless: 0, generic: 0, cmc: 0 };
   const matches = manaCost.match(/\{([^}]+)\}/g) ?? [];
   for (const m of matches) {
     const sym = m.replace(/[{}]/g, "").toUpperCase();
@@ -89,24 +89,21 @@ function parseMana(manaCost: string): ManaCounts {
     } else if (/^\d+$/.test(sym)) {
       r.generic += parseInt(sym, 10); r.cmc += parseInt(sym, 10);
     } else if (sym === "C") {
-      // Colorless mana – counts as 1 CMC
-      r.generic++; r.cmc++;
+      // Explicit colorless pip – only payable with colorless mana (Eldrazi etc.)
+      r.colorless++; r.cmc++;
     } else if (sym === "X" || sym === "Y" || sym === "Z") {
       // Variable mana – 0 CMC by MtG rules
     } else if (sym.includes("/")) {
       // Hybrid or Phyrexian: e.g. {2/W}, {W/B}, {W/P}
       const parts = sym.split("/");
       if (parts[1] === "P") {
-        // Phyrexian: colored pip = 1 CMC
         r.cmc++;
         const col = parts[0];
         if (col === "W" || col === "U" || col === "B" || col === "R" || col === "G") r[col]++;
       } else {
-        // Hybrid: take the higher value for CMC
         const n = parseInt(parts[0], 10);
         const cmcVal = isNaN(n) ? 1 : Math.max(n, 1);
         r.cmc += cmcVal;
-        // Count both colors for pip analysis
         for (const p of parts) {
           if (p === "W" || p === "U" || p === "B" || p === "R" || p === "G") r[p]++;
         }
@@ -117,25 +114,23 @@ function parseMana(manaCost: string): ManaCounts {
 }
 
 function sumMana(cards: Deck["cards"]): ManaCounts {
-  const total: ManaCounts = { W: 0, U: 0, B: 0, R: 0, G: 0, generic: 0, cmc: 0 };
+  const total: ManaCounts = { W: 0, U: 0, B: 0, R: 0, G: 0, colorless: 0, generic: 0, cmc: 0 };
   for (const c of cards) {
     if (isLand(c)) continue;
-    // Use Scryfall's CMC if saved, otherwise parse from mana_cost
     if (c.mana_cost) {
       const m = parseMana(c.mana_cost);
-      total.W += m.W * c.count;
-      total.U += m.U * c.count;
-      total.B += m.B * c.count;
-      total.R += m.R * c.count;
-      total.G += m.G * c.count;
-      total.generic += m.generic * c.count;
-      // Use Scryfall cmc if available (handles X, split cards, etc.)
+      total.W         += m.W         * c.count;
+      total.U         += m.U         * c.count;
+      total.B         += m.B         * c.count;
+      total.R         += m.R         * c.count;
+      total.G         += m.G         * c.count;
+      total.colorless += m.colorless * c.count;
+      total.generic   += m.generic   * c.count;
       const cardCmc = c.cmc !== undefined ? c.cmc : m.cmc;
       total.cmc += cardCmc * c.count;
     } else if (c.cmc !== undefined && c.cmc > 0) {
-      // Colorless card with no mana_cost string but has cmc (e.g. some artifacts)
       total.generic += c.cmc * c.count;
-      total.cmc += c.cmc * c.count;
+      total.cmc     += c.cmc * c.count;
     }
   }
   return total;
@@ -407,7 +402,7 @@ export default function ManapoolScreen() {
                                   <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT[cl] }]}>{cl}</Text>
                                 </View>
                               ))}
-                              {cols.length === 0 && c.mana_cost && hasColorlessMana(c.mana_cost) && (
+                              {mana && mana.colorless > 0 && (
                                 <View style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX["C"] }]}>
                                   <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT["C"] }]}>C</Text>
                                 </View>
@@ -443,7 +438,8 @@ export default function ManapoolScreen() {
               const landTotal = activeDeck.cards.filter(isLand).reduce((a, c) => a + c.count, 0);
               const required = sumMana(activeDeck.cards);
               if (landTotal === 0 && required.cmc === 0) return null;
-              const hasColors = COLORS.some((k) => availMana[k] > 0);
+              // hasColors = any land produces mana (WUBRG or C)
+              const hasColors = [...COLORS, "C"].some((k) => (availMana[k] ?? 0) > 0);
               return (
                 <>
                   <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -461,12 +457,12 @@ export default function ManapoolScreen() {
                     {hasColors && (
                       <>
                         <View style={styles.colorBar}>
-                          {COLORS.filter((k) => availMana[k] > 0).map((k) => (
+                          {[...COLORS, "C"].filter((k) => (availMana[k] ?? 0) > 0).map((k) => (
                             <View key={k} style={[styles.colorBarSeg, { backgroundColor: COLOR_HEX[k], flex: availMana[k] }]} />
                           ))}
                         </View>
                         <View style={styles.colorChips}>
-                          {COLORS.filter((k) => availMana[k] > 0).map((k) => (
+                          {[...COLORS, "C"].filter((k) => (availMana[k] ?? 0) > 0).map((k) => (
                             <View key={k} style={[styles.colorChipSm, { backgroundColor: COLOR_HEX[k] }]}>
                               <Text style={[styles.colorChipSmText, { color: COLOR_TEXT[k] }]}>{availMana[k]}{k}</Text>
                             </View>
@@ -480,18 +476,25 @@ export default function ManapoolScreen() {
                         .filter((c) => !isLand(c) && (c.mana_cost || c.cmc !== undefined))
                         .reduce((a, c) => a + c.count, 0);
                       const avgCMC = nonLandCount > 0 ? required.cmc / nonLandCount : 0;
-                      const totalColoredPips = COLORS.reduce((a, k) => a + (required[k] ?? 0), 0);
-                      const colorPct: Partial<Record<"W" | "U" | "B" | "R" | "G", number>> = {};
+                      // Include colorless pips in distribution
+                      const ALL_PIPS = [...COLORS, "C"] as const;
+                      const requiredC = required.colorless; // explicit {C} pips
+                      const totalColoredPips = COLORS.reduce((a, k) => a + (required[k] ?? 0), 0) + requiredC;
+                      const colorPct: Partial<Record<string, number>> = {};
                       COLORS.forEach((k) => {
                         if (required[k] > 0 && totalColoredPips > 0)
                           colorPct[k] = Math.round((required[k] / totalColoredPips) * 100);
                       });
-                      const recommended: Partial<Record<"W" | "U" | "B" | "R" | "G", number>> = {};
+                      if (requiredC > 0 && totalColoredPips > 0)
+                        colorPct["C"] = Math.round((requiredC / totalColoredPips) * 100);
+                      const recommended: Partial<Record<string, number>> = {};
                       COLORS.forEach((k) => {
                         if (required[k] > 0 && totalColoredPips > 0)
                           recommended[k] = Math.max(1, Math.round((required[k] / totalColoredPips) * landTotal));
                       });
-                      const coloredColors = COLORS.filter((k) => (colorPct[k] ?? 0) > 0);
+                      if (requiredC > 0 && totalColoredPips > 0)
+                        recommended["C"] = Math.max(1, Math.round((requiredC / totalColoredPips) * landTotal));
+                      const coloredColors = ALL_PIPS.filter((k) => (colorPct[k] ?? 0) > 0);
 
                       return (
                         <>
@@ -511,7 +514,7 @@ export default function ManapoolScreen() {
                             <>
                               <View style={styles.colorBar}>
                                 {coloredColors.map((k) => (
-                                  <View key={k} style={[styles.colorBarSeg, { backgroundColor: COLOR_HEX[k], flex: required[k] }]} />
+                                  <View key={k} style={[styles.colorBarSeg, { backgroundColor: COLOR_HEX[k], flex: k === "C" ? requiredC : (required[k as keyof ManaCounts] as number) }]} />
                                 ))}
                               </View>
                               <View style={styles.colorChips}>
@@ -572,7 +575,7 @@ export default function ManapoolScreen() {
                                     <View style={[styles.verdict, { backgroundColor: "#16a34a22", borderColor: "#16a34a" }]}>
                                       <Ionicons name="checkmark-circle" size={16} color="#16a34a" />
                                       <Text style={[styles.verdictText, { color: "#16a34a" }]}>
-                                        {showEnglish ? "Mana base covers all colors!" : "Manabase deckt alle Farben!"}
+                                        {showEnglish ? "Mana base covers all mana types!" : "Manabase deckt alle Manatypen!"}
                                       </Text>
                                     </View>
                                   );
