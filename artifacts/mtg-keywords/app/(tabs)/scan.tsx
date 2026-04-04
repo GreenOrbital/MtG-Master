@@ -130,9 +130,6 @@ function matchLocalKeywords(scryfallKeywords: string[], oracleText: string): Mtg
 }
 
 function getApiBase(): string {
-  // On web (dev + production): use relative URL so the reverse proxy routes correctly
-  if (Platform.OS === "web") return "";
-  // On native (Expo Go / standalone): need absolute URL
   const domain = process.env["EXPO_PUBLIC_DOMAIN"];
   return domain ? `https://${domain}` : "";
 }
@@ -447,6 +444,7 @@ export default function CardSearchScreen() {
   const displayFlavor    = card?.flavor_text ?? card?.card_faces?.find((f) => f.flavor_text)?.flavor_text;
   const cardImageUri     = card?.image_uris?.normal ?? card?.card_faces?.[0]?.image_uris?.normal;
   const scryfallUrl      = card?.scryfall_uri ?? (card ? `https://scryfall.com/search?q=${encodeURIComponent(card.name)}` : "");
+  const cardmarketUrl    = card ? `https://www.cardmarket.com/de/Magic/Products/Search?searchString=${encodeURIComponent(card.name)}` : "";
   const eurPrice         = card?.prices?.eur ? `€ ${parseFloat(card.prices.eur).toFixed(2)}` : null;
   const showEmpty        = !card && !loadingCard && !errorMsg && query.length === 0;
   const cardColors       = card?.colors ?? [];
@@ -666,13 +664,17 @@ export default function CardSearchScreen() {
                 </View>
               ) : null}
 
-              {/* ── Scryfall link ── */}
-              <TouchableOpacity style={[styles.scryfallRow, { borderTopColor: colors.border }]} onPress={() => Linking.openURL(scryfallUrl)}>
-                <Ionicons name="open-outline" size={14} color={colors.mutedForeground} />
-                <Text style={[styles.scryfallText, { color: colors.mutedForeground }]}>
-                  {showEnglish ? "Prices, all editions & rulings on Scryfall" : "Preise, alle Editionen & Regeln auf Scryfall"}
-                </Text>
-              </TouchableOpacity>
+              {/* ── External links ── */}
+              <View style={[styles.externalLinks, { borderTopColor: colors.border }]}>
+                <TouchableOpacity style={[styles.externalLinkBtn, { borderColor: colors.border }]} onPress={() => Linking.openURL(scryfallUrl)}>
+                  <Ionicons name="open-outline" size={13} color={colors.mutedForeground} />
+                  <Text style={[styles.externalLinkText, { color: colors.mutedForeground }]}>Scryfall</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.externalLinkBtn, { borderColor: colors.border, backgroundColor: "#1da462" + "18" }]} onPress={() => Linking.openURL(cardmarketUrl)}>
+                  <Ionicons name="cart-outline" size={13} color="#1da462" />
+                  <Text style={[styles.externalLinkText, { color: "#1da462" }]}>Cardmarket</Text>
+                </TouchableOpacity>
+              </View>
 
               {/* ── Zum Deck hinzufügen ── */}
               <TouchableOpacity
@@ -1200,8 +1202,9 @@ const styles = StyleSheet.create({
   oracleText: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 20, fontStyle: "italic" },
   flavorBox: { borderTopWidth: 1, paddingHorizontal: 14, paddingVertical: 10 },
   flavorText: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18, fontStyle: "italic" },
-  scryfallRow: { borderTopWidth: StyleSheet.hairlineWidth, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, gap: 6 },
-  scryfallText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
+  externalLinks: { borderTopWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: 8, paddingHorizontal: 14, paddingVertical: 10 },
+  externalLinkBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, borderRadius: 8, borderWidth: 1, paddingVertical: 7 },
+  externalLinkText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   formatBox: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10 },
   formatHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   legalityGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },

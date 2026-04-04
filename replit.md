@@ -18,7 +18,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## Artifacts
 
-### MtG Schlüsselwörter (artifacts/mtg-keywords)
+### Master of MtG (artifacts/mtg-keywords)
 Expo mobile app for Magic: The Gathering keyword lookup.
 
 **Features:**

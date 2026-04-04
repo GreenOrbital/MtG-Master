@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "MtG Schlüsselwörter",
+    "name": "Master of MtG",
     "slug": "mtg-keywords",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -32,7 +32,7 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "Kamera-Zugriff um MtG-Karten zu scannen und automatisch zu erkennen."
+          "cameraPermission": "Kamera-Zugriff für Master of MtG um Karten zu scannen und automatisch zu erkennen."
         }
       ]
     ],
