@@ -387,6 +387,7 @@ type CardPrint = {
   cmc?: number;
   type_line?: string;
   produced_mana?: string[];
+  prices?: { eur?: string | null; eur_foil?: string | null; usd?: string | null };
 };
 
 async function fetchAllPrints(cardName: string): Promise<CardPrint[]> {
@@ -887,23 +888,30 @@ export default function CardSearchScreen() {
                       {prints.map((p) => {
                         const imgUri = p.image_uris?.normal ?? p.image_uris?.small ?? p.card_faces?.[0]?.image_uris?.normal;
                         const isSelected = selectedPrint ? selectedPrint.id === p.id : p.id === card?.id;
+                        const year = p.released_at ? p.released_at.slice(0, 4) : "";
+                        const priceEur = p.prices?.eur ? `€${parseFloat(p.prices.eur).toFixed(2)}` : null;
+                        const priceUsd = p.prices?.usd ? `$${parseFloat(p.prices.usd).toFixed(2)}` : null;
+                        const priceLabel = priceEur ?? priceUsd ?? null;
                         return (
                           <TouchableOpacity key={p.id}
-                            style={[styles.printThumbWrap, isSelected && { borderColor: colors.primary, borderWidth: 2 }]}
+                            style={[styles.printThumbWrap, isSelected && { borderColor: colors.primary, borderWidth: 2.5 }]}
                             onPress={() => setSelectedPrint(p.id === card?.id ? null : p)}>
                             {imgUri ? (
                               <Image source={{ uri: imgUri }} style={styles.printThumb} resizeMode="cover" />
                             ) : (
                               <View style={[styles.printThumb, { backgroundColor: colors.secondary, justifyContent: "center", alignItems: "center" }]}>
-                                <Ionicons name="image-outline" size={18} color={colors.mutedForeground} />
+                                <Ionicons name="image-outline" size={28} color={colors.mutedForeground} />
                               </View>
                             )}
                             <Text style={[styles.printSetName, { color: isSelected ? colors.primary : colors.mutedForeground }]} numberOfLines={2}>
-                              {p.set_name ?? p.set ?? ""}
+                              {p.set_name ?? p.set?.toUpperCase() ?? ""}{year ? ` ${year}` : ""}
                             </Text>
+                            {priceLabel && (
+                              <Text style={[styles.printPrice, { color: "#1da462" }]}>{priceLabel}</Text>
+                            )}
                             {isSelected && (
                               <View style={[styles.printCheckmark, { backgroundColor: colors.primary }]}>
-                                <Ionicons name="checkmark" size={10} color="#fff" />
+                                <Ionicons name="checkmark" size={12} color="#fff" />
                               </View>
                             )}
                           </TouchableOpacity>
@@ -1479,14 +1487,15 @@ const styles = StyleSheet.create({
   externalLinks: { borderTopWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: 8, paddingHorizontal: 14, paddingVertical: 10 },
   externalLinkBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, borderRadius: 8, borderWidth: 1, paddingVertical: 7 },
   externalLinkText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  printsSection: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 6 },
-  printsLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
+  printsSection: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 10 },
+  printsLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 },
   printsScroll: { marginHorizontal: -4 },
-  printsRow: { flexDirection: "row", gap: 8, paddingHorizontal: 4 },
-  printThumbWrap: { width: 72, alignItems: "center", borderRadius: 8, borderWidth: 1.5, borderColor: "transparent", overflow: "visible", position: "relative" },
-  printThumb: { width: 68, height: 96, borderRadius: 6, overflow: "hidden" },
-  printSetName: { fontSize: 9, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 4, lineHeight: 12 },
-  printCheckmark: { position: "absolute", top: -5, right: -5, width: 18, height: 18, borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  printsRow: { flexDirection: "row", gap: 10, paddingHorizontal: 4, paddingBottom: 4 },
+  printThumbWrap: { width: 134, alignItems: "center", borderRadius: 10, borderWidth: 2, borderColor: "transparent", overflow: "visible", position: "relative" },
+  printThumb: { width: 130, height: 182, borderRadius: 8, overflow: "hidden" },
+  printSetName: { fontSize: 10, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 5, lineHeight: 14 },
+  printPrice: { fontSize: 12, fontFamily: "Inter_700Bold", textAlign: "center", marginTop: 2 },
+  printCheckmark: { position: "absolute", top: -6, right: -6, width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center" },
   formatBox: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10 },
   formatHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   legalityGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
