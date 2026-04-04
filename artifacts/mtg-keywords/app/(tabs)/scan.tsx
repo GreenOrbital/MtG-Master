@@ -301,22 +301,74 @@ async function fetchSimilarCards(card: CardData): Promise<CardData[]> {
 
 async function fetchCombos(cardName: string): Promise<ComboData[]> {
   try {
-    const base = getApiBase();
-    const res = await fetch(`${base}/api/card-combos?name=${encodeURIComponent(cardName)}`, { headers: HEADERS });
-    if (!res.ok) return [];
-    const data = (await res.json()) as { results: unknown[] };
-    if (!Array.isArray(data.results)) return [];
-    return data.results.slice(0, 6).map((r: any) => ({
-      id: String(r.id),
-      cards: (r.uses ?? []).map((u: any) => ({
-        name: u.card?.name ?? "",
-        imageSmall: u.card?.imageUriFrontSmall ?? undefined,
-      })),
-      produces: (r.produces ?? []).map((p: any) => p.feature?.name ?? "").filter(Boolean),
-      description: r.description ?? "",
-      popularity: r.popularity ?? undefined,
-    }));
+    const q = `card:"${cardName}"`;
+    // On native: call Commander Spellbook directly (no CORS issue)
+    // On web: try proxy first, fall back to direct (CORS may block, but worth trying)
+    const urls: string[] = [];
+    if (Platform.OS !== "web") {
+      urls.push(`https://backend.commanderspellbook.com/variants/?q=${encodeURIComponent(q)}`);
+    } else {
+      const base = getApiBase();
+      if (base) urls.push(`${base}/api/card-combos?name=${encodeURIComponent(cardName)}`);
+      urls.push(`https://backend.commanderspellbook.com/variants/?q=${encodeURIComponent(q)}`);
+    }
+
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, { headers: HEADERS });
+        if (!res.ok) continue;
+        const data = (await res.json()) as { results?: unknown[] };
+        const results = Array.isArray(data.results) ? data.results : [];
+        return results.slice(0, 6).map((r: any) => ({
+          id: String(r.id),
+          cards: (r.uses ?? []).map((u: any) => ({
+            name: u.card?.name ?? "",
+            imageSmall: u.card?.imageUriFrontSmall ?? undefined,
+          })),
+          produces: (r.produces ?? []).map((p: any) => p.feature?.name ?? "").filter(Boolean),
+          description: r.description ?? "",
+          popularity: r.popularity ?? undefined,
+        }));
+      } catch { continue; }
+    }
+    return [];
   } catch { return []; }
+}
+
+async function translateTextFree(text: string): Promise<string> {
+  // Translate using MyMemory free API (no server required)
+  // Chunk if text is longer than 450 chars (free limit per request)
+  try {
+    const chunks: string[] = [];
+    if (text.length <= 450) {
+      chunks.push(text);
+    } else {
+      // Split on numbered steps (\n) to keep context
+      const lines = text.split("\n");
+      let current = "";
+      for (const line of lines) {
+        if ((current + "\n" + line).length > 450 && current) {
+          chunks.push(current.trim());
+          current = line;
+        } else {
+          current = current ? current + "\n" + line : line;
+        }
+      }
+      if (current.trim()) chunks.push(current.trim());
+    }
+
+    const translated: string[] = [];
+    for (const chunk of chunks) {
+      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=en|de`;
+      const res = await fetch(url, { headers: HEADERS });
+      if (!res.ok) return text; // Fallback to original
+      const data = (await res.json()) as { responseData?: { translatedText?: string }; responseStatus?: number };
+      const t = data.responseData?.translatedText;
+      if (!t || data.responseStatus === 429) return text; // Rate limited
+      translated.push(t);
+    }
+    return translated.join("\n");
+  } catch { return text; }
 }
 
 type BoosterPrint = { setName: string; setCode: string; setType: string; releasedAt: string };
@@ -388,16 +440,8 @@ export default function CardSearchScreen() {
     if (isOpening && !showEnglish && !translatedDescs[comboId] && description) {
       setTranslatingId(comboId);
       try {
-        const base = getApiBase();
-        const res = await fetch(`${base}/api/translate-text`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", ...HEADERS },
-          body: JSON.stringify({ text: description }),
-        });
-        if (res.ok) {
-          const data = await res.json() as { translated: string };
-          setTranslatedDescs(prev => ({ ...prev, [comboId]: data.translated }));
-        }
+        const translated = await translateTextFree(description);
+        setTranslatedDescs(prev => ({ ...prev, [comboId]: translated }));
       } catch {
         // Keep English as fallback
       } finally {
@@ -522,10 +566,17 @@ export default function CardSearchScreen() {
     setLoadingRecognize(true);
     resetCardState();
     try {
-      const r = await fetch(`${getApiBase()}/api/recognize-card`, {
+      const apiBase = getApiBase();
+      if (!apiBase) {
+        setRecognizeError(showEnglish ? "Server not available. Photo recognition requires an internet connection." : "Server nicht verfügbar. Kamera-Erkennung benötigt eine Internetverbindung.");
+        setLoadingRecognize(false);
+        return;
+      }
+      const r = await fetch(`${apiBase}/api/recognize-card`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageBase64: base64, mimeType: mimeType ?? "image/jpeg" }),
+        signal: AbortSignal.timeout(15000),
       });
       const { cardName } = (await r.json()) as { cardName: string | null };
       if (!cardName) {
