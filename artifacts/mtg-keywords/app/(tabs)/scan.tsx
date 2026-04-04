@@ -74,6 +74,80 @@ type ComboData = {
   popularity?: number;
 };
 
+// ─── Combo translations ───────────────────────────────────────────────────────
+
+const COMBO_EFFECT_DE: Record<string, string> = {
+  "infinite mana": "Unendliches Mana",
+  "infinite colored mana": "Unendliches farbiges Mana",
+  "infinite colorless mana": "Unendliches farbloses Mana",
+  "infinite white mana": "Unendliches weißes Mana",
+  "infinite blue mana": "Unendliches blaues Mana",
+  "infinite black mana": "Unendliches schwarzes Mana",
+  "infinite red mana": "Unendliches rotes Mana",
+  "infinite green mana": "Unendliches grünes Mana",
+  "infinite mana of any color": "Unendliches Mana in jeder Farbe",
+  "infinite life": "Unendlich Leben",
+  "infinite lifegain": "Unendlich Lebenspunkte gewinnen",
+  "infinite life loss": "Unendlich Leben verlieren",
+  "infinite damage": "Unendlicher Schaden",
+  "infinite tokens": "Unendlich Spielsteine",
+  "infinite creature tokens": "Unendlich Kreaturenspielsteine",
+  "infinite treasure tokens": "Unendlich Schatzspielsteine",
+  "infinite food tokens": "Unendlich Essensspielsteine",
+  "infinite draw": "Unendlich Karten ziehen",
+  "draw your library": "Gesamte Bibliothek ziehen",
+  "empty your library": "Bibliothek leeren",
+  "infinite card draw": "Unendlich Karten ziehen",
+  "infinite mill": "Unendlich mahlen",
+  "win the game": "Spiel gewonnen",
+  "infinite combat phases": "Unendliche Kampfphasen",
+  "infinite turns": "Unendlich Züge",
+  "infinite untap": "Unendlich enttappen",
+  "infinite scry": "Unendlich erschauen",
+  "infinite storm count": "Unendlicher Sturm-Zähler",
+  "infinite +1/+1 counters": "Unendlich +1/+1-Marken",
+  "infinite -1/-1 counters": "Unendlich -1/-1-Marken",
+  "infinite energy": "Unendlich Energie",
+  "infinite experience counters": "Unendlich Erfahrungsmarken",
+  "infinite cast triggers": "Unendlich Ausführungs-Auslöser",
+  "infinite enter the battlefield triggers": "Unendlich Betritt-das-Spiel-Auslöser",
+  "infinite etb triggers": "Unendlich Betritt-das-Spiel-Auslöser",
+  "infinite death triggers": "Unendlich Tod-Auslöser",
+  "infinite sacrifice triggers": "Unendlich Opfer-Auslöser",
+  "infinite attack triggers": "Unendlich Angriffs-Auslöser",
+  "infinite activated ability triggers": "Unendlich Aktivierungsauslöser",
+  "near-infinite mana": "Fast unendliches Mana",
+  "near-infinite tokens": "Fast unendlich Spielsteine",
+  "near-infinite damage": "Fast unendlicher Schaden",
+  "you win the game": "Du gewinnst das Spiel",
+  "opponents lose the game": "Gegner verlieren das Spiel",
+  "lethal damage": "Tödlicher Schaden",
+  "all opponents lose the game": "Alle Gegner verlieren das Spiel",
+  "laboratory maniac wins": "Laboratory Maniac gewinnt",
+  "thassa's oracle wins": "Thassa's Oracle gewinnt",
+  "jace wins": "Jace gewinnt",
+  "copy": "Kopieren",
+  "infinite copies": "Unendlich Kopien",
+  "tutor": "Suchen",
+  "infinite tutors": "Unendlich mal Suchen",
+  "landfall triggers": "Landfall-Auslöser",
+  "infinite landfall triggers": "Unendlich Landfall-Auslöser",
+  "infinite spells": "Unendlich Zaubersprüche",
+  "exile all cards": "Alle Karten verbannen",
+  "mill all opponents": "Alle Gegner mahlen",
+  "any number of": "Beliebig viele",
+};
+
+function translateComboEffect(effect: string): string {
+  const lower = effect.toLowerCase().trim();
+  if (COMBO_EFFECT_DE[lower]) return COMBO_EFFECT_DE[lower];
+  // Partial match for "infinite X" variants
+  for (const [key, val] of Object.entries(COMBO_EFFECT_DE)) {
+    if (lower.includes(key) || key.includes(lower)) return val;
+  }
+  return effect; // Fallback: keep English
+}
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const COLOR_INFO: Record<string, { label: string; land: string; landEn: string; hex: string; text: string }> = {
@@ -831,16 +905,25 @@ export default function CardSearchScreen() {
                           <View style={styles.comboEffects}>
                             {combo.produces.slice(0, 3).map((effect, i) => (
                               <View key={i} style={[styles.comboEffectTag, { backgroundColor: colors.primary + "22", borderColor: colors.primary + "55" }]}>
-                                <Text style={[styles.comboEffectText, { color: colors.primary }]} numberOfLines={1}>{effect}</Text>
+                                <Text style={[styles.comboEffectText, { color: colors.primary }]} numberOfLines={1}>
+                                  {showEnglish ? effect : translateComboEffect(effect)}
+                                </Text>
                               </View>
                             ))}
                           </View>
 
                           {/* Description (expandable) */}
                           {isExpanded && (
-                            <Text style={[styles.comboDesc, { color: colors.mutedForeground, borderTopColor: colors.border }]}>
-                              {combo.description}
-                            </Text>
+                            <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8, gap: 4 }}>
+                              {!showEnglish && (
+                                <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: colors.mutedForeground, opacity: 0.6 }}>
+                                  Schritte (Englisch von Commander Spellbook):
+                                </Text>
+                              )}
+                              <Text style={[styles.comboDesc, { color: colors.mutedForeground, borderTopWidth: 0 }]}>
+                                {combo.description}
+                              </Text>
+                            </View>
                           )}
                           <View style={styles.comboExpander}>
                             <Ionicons
