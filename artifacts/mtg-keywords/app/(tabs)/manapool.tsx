@@ -330,7 +330,7 @@ export default function ManapoolScreen() {
                       {/* Thumbnail */}
                       <TouchableOpacity
                         style={styles.cardThumbWrap}
-                        onPress={() => router.push({ pathname: "/(tabs)/", params: { q: c.name } })}>
+                        onPress={() => router.push({ pathname: "/(tabs)/scan", params: { q: c.name } })}>
                         {c.imageUri ? (
                           <Image source={{ uri: c.imageUri }} style={styles.cardThumb} resizeMode="cover" />
                         ) : (
@@ -341,7 +341,7 @@ export default function ManapoolScreen() {
                       </TouchableOpacity>
                       {/* Name + Meta */}
                       <TouchableOpacity style={styles.cardRowLeft}
-                        onPress={() => router.push({ pathname: "/(tabs)/", params: { q: c.name } })}>
+                        onPress={() => router.push({ pathname: "/(tabs)/scan", params: { q: c.name } })}>
                         <Text style={[styles.cardRowName, { color: colors.foreground }]} numberOfLines={1}>
                           {c.printed_name ?? c.name}
                         </Text>
