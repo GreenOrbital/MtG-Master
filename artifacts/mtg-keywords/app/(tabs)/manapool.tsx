@@ -22,9 +22,13 @@ import { useColors } from "@/hooks/useColors";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const COLOR_HEX: Record<string, string> = { W: "#f5f0dc", U: "#0e68ab", B: "#2c2c2c", R: "#d3202a", G: "#00733e" };
-const COLOR_TEXT: Record<string, string> = { W: "#1a1a1a", U: "#fff", B: "#e0e0e0", R: "#fff", G: "#fff" };
+const COLOR_HEX: Record<string, string> = { W: "#f5f0dc", U: "#0e68ab", B: "#2c2c2c", R: "#d3202a", G: "#00733e", C: "#888888" };
+const COLOR_TEXT: Record<string, string> = { W: "#1a1a1a", U: "#fff", B: "#e0e0e0", R: "#fff", G: "#fff", C: "#fff" };
 const COLORS = ["W", "U", "B", "R", "G"] as const;
+
+function hasColorlessMana(manaCost: string): boolean {
+  return /\{C\}/i.test(manaCost);
+}
 
 type ManaCounts = { W: number; U: number; B: number; R: number; G: number; generic: number; cmc: number };
 
@@ -395,6 +399,11 @@ export default function ManapoolScreen() {
                                   <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT[cl] }]}>{cl}</Text>
                                 </View>
                               ))}
+                              {cols.length === 0 && c.mana_cost && hasColorlessMana(c.mana_cost) && (
+                                <View style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX["C"] }]}>
+                                  <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT["C"] }]}>C</Text>
+                                </View>
+                              )}
                             </>
                           )}
                         </View>

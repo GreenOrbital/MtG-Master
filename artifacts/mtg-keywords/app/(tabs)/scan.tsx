@@ -374,6 +374,34 @@ async function translateTextFree(text: string): Promise<string> {
 
 type BoosterPrint = { setName: string; setCode: string; setType: string; releasedAt: string };
 
+type CardPrint = {
+  id: string;
+  name: string;
+  printed_name?: string;
+  set_name?: string;
+  set?: string;
+  released_at?: string;
+  image_uris?: { normal?: string; small?: string };
+  card_faces?: Array<{ image_uris?: { normal?: string; small?: string } }>;
+  mana_cost?: string;
+  cmc?: number;
+  type_line?: string;
+  produced_mana?: string[];
+};
+
+async function fetchAllPrints(cardName: string): Promise<CardPrint[]> {
+  try {
+    const q = `!"${cardName}"`;
+    const res = await fetch(
+      `https://api.scryfall.com/cards/search?q=${encodeURIComponent(q)}&unique=prints&order=released&dir=desc`,
+      { headers: HEADERS }
+    );
+    if (!res.ok) return [];
+    const data = (await res.json()) as { data: CardPrint[] };
+    return Array.isArray(data.data) ? data.data : [];
+  } catch { return []; }
+}
+
 async function fetchBoosterPacks(cardName: string): Promise<BoosterPrint[]> {
   try {
     const q = `!"${cardName}" booster:true`;
@@ -439,6 +467,9 @@ export default function CardSearchScreen() {
   const [translatingId, setTranslatingId] = useState<string | null>(null);
   const [boosterPacks, setBoosterPacks] = useState<BoosterPrint[]>([]);
   const [loadingBooster, setLoadingBooster] = useState(false);
+  const [prints, setPrints] = useState<CardPrint[]>([]);
+  const [loadingPrints, setLoadingPrints] = useState(false);
+  const [selectedPrint, setSelectedPrint] = useState<CardPrint | null>(null);
 
   async function expandCombo(comboId: string, description: string) {
     const isOpening = expandedComboId !== comboId;
@@ -490,6 +521,7 @@ export default function CardSearchScreen() {
   function applyCard(data: CardData) {
     const oracleText = data.oracle_text ?? data.card_faces?.map((f) => f.oracle_text).join(" ") ?? "";
     setCard(data);
+    setSelectedPrint(null);
     setMatchedKeywords(matchLocalKeywords(data.keywords ?? [], oracleText));
     setSimilarCards([]);
     setLoadingSimilar(true);
@@ -501,6 +533,9 @@ export default function CardSearchScreen() {
     setBoosterPacks([]);
     setLoadingBooster(true);
     fetchBoosterPacks(data.name).then((b) => { setBoosterPacks(b); setLoadingBooster(false); });
+    setPrints([]);
+    setLoadingPrints(true);
+    fetchAllPrints(data.name).then((p) => { setPrints(p); setLoadingPrints(false); });
 
     const compact: CompactCard = {
       id: data.id, name: data.name, printed_name: data.printed_name,
@@ -549,6 +584,7 @@ export default function CardSearchScreen() {
     setSimilarCards([]); setLoadingSimilar(false);
     setCombos([]); setLoadingCombos(false); setExpandedComboId(null);
     setBoosterPacks([]); setLoadingBooster(false);
+    setPrints([]); setLoadingPrints(false); setSelectedPrint(null);
   }
 
   async function recognizeCard() {
@@ -835,6 +871,48 @@ export default function CardSearchScreen() {
                   <Text style={[styles.flavorText, { color: colors.mutedForeground }]}>„{displayFlavor}"</Text>
                 </View>
               ) : null}
+
+              {/* ── Druckvarianten ── */}
+              {(loadingPrints || prints.length > 1) && (
+                <View style={[styles.printsSection, { borderTopColor: colors.border }]}>
+                  <Text style={[styles.printsLabel, { color: colors.mutedForeground }]}>
+                    {showEnglish ? "Choose Printing" : "Druckvariante wählen"}
+                    {!loadingPrints && prints.length > 0 && ` (${prints.length})`}
+                  </Text>
+                  {loadingPrints ? (
+                    <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 6 }} />
+                  ) : (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}
+                      style={styles.printsScroll} contentContainerStyle={styles.printsRow}>
+                      {prints.map((p) => {
+                        const imgUri = p.image_uris?.normal ?? p.image_uris?.small ?? p.card_faces?.[0]?.image_uris?.normal;
+                        const isSelected = selectedPrint ? selectedPrint.id === p.id : p.id === card?.id;
+                        return (
+                          <TouchableOpacity key={p.id}
+                            style={[styles.printThumbWrap, isSelected && { borderColor: colors.primary, borderWidth: 2 }]}
+                            onPress={() => setSelectedPrint(p.id === card?.id ? null : p)}>
+                            {imgUri ? (
+                              <Image source={{ uri: imgUri }} style={styles.printThumb} resizeMode="cover" />
+                            ) : (
+                              <View style={[styles.printThumb, { backgroundColor: colors.secondary, justifyContent: "center", alignItems: "center" }]}>
+                                <Ionicons name="image-outline" size={18} color={colors.mutedForeground} />
+                              </View>
+                            )}
+                            <Text style={[styles.printSetName, { color: isSelected ? colors.primary : colors.mutedForeground }]} numberOfLines={2}>
+                              {p.set_name ?? p.set ?? ""}
+                            </Text>
+                            {isSelected && (
+                              <View style={[styles.printCheckmark, { backgroundColor: colors.primary }]}>
+                                <Ionicons name="checkmark" size={10} color="#fff" />
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  )}
+                </View>
+              )}
 
               {/* ── External links ── */}
               <View style={[styles.externalLinks, { borderTopColor: colors.border }]}>
@@ -1254,15 +1332,16 @@ export default function CardSearchScreen() {
                       style={[styles.confirmBtn, { backgroundColor: colors.primary }]}
                       onPress={() => {
                         if (!card || !pickedDeckId) return;
+                        const src = selectedPrint ?? card;
                         addCardToDeck(pickedDeckId, {
-                          id: card.id,
+                          id: src.id,
                           name: card.name,
-                          printed_name: card.printed_name,
+                          printed_name: card.printed_name ?? (selectedPrint as CardPrint | null)?.printed_name,
                           mana_cost: card.mana_cost,
                           cmc: card.cmc,
                           type_line: card.type_line,
                           produced_mana: card.produced_mana,
-                          imageUri: card.image_uris?.normal ?? card.card_faces?.[0]?.image_uris?.normal,
+                          imageUri: (src as CardData | CardPrint).image_uris?.normal ?? (src as CardData | CardPrint).card_faces?.[0]?.image_uris?.normal,
                         }, addCount);
                         const deckName = deck?.name ?? "";
                         setAddedToDeck(deckName);
@@ -1400,6 +1479,14 @@ const styles = StyleSheet.create({
   externalLinks: { borderTopWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: 8, paddingHorizontal: 14, paddingVertical: 10 },
   externalLinkBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, borderRadius: 8, borderWidth: 1, paddingVertical: 7 },
   externalLinkText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  printsSection: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 6 },
+  printsLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
+  printsScroll: { marginHorizontal: -4 },
+  printsRow: { flexDirection: "row", gap: 8, paddingHorizontal: 4 },
+  printThumbWrap: { width: 72, alignItems: "center", borderRadius: 8, borderWidth: 1.5, borderColor: "transparent", overflow: "visible", position: "relative" },
+  printThumb: { width: 68, height: 96, borderRadius: 6, overflow: "hidden" },
+  printSetName: { fontSize: 9, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 4, lineHeight: 12 },
+  printCheckmark: { position: "absolute", top: -5, right: -5, width: 18, height: 18, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   formatBox: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10 },
   formatHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   legalityGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
