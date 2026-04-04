@@ -53,6 +53,9 @@ type CardData = {
   }>;
   legalities?: Record<string, string>;
   produced_mana?: string[];
+  scryfall_uri?: string;
+  prices?: { eur?: string | null; eur_foil?: string | null; usd?: string | null };
+  edhrec_rank?: number;
 };
 
 type Suggestion = {
@@ -376,7 +379,8 @@ export default function CardSearchScreen() {
   const displayOracle    = card?.printed_text ?? card?.card_faces?.map((f) => f.printed_text ?? f.oracle_text).join("\n—\n") ?? card?.oracle_text ?? "";
   const displayFlavor    = card?.flavor_text ?? card?.card_faces?.find((f) => f.flavor_text)?.flavor_text;
   const cardImageUri     = card?.image_uris?.normal ?? card?.card_faces?.[0]?.image_uris?.normal;
-  const scryfallUrl      = card ? `https://scryfall.com/search?q=!${encodeURIComponent(card.name)}` : "";
+  const scryfallUrl      = card?.scryfall_uri ?? (card ? `https://scryfall.com/search?q=${encodeURIComponent(card.name)}` : "");
+  const eurPrice         = card?.prices?.eur ? `€ ${parseFloat(card.prices.eur).toFixed(2)}` : null;
   const showEmpty        = !card && !loadingCard && !errorMsg && query.length === 0;
   const cardColors       = card?.colors ?? [];
   const rarity           = card?.rarity ? (RARITY_LABEL[card.rarity] ?? null) : null;
@@ -520,6 +524,11 @@ export default function CardSearchScreen() {
                     {card.set_name ? (
                       <View style={[styles.metaBadge, { backgroundColor: colors.secondary }]}>
                         <Text style={[styles.metaBadgeText, { color: colors.secondaryForeground }]}>{card.set_name}</Text>
+                      </View>
+                    ) : null}
+                    {eurPrice ? (
+                      <View style={[styles.metaBadge, { backgroundColor: "#16a34a22", borderColor: "#16a34a", borderWidth: 1 }]}>
+                        <Text style={[styles.metaBadgeText, { color: "#16a34a" }]}>{eurPrice}</Text>
                       </View>
                     ) : null}
                   </View>
@@ -719,6 +728,11 @@ export default function CardSearchScreen() {
                             </View>
                           )}
                           <Text style={[styles.similarName, { color: colors.foreground }]} numberOfLines={2}>{displayN}</Text>
+                          {sc.prices?.eur ? (
+                            <Text style={[styles.similarPrice, { color: "#16a34a" }]}>
+                              {`€ ${parseFloat(sc.prices.eur).toFixed(2)}`}
+                            </Text>
+                          ) : null}
                         </TouchableOpacity>
                       );
                     })}
@@ -1000,6 +1014,7 @@ const styles = StyleSheet.create({
   similarImage: { width: 82, height: 114, borderRadius: 6 },
   similarImagePlaceholder: { width: 82, height: 114, borderRadius: 6, alignItems: "center", justifyContent: "center" },
   similarName: { fontSize: 10, fontFamily: "Inter_500Medium", textAlign: "center", lineHeight: 13 },
+  similarPrice: { fontSize: 10, fontFamily: "Inter_600SemiBold", textAlign: "center" },
   emptyContent: { gap: 20 },
   historySection: { gap: 10 },
   historySectionRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
