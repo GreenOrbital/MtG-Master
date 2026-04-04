@@ -19,7 +19,7 @@ run = "pnpm --filter @workspace/mtg-keywords run dev"
 
 [services.production]
 serve = "static"
-publicDir = "dist"
+publicDir = "artifacts/mtg-keywords/dist"
 
 [services.production.build]
 args = ["pnpm", "--filter", "@workspace/mtg-keywords", "run", "build:web"]
