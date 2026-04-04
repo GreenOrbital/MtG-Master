@@ -135,7 +135,7 @@ function getApiBase(): string {
   return domain ? `https://${domain}` : "";
 }
 
-const HEADERS = { "User-Agent": "MtGKeywordsApp/1.0" };
+const HEADERS = Platform.OS === "web" ? {} : { "User-Agent": "MtGKeywordsApp/1.0" };
 
 async function fetchAutocompleteSuggestions(query: string): Promise<Suggestion[]> {
   try {

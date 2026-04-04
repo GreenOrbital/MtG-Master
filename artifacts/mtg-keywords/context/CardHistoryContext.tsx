@@ -19,6 +19,7 @@ type CardHistoryContextType = {
   toggleFavorite: (card: CompactCard) => void;
   isFavorite: (cardId: string) => boolean;
   clearRecent: () => void;
+  loadCloudData: (history: CompactCard[], favorites: CompactCard[]) => void;
 };
 
 const CardHistoryContext = createContext<CardHistoryContextType | null>(null);
@@ -68,9 +69,16 @@ export function CardHistoryProvider({ children }: { children: React.ReactNode })
     AsyncStorage.removeItem(RECENT_KEY);
   }, []);
 
+  const loadCloudData = useCallback((history: CompactCard[], favs: CompactCard[]) => {
+    setRecentCards(history);
+    setFavorites(favs);
+    AsyncStorage.setItem(RECENT_KEY, JSON.stringify(history));
+    AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
+  }, []);
+
   return (
     <CardHistoryContext.Provider
-      value={{ recentCards, favorites, addToRecent, toggleFavorite, isFavorite, clearRecent }}
+      value={{ recentCards, favorites, addToRecent, toggleFavorite, isFavorite, clearRecent, loadCloudData }}
     >
       {children}
     </CardHistoryContext.Provider>

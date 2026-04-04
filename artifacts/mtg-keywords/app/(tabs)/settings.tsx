@@ -1,6 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "@clerk/expo";
+import { useRouter } from "expo-router";
 import React from "react";
 import {
+  ActivityIndicator,
   Linking,
   Platform,
   ScrollView,
@@ -12,6 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useAccount } from "@/context/AccountContext";
 import { useSettings } from "@/context/SettingsContext";
 import { MTG_KEYWORDS } from "@/data/keywords";
 import { useColors } from "@/hooks/useColors";
@@ -42,18 +46,28 @@ function SettingRow({
 function AboutSection({ showEnglish, colors }: { showEnglish: boolean; colors: ReturnType<typeof useColors> }) {
   const features = showEnglish
     ? [
-        { icon: "search-outline" as const, title: "Card Search", text: "Search by German or English card name — complete card view with image, type, rarity, mana cost and format legality." },
-        { icon: "camera-outline" as const, title: "Photo Recognition", text: "Point the camera at any physical MtG card and the app automatically recognizes it using AI. Best results with good lighting and a clearly readable card name." },
-        { icon: "book-outline" as const, title: "95 Keywords", text: "All important keywords explained — from classics like Flying and Trample to newer ones like Freerunning or Spree. Always available offline." },
-        { icon: "heart-outline" as const, title: "Favorites & History", text: "Save favorite cards for quick access. Recently searched cards are always remembered automatically." },
-        { icon: "layers-outline" as const, title: "Deck Builder", text: "Create your own decks, add cards and see the mana pool analysis at a glance." },
+        { icon: "search-outline" as const, title: "Card Search (DE + EN)", text: "Search by German or English card name — full card view with image, type, rarity, mana cost and format legality (Standard, Pioneer, Modern, Legacy, Commander)." },
+        { icon: "camera-outline" as const, title: "Photo Recognition (AI)", text: "Point the camera at any physical MtG card and the app automatically identifies it using GPT-4o. Best results with good lighting and a clearly readable card name." },
+        { icon: "book-outline" as const, title: "95 Keywords Offline", text: "All important keywords explained — from classics like Flying and Trample to newer ones like Freerunning or Spree. Always available offline, no internet needed." },
+        { icon: "heart-outline" as const, title: "Favorites & History", text: "Save favorite cards for quick access. Recently searched cards are automatically remembered — accessible without re-searching." },
+        { icon: "layers-outline" as const, title: "Deck Builder", text: "Create your own decks, add cards and view the mana analysis: average CMC, color distribution, recommended land sources and mana curve." },
+        { icon: "git-merge-outline" as const, title: "Commander Combos", text: "Shows known combo interactions for each card via Commander Spellbook — great for finding synergies in Commander decks." },
+        { icon: "albums-outline" as const, title: "Similar Cards (EDHREC)", text: "Displays cards with similar abilities or synergies based on EDHREC data — helpful for deckbuilding and finding replacements." },
+        { icon: "gift-outline" as const, title: "Booster Pack Availability", text: "Shows which booster sets each card appears in — useful when you want to open packs to collect specific cards." },
+        { icon: "cart-outline" as const, title: "Cardmarket Link", text: "Direct link to the card on Cardmarket for quick price comparison and purchase." },
+        { icon: "desktop-outline" as const, title: "PC / Desktop Support", text: "The app is fully usable in the PC browser too — with a sidebar navigation instead of bottom tabs." },
       ]
     : [
-        { icon: "search-outline" as const, title: "Kartensuche", text: "Suche mit deutschem oder englischem Kartennamen — vollständige Kartenansicht mit Bild, Typ, Seltenheit, Manakosten und Formatlegality." },
-        { icon: "camera-outline" as const, title: "Foto-Erkennung", text: "Halte die Kamera auf eine physische MtG-Karte und die App erkennt sie automatisch per KI. Am besten bei guter Beleuchtung und klar lesbarem Kartenname." },
-        { icon: "book-outline" as const, title: "95 Schlüsselwörter", text: "Alle wichtigen Keywords erklärt — von Klassikern wie Fliegen und Trampeln bis zu neueren wie Freies Laufen oder Streunen. Immer offline verfügbar." },
-        { icon: "heart-outline" as const, title: "Favoriten & Verlauf", text: "Lieblingskarten speichern für schnellen Zugriff. Zuletzt gesuchte Karten werden immer automatisch gemerkt." },
-        { icon: "layers-outline" as const, title: "Deck-Builder", text: "Eigene Decks erstellen, Karten hinzufügen und den Manapool auf einen Blick analysieren." },
+        { icon: "search-outline" as const, title: "Kartensuche (DE + EN)", text: "Suche mit deutschem oder englischem Kartennamen — vollständige Kartenansicht mit Bild, Typ, Seltenheit, Manakosten und Formatlegality (Standard, Pioneer, Modern, Legacy, Commander)." },
+        { icon: "camera-outline" as const, title: "Foto-Erkennung (KI)", text: "Halte die Kamera auf eine physische MtG-Karte und die App erkennt sie automatisch per GPT-4o. Am besten bei guter Beleuchtung und klar lesbarem Kartenname." },
+        { icon: "book-outline" as const, title: "95 Schlüsselwörter Offline", text: "Alle wichtigen Keywords erklärt — von Klassikern wie Fliegen und Trampeln bis zu neueren wie Freies Laufen oder Streunen. Jederzeit offline verfügbar." },
+        { icon: "heart-outline" as const, title: "Favoriten & Verlauf", text: "Lieblingskarten speichern für schnellen Zugriff. Zuletzt gesuchte Karten werden automatisch gemerkt — kein erneutes Suchen nötig." },
+        { icon: "layers-outline" as const, title: "Deck-Builder", text: "Eigene Decks erstellen, Karten hinzufügen und die Mana-Analyse einsehen: Ø Manakosten, Farbverteilung, empfohlene Mana-Quellen und Manakurve." },
+        { icon: "git-merge-outline" as const, title: "Commander-Kombos", text: "Zeigt bekannte Kombo-Interaktionen für jede Karte via Commander Spellbook — ideal zum Finden von Synergien im Commander-Format." },
+        { icon: "albums-outline" as const, title: "Ähnliche Karten (EDHREC)", text: "Zeigt Karten mit ähnlichen Fähigkeiten oder Synergien basierend auf EDHREC-Daten — hilfreich beim Deck-Bau und für Ersatzoptionen." },
+        { icon: "gift-outline" as const, title: "Booster-Pack-Verfügbarkeit", text: "Zeigt, in welchen Booster-Sets eine Karte enthalten ist — nützlich, wenn du gezielt Packs öffnen möchtest." },
+        { icon: "cart-outline" as const, title: "Cardmarket-Link", text: "Direkter Link zur Karte auf Cardmarket für schnellen Preisvergleich und Kauf." },
+        { icon: "desktop-outline" as const, title: "PC / Desktop-Unterstützung", text: "Die App ist auch vollständig im PC-Browser nutzbar — mit Seitenleiste statt Bottom-Navigation." },
       ];
 
   const tips = showEnglish
@@ -63,6 +77,7 @@ function AboutSection({ showEnglish, colors }: { showEnglish: boolean; colors: R
         "Card search and photo recognition require an internet connection.",
         "All keywords are available offline at any time.",
         "The app supports both German and English card names in the search.",
+        "Combo and similar card data come from external sources and may not always be complete or up to date.",
       ]
     : [
         "Die Foto-Erkennung braucht gute Beleuchtung — der Kartenname oben muss klar lesbar sein.",
@@ -70,6 +85,7 @@ function AboutSection({ showEnglish, colors }: { showEnglish: boolean; colors: R
         "Kartensuche und Foto-Erkennung benötigen eine Internetverbindung.",
         "Alle Schlüsselwörter sind jederzeit offline verfügbar.",
         "Die App unterstützt bei der Suche sowohl deutsche als auch englische Kartennamen.",
+        "Kombo- und ähnliche Kartendaten stammen von externen Quellen und sind möglicherweise nicht vollständig oder aktuell.",
       ];
 
   const introText = showEnglish
@@ -78,6 +94,10 @@ function AboutSection({ showEnglish, colors }: { showEnglish: boolean; colors: R
 
   const featuresTitle = showEnglish ? "What the app can do" : "Was die App kann";
   const tipsTitle = showEnglish ? "What to keep in mind" : "Worauf du achten solltest";
+  const disclaimerTitle = showEnglish ? "Disclaimer" : "Hinweis";
+  const disclaimerText = showEnglish
+    ? "All information in this app is provided without guarantee. Card data, prices, combo entries, format legalities and availability may be incorrect or outdated. The app is an independent fan project and is not affiliated with Wizards of the Coast."
+    : "Alle Angaben in dieser App sind ohne Gewähr. Kartendaten, Preise, Kombo-Einträge, Formatlegality und Verfügbarkeiten können fehlerhaft oder veraltet sein. Die App ist ein unabhängiges Fan-Projekt und steht in keiner Verbindung zu Wizards of the Coast.";
 
   return (
     <View style={styles.aboutContainer}>
@@ -107,6 +127,14 @@ function AboutSection({ showEnglish, colors }: { showEnglish: boolean; colors: R
           <Text style={[styles.tipText, { color: colors.mutedForeground }]}>{tip}</Text>
         </View>
       ))}
+
+      <View style={[styles.disclaimerBox, { backgroundColor: colors.muted + "40", borderColor: colors.border }]}>
+        <Ionicons name="information-circle-outline" size={16} color={colors.mutedForeground} style={{ marginRight: 6, marginTop: 1 }} />
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.disclaimerTitle, { color: colors.mutedForeground }]}>{disclaimerTitle}</Text>
+          <Text style={[styles.disclaimerText, { color: colors.mutedForeground }]}>{disclaimerText}</Text>
+        </View>
+      </View>
     </View>
   );
 }
@@ -115,6 +143,9 @@ export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { showEnglish, setShowEnglish } = useSettings();
+  const { isSignedIn, userEmail, isSyncing, lastSyncedAt, syncError, syncToCloud, loadFromCloud } = useAccount();
+  const { signOut } = useAuth();
+  const router = useRouter();
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 84 + 34 : insets.bottom + 84;
@@ -122,6 +153,11 @@ export default function SettingsScreen() {
   const abilityCount = MTG_KEYWORDS.filter((k) => k.category === "keyword_ability").length;
   const actionCount = MTG_KEYWORDS.filter((k) => k.category === "keyword_action").length;
   const wordCount = MTG_KEYWORDS.filter((k) => k.category === "ability_word").length;
+
+  function formatSyncTime(date: Date | null): string {
+    if (!date) return "";
+    return date.toLocaleTimeString(showEnglish ? "en-US" : "de-DE", { hour: "2-digit", minute: "2-digit" });
+  }
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -136,6 +172,84 @@ export default function SettingsScreen() {
         contentContainerStyle={{ paddingBottom: bottomPad }}
         showsVerticalScrollIndicator={false}
       >
+        {/* ── Konto-Sektion ── */}
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
+            {showEnglish ? "ACCOUNT" : "KONTO"}
+          </Text>
+          {isSignedIn ? (
+            <>
+              <SettingRow
+                label={showEnglish ? "Signed in as" : "Angemeldet als"}
+                subtitle={userEmail ?? ""}
+                right={<Ionicons name="checkmark-circle" size={20} color="#22c55e" />}
+              />
+              <SettingRow
+                label={showEnglish ? "Last Sync" : "Letzter Sync"}
+                subtitle={
+                  syncError
+                    ? syncError
+                    : lastSyncedAt
+                    ? formatSyncTime(lastSyncedAt)
+                    : showEnglish ? "Not yet synced" : "Noch nicht synchronisiert"
+                }
+                right={
+                  isSyncing ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <TouchableOpacity onPress={syncToCloud} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Ionicons name="cloud-upload-outline" size={18} color={colors.primary} />
+                    </TouchableOpacity>
+                  )
+                }
+              />
+              <SettingRow
+                label={showEnglish ? "Load from Cloud" : "Aus Cloud laden"}
+                subtitle={showEnglish ? "Overwrite local data with cloud data" : "Lokale Daten mit Cloud-Daten überschreiben"}
+                right={
+                  <TouchableOpacity onPress={loadFromCloud} disabled={isSyncing}>
+                    <Ionicons name="cloud-download-outline" size={18} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                }
+              />
+              <View style={[styles.row, { borderBottomColor: colors.border }]}>
+                <TouchableOpacity
+                  style={[styles.signOutBtn, { borderColor: "#ef444440" }]}
+                  onPress={() => signOut()}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="log-out-outline" size={16} color="#ef4444" />
+                  <Text style={[styles.signOutText, { color: "#ef4444" }]}>
+                    {showEnglish ? "Sign Out" : "Abmelden"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            <View style={[styles.row, { borderBottomColor: colors.border }]}>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={[styles.rowLabel, { color: colors.foreground }]}>
+                  {showEnglish ? "Sync across devices" : "Geräteübergreifend synchronisieren"}
+                </Text>
+                <Text style={[styles.rowSub, { color: colors.mutedForeground }]}>
+                  {showEnglish
+                    ? "Sign in to access your decks and favorites everywhere"
+                    : "Anmelden, um überall auf Decks und Favoriten zuzugreifen"}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.signInBtn, { backgroundColor: colors.primary }]}
+                onPress={() => router.push("/(auth)/sign-in")}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.signInBtnText}>
+                  {showEnglish ? "Sign In" : "Anmelden"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
             {showEnglish ? "LANGUAGE" : "SPRACHE"}
@@ -325,5 +439,50 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     lineHeight: 19,
+  },
+  disclaimerBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginTop: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 12,
+    gap: 6,
+  },
+  disclaimerTitle: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    marginBottom: 3,
+    letterSpacing: 0.3,
+  },
+  disclaimerText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 18,
+  },
+  signInBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 10,
+    flexShrink: 0,
+  },
+  signInBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
+  },
+  signOutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignSelf: "flex-start",
+  },
+  signOutText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
   },
 });

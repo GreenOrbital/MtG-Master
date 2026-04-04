@@ -6,6 +6,7 @@ import cardSynergiesRouter from "./card-synergies";
 import deckAnalysisRouter from "./deck-analysis";
 import recognizeCardRouter from "./recognize-card";
 import cardCombosRouter from "./card-combos";
+import userDataRouter from "./user-data";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(cardSynergiesRouter);
 router.use(deckAnalysisRouter);
 router.use(recognizeCardRouter);
 router.use(cardCombosRouter);
+router.use(userDataRouter);
 
 export default router;

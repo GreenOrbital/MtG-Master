@@ -32,6 +32,7 @@ type DeckContextType = {
   addCardToDeck: (deckId: string, card: Omit<DeckCard, "count">, count?: number) => void;
   removeCardFromDeck: (deckId: string, cardId: string) => void;
   adjustCardCount: (deckId: string, cardId: string, delta: number) => void;
+  loadCloudDecks: (decks: Deck[]) => void;
 };
 
 // ─── Context ─────────────────────────────────────────────────────────────────
@@ -55,6 +56,7 @@ const DeckContext = createContext<DeckContextType>({
   addCardToDeck: () => {},
   removeCardFromDeck: () => {},
   adjustCardCount: () => {},
+  loadCloudDecks: () => {},
 });
 
 // ─── Provider ────────────────────────────────────────────────────────────────
@@ -125,8 +127,13 @@ export function DeckProvider({ children }: { children: React.ReactNode }) {
     }));
   }
 
+  function loadCloudDecks(cloudDecks: Deck[]) {
+    setDecks(cloudDecks);
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(cloudDecks));
+  }
+
   return (
-    <DeckContext.Provider value={{ decks, createDeck, updateDeck, deleteDeck, addCardToDeck, removeCardFromDeck, adjustCardCount }}>
+    <DeckContext.Provider value={{ decks, createDeck, updateDeck, deleteDeck, addCardToDeck, removeCardFromDeck, adjustCardCount, loadCloudDecks }}>
       {children}
     </DeckContext.Provider>
   );
