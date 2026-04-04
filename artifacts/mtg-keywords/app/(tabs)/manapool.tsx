@@ -396,7 +396,16 @@ export default function ManapoolScreen() {
                             </>
                           ) : (
                             <>
-                              {c.mana_cost ? <Text style={[styles.cardRowMana, { color: colors.mutedForeground }]}>{c.mana_cost}</Text> : null}
+                              {mana && mana.generic > 0 && (
+                                <View style={styles.genericBadge}>
+                                  <Text style={styles.genericBadgeText}>{mana.generic}</Text>
+                                </View>
+                              )}
+                              {c.mana_cost && /\{X\}/i.test(c.mana_cost) && (
+                                <View style={styles.genericBadge}>
+                                  <Text style={styles.genericBadgeText}>X</Text>
+                                </View>
+                              )}
                               {cols.map((cl) => (
                                 <View key={cl} style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX[cl] }]}>
                                   <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT[cl] }]}>{cl}</Text>
@@ -406,6 +415,9 @@ export default function ManapoolScreen() {
                                 <View style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX["C"] }]}>
                                   <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT["C"] }]}>C</Text>
                                 </View>
+                              )}
+                              {!mana && !c.mana_cost && (
+                                <Text style={[styles.cardRowMana, { color: colors.mutedForeground }]}>—</Text>
                               )}
                             </>
                           )}
@@ -746,6 +758,8 @@ const styles = StyleSheet.create({
   cardRowMana: { fontSize: 11, fontFamily: "Inter_400Regular" },
   colorDotTiny: { width: 17, height: 17, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   colorDotTinyText: { fontSize: 8, fontFamily: "Inter_700Bold" },
+  genericBadge: { width: 17, height: 17, borderRadius: 9, alignItems: "center", justifyContent: "center", backgroundColor: "#9e9e9e" },
+  genericBadgeText: { fontSize: 8, fontFamily: "Inter_700Bold", color: "#1a1a1a" },
   analysisBox: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10 },
   analysisRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   analysisLabel: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
