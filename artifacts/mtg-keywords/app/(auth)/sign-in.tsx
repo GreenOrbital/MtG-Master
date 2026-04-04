@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { isClerkAPIResponseError, useSignIn } from "@clerk/expo";
-import { Link, useRouter } from "expo-router";
+import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -23,8 +23,9 @@ export default function SignInScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { showEnglish } = useSettings();
+  const { email: emailParam } = useLocalSearchParams<{ email?: string }>();
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(emailParam ?? "");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -182,11 +183,16 @@ export default function SignInScreen() {
                     : "Authentifizierung konnte in dieser Vorschau nicht laden. Bitte die App direkt im Browser öffnen:"}
                 </Text>
                 <TouchableOpacity
-                  onPress={() => { if (typeof window !== "undefined") window.open(window.location.origin, "_blank"); }}
+                  onPress={() => {
+                    if (typeof window !== "undefined") {
+                      const emailParam = email ? `?email=${encodeURIComponent(email)}` : "";
+                      window.open(`${window.location.origin}/(auth)/sign-in${emailParam}`, "_blank");
+                    }
+                  }}
                   style={[styles.primaryBtn, { backgroundColor: colors.primary, marginTop: 8 }]}
                 >
                   <Text style={styles.primaryBtnText}>
-                    {showEnglish ? "Open in new tab ↗" : "Im Browser öffnen ↗"}
+                    {showEnglish ? "Sign in in new tab ↗" : "Im Browser anmelden ↗"}
                   </Text>
                 </TouchableOpacity>
               </View>
