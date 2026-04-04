@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import { useRouter } from "expo-router";
+import React, { useMemo, useState } from "react";
 import {
   Alert,
+  Image,
   Modal,
   Platform,
   ScrollView,
@@ -97,14 +99,24 @@ export default function ManapoolScreen() {
   const { showEnglish, setShowEnglish } = useSettings();
   const { decks, createDeck, updateDeck, deleteDeck, removeCardFromDeck, adjustCardCount } = useDecks();
 
+  const router = useRouter();
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [showNewDeckModal, setShowNewDeckModal] = useState(false);
   const [newDeckName, setNewDeckName] = useState("");
+  const [cardFilter, setCardFilter] = useState<string>("all");
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 84 + 34 : insets.bottom + 84;
 
   const activeDeck = decks.find((d) => d.id === activeDeckId) ?? null;
+
+  const filteredCards = useMemo(() => {
+    if (!activeDeck) return [];
+    if (cardFilter === "all") return activeDeck.cards;
+    return activeDeck.cards.filter((c) =>
+      (c.type_line ?? "").toLowerCase().includes(cardFilter)
+    );
+  }, [activeDeck, cardFilter]);
 
   function openDeck(deck: Deck) {
     setActiveDeckId(deck.id);
@@ -244,11 +256,51 @@ export default function ManapoolScreen() {
             </View>
 
             {/* ── Karten ── */}
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              {showEnglish
-                ? `Cards (${activeDeck.cards.reduce((a,c)=>a+c.count,0)})`
-                : `Karten (${activeDeck.cards.reduce((a,c)=>a+c.count,0)})`}
-            </Text>
+            <View style={styles.cardListHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                {showEnglish
+                  ? `Cards (${activeDeck.cards.reduce((a,c)=>a+c.count,0)})`
+                  : `Karten (${activeDeck.cards.reduce((a,c)=>a+c.count,0)})`}
+              </Text>
+            </View>
+
+            {/* ── Filter-Leiste ── */}
+            {activeDeck.cards.length > 0 && (() => {
+              const filters: { key: string; de: string; en: string }[] = [
+                { key: "all",         de: "Alle",           en: "All" },
+                { key: "creature",    de: "Kreaturen",      en: "Creatures" },
+                { key: "instant",     de: "Spontan",        en: "Instants" },
+                { key: "sorcery",     de: "Hexerei",        en: "Sorceries" },
+                { key: "enchantment", de: "Verzauberung",   en: "Enchant." },
+                { key: "artifact",    de: "Artefakt",       en: "Artifacts" },
+                { key: "planeswalker",de: "Planeswalker",   en: "PW" },
+                { key: "land",        de: "Länder",         en: "Lands" },
+              ];
+              return (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}
+                  contentContainerStyle={styles.filterRow}>
+                  {filters.map((f) => {
+                    const cnt = f.key === "all"
+                      ? activeDeck.cards.reduce((a,c)=>a+c.count,0)
+                      : activeDeck.cards.filter(c=>(c.type_line??"").toLowerCase().includes(f.key)).reduce((a,c)=>a+c.count,0);
+                    if (f.key !== "all" && cnt === 0) return null;
+                    const active = cardFilter === f.key;
+                    return (
+                      <TouchableOpacity key={f.key}
+                        style={[styles.filterBtn,
+                          active ? { backgroundColor: colors.primary, borderColor: colors.primary }
+                                 : { backgroundColor: colors.card, borderColor: colors.border }]}
+                        onPress={() => setCardFilter(f.key)}>
+                        <Text style={[styles.filterBtnText, { color: active ? "#fff" : colors.mutedForeground }]}>
+                          {showEnglish ? f.en : f.de}
+                        </Text>
+                        <Text style={[styles.filterBtnCount, { color: active ? "#ffffffaa" : colors.primary }]}>{cnt}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              );
+            })()}
 
             {activeDeck.cards.length === 0 ? (
               <View style={[styles.emptyCards, { borderColor: colors.border }]}>
@@ -261,24 +313,42 @@ export default function ManapoolScreen() {
               </View>
             ) : (
               <View style={[styles.cardList, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                {activeDeck.cards.map((c, i) => {
+                {filteredCards.length === 0 ? (
+                  <View style={styles.filterEmpty}>
+                    <Text style={[styles.filterEmptyText, { color: colors.mutedForeground }]}>
+                      {showEnglish ? "No cards in this category" : "Keine Karten in dieser Kategorie"}
+                    </Text>
+                  </View>
+                ) : filteredCards.map((c, i) => {
                   const land = isLand(c);
                   const mana = c.mana_cost ? parseMana(c.mana_cost) : null;
                   const cols = mana ? COLORS.filter((k) => mana[k] > 0) : [];
                   const lCols = land ? landColors(c) : [];
                   return (
                     <View key={c.id} style={[styles.cardRow,
-                      i < activeDeck.cards.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth }]}>
-                      <View style={styles.cardRowLeft}>
+                      i < filteredCards.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth }]}>
+                      {/* Thumbnail */}
+                      <TouchableOpacity
+                        style={styles.cardThumbWrap}
+                        onPress={() => router.push({ pathname: "/(tabs)/", params: { q: c.name } })}>
+                        {c.imageUri ? (
+                          <Image source={{ uri: c.imageUri }} style={styles.cardThumb} resizeMode="cover" />
+                        ) : (
+                          <View style={[styles.cardThumbPlaceholder, { backgroundColor: colors.secondary }]}>
+                            <Ionicons name="card-outline" size={14} color={colors.mutedForeground} />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                      {/* Name + Meta */}
+                      <TouchableOpacity style={styles.cardRowLeft}
+                        onPress={() => router.push({ pathname: "/(tabs)/", params: { q: c.name } })}>
                         <Text style={[styles.cardRowName, { color: colors.foreground }]} numberOfLines={1}>
                           {c.printed_name ?? c.name}
                         </Text>
                         <View style={styles.cardRowMeta}>
                           {land ? (
                             <>
-                              <Text style={[styles.cardRowMana, { color: colors.mutedForeground }]}>
-                                {showEnglish ? "Land" : "Land"}
-                              </Text>
+                              <Text style={[styles.cardRowMana, { color: colors.mutedForeground }]}>Land</Text>
                               {lCols.map((cl) => (
                                 <View key={cl} style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX[cl] }]}>
                                   <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT[cl] }]}>{cl}</Text>
@@ -296,7 +366,8 @@ export default function ManapoolScreen() {
                             </>
                           )}
                         </View>
-                      </View>
+                      </TouchableOpacity>
+                      {/* Stepper */}
                       <View style={styles.stepper}>
                         <TouchableOpacity style={[styles.stepBtnSm, { backgroundColor: colors.secondary, borderColor: colors.border }]}
                           onPress={() => adjustCardCount(activeDeck.id, c.id, -1)}>
@@ -555,9 +626,20 @@ const styles = StyleSheet.create({
   stepValSm: { fontSize: 14, fontFamily: "Inter_600SemiBold", width: 28, textAlign: "center" },
   emptyCards: { borderRadius: 12, borderWidth: 1, borderStyle: "dashed", padding: 20, alignItems: "center", gap: 8 },
   emptyCardsText: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 18 },
+  cardListHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  filterScroll: { marginBottom: 8 },
+  filterRow: { flexDirection: "row", gap: 7, paddingVertical: 4 },
+  filterBtn: { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 20, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 6 },
+  filterBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  filterBtnCount: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  filterEmpty: { padding: 20, alignItems: "center" },
+  filterEmptyText: { fontSize: 13, fontFamily: "Inter_400Regular" },
   cardList: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
-  cardRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
+  cardRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingVertical: 8, gap: 8 },
   cardRowLeft: { flex: 1 },
+  cardThumbWrap: { borderRadius: 5, overflow: "hidden" },
+  cardThumb: { width: 34, height: 48, borderRadius: 4 },
+  cardThumbPlaceholder: { width: 34, height: 48, borderRadius: 4, alignItems: "center", justifyContent: "center" },
   cardRowName: { fontSize: 14, fontFamily: "Inter_500Medium" },
   cardRowMeta: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
   cardRowMana: { fontSize: 11, fontFamily: "Inter_400Regular" },

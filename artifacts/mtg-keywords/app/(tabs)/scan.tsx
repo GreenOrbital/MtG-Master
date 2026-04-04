@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 
 import {
@@ -277,6 +278,7 @@ export default function CardSearchScreen() {
   const { showEnglish, setShowEnglish } = useSettings();
   const { recentCards, favorites, addToRecent, toggleFavorite, isFavorite, clearRecent } = useCardHistory();
   const { decks, addCardToDeck } = useDecks();
+  const { q: incomingCard } = useLocalSearchParams<{ q?: string }>();
 
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -321,6 +323,19 @@ export default function CardSearchScreen() {
       setLoadingSuggestions(false);
     }, 300);
   }, [query]);
+
+  // Auto-search when navigated from deck view
+  useEffect(() => {
+    if (!incomingCard) return;
+    setQuery(incomingCard);
+    setSuggestions([]); setShowSuggestions(false);
+    resetCardState(); setLoadingCard(true);
+    fetchCardByName(incomingCard).then((data) => {
+      setLoadingCard(false);
+      if (data) applyCard(data);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incomingCard]);
 
   function applyCard(data: CardData) {
     const oracleText = data.oracle_text ?? data.card_faces?.map((f) => f.oracle_text).join(" ") ?? "";
@@ -1068,6 +1083,7 @@ export default function CardSearchScreen() {
                           mana_cost: card.mana_cost,
                           type_line: card.type_line,
                           produced_mana: card.produced_mana,
+                          imageUri: card.image_uris?.normal ?? card.card_faces?.[0]?.image_uris?.normal,
                         }, addCount);
                         const deckName = deck?.name ?? "";
                         setAddedToDeck(deckName);

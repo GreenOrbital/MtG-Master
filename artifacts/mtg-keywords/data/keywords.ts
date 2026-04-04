@@ -158,7 +158,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
   },
   {
     id: "flash",
-    name: "Augenblick",
+    name: "Aufblitzen",
     nameEn: "Flash",
     category: "keyword_ability",
     colors: ["blue", "green"],
