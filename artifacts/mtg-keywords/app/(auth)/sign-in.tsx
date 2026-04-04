@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { isClerkAPIResponseError, useSignIn } from "@clerk/expo";
 import { Link, useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -30,6 +30,18 @@ export default function SignInScreen() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showResend, setShowResend] = useState(false);
+  const [clerkTimedOut, setClerkTimedOut] = useState(false);
+
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (isLoaded) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      setClerkTimedOut(false);
+      return;
+    }
+    timerRef.current = setTimeout(() => setClerkTimedOut(true), 3500);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [isLoaded]);
 
   function clerkErrorToGerman(err: any): string {
     if (isClerkAPIResponseError(err)) {
@@ -55,10 +67,7 @@ export default function SignInScreen() {
   }
 
   async function handleSignIn() {
-    if (!isLoaded || !signIn) {
-      setErrorMsg("Anmeldung noch nicht bereit, bitte kurz warten.");
-      return;
-    }
+    if (!isLoaded || !signIn) return;
     setLoading(true);
     setErrorMsg(null);
     setShowResend(false);
@@ -164,20 +173,42 @@ export default function SignInScreen() {
               </View>
             )}
 
-            <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: loading || !email || !password ? 0.6 : 1 }]}
-              onPress={handleSignIn}
-              disabled={loading || !email || !password}
-              activeOpacity={0.85}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.primaryBtnText}>
-                  {showEnglish ? "Sign In" : "Anmelden"}
+            {clerkTimedOut ? (
+              <View style={[styles.timeoutBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Ionicons name="warning-outline" size={18} color="#f59e0b" />
+                <Text style={[styles.timeoutText, { color: colors.mutedForeground }]}>
+                  {showEnglish
+                    ? "Auth service couldn't load in this preview. Please open the app in a new browser tab:"
+                    : "Authentifizierung konnte in dieser Vorschau nicht laden. Bitte die App direkt im Browser öffnen:"}
                 </Text>
-              )}
-            </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => { if (typeof window !== "undefined") window.open(window.location.origin, "_blank"); }}
+                  style={[styles.primaryBtn, { backgroundColor: colors.primary, marginTop: 8 }]}
+                >
+                  <Text style={styles.primaryBtnText}>
+                    {showEnglish ? "Open in new tab ↗" : "Im Browser öffnen ↗"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: loading || !isLoaded || !email || !password ? 0.6 : 1 }]}
+                onPress={handleSignIn}
+                disabled={loading || !isLoaded || !email || !password}
+                activeOpacity={0.85}
+              >
+                {(loading || !isLoaded) ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <ActivityIndicator size="small" color="#fff" />
+                    {!isLoaded && <Text style={styles.primaryBtnText}>Wird geladen…</Text>}
+                  </View>
+                ) : (
+                  <Text style={styles.primaryBtnText}>
+                    {showEnglish ? "Sign In" : "Anmelden"}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.linkRow}>
@@ -217,4 +248,6 @@ const styles = StyleSheet.create({
   primaryBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
   linkRow: { flexDirection: "row", justifyContent: "center" },
   linkText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  timeoutBox: { borderRadius: 12, borderWidth: 1, padding: 14, gap: 8 },
+  timeoutText: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
 });
