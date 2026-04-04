@@ -1,6 +1,5 @@
 import { useAuth, useUser } from "@clerk/expo";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { Platform } from "react-native";
 import { useCardHistory } from "./CardHistoryContext";
 import { useDecks } from "./DeckContext";
 
@@ -42,9 +41,6 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   const prevSignedIn = useRef<boolean>(false);
 
   async function getAuthHeaders(): Promise<HeadersInit> {
-    if (Platform.OS === "web") {
-      return { "Content-Type": "application/json" };
-    }
     const token = await getToken();
     return {
       "Content-Type": "application/json",
