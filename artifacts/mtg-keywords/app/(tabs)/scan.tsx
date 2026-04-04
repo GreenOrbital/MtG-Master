@@ -65,6 +65,14 @@ type Suggestion = {
   prefetchedCard?: CardData;
 };
 
+type ComboData = {
+  id: string;
+  cards: Array<{ name: string; imageSmall?: string }>;
+  produces: string[];
+  description: string;
+  popularity?: number;
+};
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const COLOR_INFO: Record<string, { label: string; land: string; landEn: string; hex: string; text: string }> = {
@@ -219,6 +227,29 @@ async function fetchSimilarCards(card: CardData): Promise<CardData[]> {
   } catch { return []; }
 }
 
+async function fetchCombos(cardName: string): Promise<ComboData[]> {
+  try {
+    const q = `card:"${cardName}"`;
+    const res = await fetch(
+      `https://backend.commanderspellbook.com/variants/?q=${encodeURIComponent(q)}`,
+      { headers: HEADERS }
+    );
+    if (!res.ok) return [];
+    const data = (await res.json()) as { results: unknown[] };
+    if (!Array.isArray(data.results)) return [];
+    return data.results.slice(0, 6).map((r: any) => ({
+      id: String(r.id),
+      cards: (r.uses ?? []).map((u: any) => ({
+        name: u.card?.name ?? "",
+        imageSmall: u.card?.imageUriFrontSmall ?? undefined,
+      })),
+      produces: (r.produces ?? []).map((p: any) => p.feature?.name ?? "").filter(Boolean),
+      description: r.description ?? "",
+      popularity: r.popularity ?? undefined,
+    }));
+  } catch { return []; }
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function CardSearchScreen() {
@@ -248,6 +279,9 @@ export default function CardSearchScreen() {
   const [recognizeError, setRecognizeError] = useState("");
   const [similarCards, setSimilarCards] = useState<CardData[]>([]);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
+  const [combos, setCombos] = useState<ComboData[]>([]);
+  const [loadingCombos, setLoadingCombos] = useState(false);
+  const [expandedComboId, setExpandedComboId] = useState<string | null>(null);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -274,6 +308,10 @@ export default function CardSearchScreen() {
     setSimilarCards([]);
     setLoadingSimilar(true);
     fetchSimilarCards(data).then((cards) => { setSimilarCards(cards); setLoadingSimilar(false); });
+    setCombos([]);
+    setExpandedComboId(null);
+    setLoadingCombos(true);
+    fetchCombos(data.name).then((c) => { setCombos(c); setLoadingCombos(false); });
 
     const compact: CompactCard = {
       id: data.id, name: data.name, printed_name: data.printed_name,
@@ -320,6 +358,7 @@ export default function CardSearchScreen() {
   function resetCardState() {
     setCard(null); setMatchedKeywords([]); setExpandedId(null); setErrorMsg("");
     setSimilarCards([]); setLoadingSimilar(false);
+    setCombos([]); setLoadingCombos(false); setExpandedComboId(null);
   }
 
   async function recognizeCard() {
@@ -531,6 +570,13 @@ export default function CardSearchScreen() {
                         <Text style={[styles.metaBadgeText, { color: "#16a34a" }]}>{eurPrice}</Text>
                       </View>
                     ) : null}
+                    {card.edhrec_rank ? (
+                      <View style={[styles.metaBadge, { backgroundColor: colors.primary + "18", borderColor: colors.primary, borderWidth: 1 }]}>
+                        <Text style={[styles.metaBadgeText, { color: colors.primary }]}>
+                          EDHREC #{card.edhrec_rank.toLocaleString()}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
                 </View>
                 {cardImageUri && (
@@ -679,6 +725,94 @@ export default function CardSearchScreen() {
                 <Text style={[styles.noKwText, { color: colors.mutedForeground }]}>
                   {showEnglish ? "No keywords from our database on this card." : "Keine Schlüsselwörter aus unserer Datenbank auf dieser Karte."}
                 </Text>
+              </View>
+            )}
+
+            {/* ── Commander Spellbook Combos ── */}
+            {(loadingCombos || combos.length > 0) && (
+              <View style={styles.comboSection}>
+                <View style={styles.comboHeader}>
+                  <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                    {showEnglish ? "Combos" : "Combos"}
+                  </Text>
+                  {!loadingCombos && combos.length > 0 && (
+                    <View style={[styles.comboBadge, { backgroundColor: colors.primary }]}>
+                      <Text style={styles.comboBadgeText}>{combos.length}</Text>
+                    </View>
+                  )}
+                  <Text style={[styles.comboSource, { color: colors.mutedForeground }]}>
+                    via Commander Spellbook
+                  </Text>
+                </View>
+                {loadingCombos ? (
+                  <View style={styles.comboLoading}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={[styles.comboLoadingText, { color: colors.mutedForeground }]}>
+                      {showEnglish ? "Searching combos…" : "Suche Combos…"}
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.comboList}>
+                    {combos.map((combo) => {
+                      const isExpanded = expandedComboId === combo.id;
+                      return (
+                        <TouchableOpacity
+                          key={combo.id}
+                          style={[styles.comboCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                          activeOpacity={0.8}
+                          onPress={() => setExpandedComboId((p) => (p === combo.id ? null : combo.id))}
+                        >
+                          {/* Card images row */}
+                          <View style={styles.comboCardImages}>
+                            {combo.cards.slice(0, 5).map((c, i) => (
+                              <View key={`${combo.id}-${i}`} style={[styles.comboCardImageWrap, { marginLeft: i > 0 ? -14 : 0, zIndex: combo.cards.length - i }]}>
+                                {c.imageSmall ? (
+                                  <Image source={{ uri: c.imageSmall }} style={styles.comboCardImage} resizeMode="cover" />
+                                ) : (
+                                  <View style={[styles.comboCardImagePlaceholder, { backgroundColor: colors.secondary }]}>
+                                    <Ionicons name="card-outline" size={12} color={colors.mutedForeground} />
+                                  </View>
+                                )}
+                              </View>
+                            ))}
+                            {combo.cards.length > 5 && (
+                              <View style={[styles.comboCardMore, { backgroundColor: colors.secondary, marginLeft: -14 }]}>
+                                <Text style={[styles.comboCardMoreText, { color: colors.mutedForeground }]}>+{combo.cards.length - 5}</Text>
+                              </View>
+                            )}
+                          </View>
+
+                          {/* Effects */}
+                          <View style={styles.comboEffects}>
+                            {combo.produces.slice(0, 3).map((effect, i) => (
+                              <View key={i} style={[styles.comboEffectTag, { backgroundColor: colors.primary + "22", borderColor: colors.primary + "55" }]}>
+                                <Text style={[styles.comboEffectText, { color: colors.primary }]} numberOfLines={1}>{effect}</Text>
+                              </View>
+                            ))}
+                          </View>
+
+                          {/* Description (expandable) */}
+                          {isExpanded && (
+                            <Text style={[styles.comboDesc, { color: colors.mutedForeground, borderTopColor: colors.border }]}>
+                              {combo.description}
+                            </Text>
+                          )}
+                          <View style={styles.comboExpander}>
+                            <Ionicons
+                              name={isExpanded ? "chevron-up" : "chevron-down"}
+                              size={14} color={colors.mutedForeground}
+                            />
+                            <Text style={[styles.comboExpanderText, { color: colors.mutedForeground }]}>
+                              {isExpanded
+                                ? (showEnglish ? "Hide steps" : "Schritte ausblenden")
+                                : (showEnglish ? "Show steps" : "Schritte anzeigen")}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
               </View>
             )}
 
@@ -1003,6 +1137,27 @@ const styles = StyleSheet.create({
   kwSection: { gap: 4 },
   noKwBox: { borderRadius: 14, borderWidth: 1, padding: 20, alignItems: "center", gap: 8 },
   noKwText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
+  comboSection: { gap: 8 },
+  comboHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  comboBadge: { borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2, minWidth: 22, alignItems: "center" },
+  comboBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#fff" },
+  comboSource: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  comboLoading: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10 },
+  comboLoadingText: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  comboList: { gap: 8 },
+  comboCard: { borderRadius: 12, borderWidth: 1, padding: 12, gap: 8 },
+  comboCardImages: { flexDirection: "row", alignItems: "center" },
+  comboCardImageWrap: { borderRadius: 6, overflow: "hidden", borderWidth: 1.5, borderColor: "#ffffff30" },
+  comboCardImage: { width: 36, height: 50, borderRadius: 4 },
+  comboCardImagePlaceholder: { width: 36, height: 50, borderRadius: 4, alignItems: "center", justifyContent: "center" },
+  comboCardMore: { width: 36, height: 50, borderRadius: 6, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: "#ffffff30" },
+  comboCardMoreText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  comboEffects: { flexDirection: "row", flexWrap: "wrap", gap: 5 },
+  comboEffectTag: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3 },
+  comboEffectText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  comboDesc: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 8, marginTop: 2 },
+  comboExpander: { flexDirection: "row", alignItems: "center", gap: 4 },
+  comboExpanderText: { fontSize: 12, fontFamily: "Inter_400Regular" },
   similarSection: { gap: 8 },
   similarHeader: { flexDirection: "row", alignItems: "baseline", gap: 8 },
   similarSource: { fontSize: 11, fontFamily: "Inter_400Regular" },
