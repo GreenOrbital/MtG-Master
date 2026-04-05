@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
@@ -814,30 +815,69 @@ export default function CardSearchScreen() {
         {card && !loadingCard && (
           <View style={styles.content}>
 
+            {/* ── Arena-style Hero Image ── */}
+            {cardImageUri && (
+              <TouchableOpacity onPress={() => setShowImageZoom(true)} activeOpacity={0.9} style={styles.heroSection}>
+                <Image source={{ uri: cardImageUri }} style={styles.heroImage} resizeMode="cover" />
+                <LinearGradient
+                  colors={["transparent", "rgba(5,5,16,0.75)", "rgba(5,5,16,0.97)"]}
+                  style={styles.heroGradient}
+                >
+                  <View style={styles.heroBottom}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.heroCardName} numberOfLines={2}>{displayName}</Text>
+                      {card.printed_name && card.name !== card.printed_name && (
+                        <Text style={styles.heroCardEnName}>{card.name}</Text>
+                      )}
+                    </View>
+                    <View style={{ alignItems: "flex-end", gap: 6 }}>
+                      <TouchableOpacity onPress={() => toggleFavorite({
+                        id: card.id, name: card.name, printed_name: card.printed_name,
+                        type_line: card.type_line, printed_type_line: card.printed_type_line,
+                        mana_cost: card.mana_cost, set_name: card.set_name, imageUri: cardImageUri,
+                      })}>
+                        <Ionicons name={isFavorite(card.id) ? "star" : "star-outline"} size={24}
+                          color={isFavorite(card.id) ? "#f59e0b" : "#ffffff99"} />
+                      </TouchableOpacity>
+                      <View style={{ backgroundColor: "#00000055", borderRadius: 6, padding: 3 }}>
+                        <Ionicons name="expand-outline" size={12} color="#ffffff99" />
+                      </View>
+                    </View>
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+
             {/* ── Card info box ── */}
             <View style={[styles.cardInfoBox, { backgroundColor: colors.card, borderColor: colors.border, borderLeftWidth: 4, borderLeftColor: colors.primary }]}>
-              <View style={styles.cardInfoTop}>
+              <View style={[styles.cardInfoTop, !cardImageUri && { flexDirection: "row" }]}>
                 <View style={styles.cardInfoLeft}>
-                  {/* Name + star */}
-                  <View style={styles.nameRow}>
-                    <Text style={[styles.cardName, { color: colors.foreground }]} numberOfLines={2}>{displayName}</Text>
-                    <TouchableOpacity onPress={() => toggleFavorite({
-                      id: card.id, name: card.name, printed_name: card.printed_name,
-                      type_line: card.type_line, printed_type_line: card.printed_type_line,
-                      mana_cost: card.mana_cost, set_name: card.set_name, imageUri: cardImageUri,
-                    })}>
-                      <Ionicons name={isFavorite(card.id) ? "star" : "star-outline"} size={22}
-                        color={isFavorite(card.id) ? "#f59e0b" : colors.mutedForeground} />
-                    </TouchableOpacity>
-                  </View>
+                  {/* Name + star — only shown if no hero image */}
+                  {!cardImageUri && (
+                    <View style={styles.nameRow}>
+                      <Text style={[styles.cardName, { color: colors.foreground }]} numberOfLines={2}>{displayName}</Text>
+                      <TouchableOpacity onPress={() => toggleFavorite({
+                        id: card.id, name: card.name, printed_name: card.printed_name,
+                        type_line: card.type_line, printed_type_line: card.printed_type_line,
+                        mana_cost: card.mana_cost, set_name: card.set_name, imageUri: cardImageUri,
+                      })}>
+                        <Ionicons name={isFavorite(card.id) ? "star" : "star-outline"} size={22}
+                          color={isFavorite(card.id) ? "#f59e0b" : colors.mutedForeground} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
 
-                  {/* English name (if German card) */}
-                  {card.printed_name && card.name !== card.printed_name && (
+                  {/* English name (if German card, when no hero) */}
+                  {!cardImageUri && card.printed_name && card.name !== card.printed_name && (
                     <Text style={[styles.cardEnName, { color: colors.mutedForeground }]}>{card.name}</Text>
                   )}
 
                   {/* Type */}
-                  {displayTypeLine ? <Text style={[styles.cardType, { color: colors.mutedForeground }]}>{displayTypeLine}</Text> : null}
+                  {displayTypeLine ? (
+                    <Text style={[styles.cardType, { color: colors.accent, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 1, fontSize: 11 }]}>
+                      {displayTypeLine}
+                    </Text>
+                  ) : null}
 
                   {/* Badges: mana + P/T + set + rarity */}
                   <View style={styles.cardMeta}>
@@ -875,14 +915,7 @@ export default function CardSearchScreen() {
                     ) : null}
                   </View>
                 </View>
-                {cardImageUri && (
-                  <TouchableOpacity onPress={() => setShowImageZoom(true)} activeOpacity={0.85}>
-                    <Image source={{ uri: cardImageUri }} style={styles.cardThumb} resizeMode="contain" />
-                    <View style={styles.zoomHint}>
-                      <Ionicons name="expand-outline" size={12} color="#ffffff99" />
-                    </View>
-                  </TouchableOpacity>
-                )}
+                {/* No thumbnail — image is now the hero above */}
               </View>
 
               {/* ── Mana colors with land names ── */}
@@ -1542,8 +1575,14 @@ const styles = StyleSheet.create({
   errorBox: { borderRadius: 14, borderWidth: 1, padding: 20, alignItems: "center", gap: 8, marginTop: 20 },
   errorText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
   content: { gap: 14 },
+  heroSection: { borderRadius: 16, overflow: "hidden", height: 240 },
+  heroImage: { width: "100%", height: "100%", position: "absolute" },
+  heroGradient: { flex: 1, justifyContent: "flex-end", padding: 16 },
+  heroBottom: { flexDirection: "row", alignItems: "flex-end", gap: 12 },
+  heroCardName: { fontSize: 26, fontFamily: "Inter_700Bold", color: "#ffffff", ...Platform.select({ web: { textShadow: "0px 2px 8px rgba(0,0,0,0.8)" } as any, default: { textShadowColor: "rgba(0,0,0,0.8)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 } }) },
+  heroCardEnName: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#ffffffcc", marginTop: 2 },
   cardInfoBox: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
-  cardInfoTop: { flexDirection: "row", padding: 14, gap: 12 },
+  cardInfoTop: { flexDirection: "column", padding: 14, gap: 8 },
   cardInfoLeft: { flex: 1, gap: 4 },
   nameRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   cardName: { fontSize: 20, fontFamily: "Inter_700Bold", flex: 1 },
