@@ -1054,44 +1054,74 @@ export default function ManapoolScreen() {
                               </View>
 
                               {/* Coverage bars */}
-                              {coloredColors.map((k) => {
-                                const have = availMana[k] ?? 0;
-                                const need = recommended[k] ?? 0;
-                                if (need === 0) return null;
-                                const ok = have >= need;
-                                return (
-                                  <View key={k} style={styles.coverageRow}>
-                                    <View style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX[k] }]}>
-                                      <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT[k] }]}>{k}</Text>
+                              {(() => {
+                                // Colorless lands cover the generic {N} portion of spells.
+                                // Their proportional contribution per color K:
+                                //   colorlessContrib[K] = colorlessLandCount × (generic/total) × (pipK/totalColored)
+                                const genericFrac = required.generic / Math.max(1, totalAllPips);
+                                return coloredColors.map((k) => {
+                                  const haveColored = availMana[k] ?? 0;
+                                  const pipK = k === "C" ? requiredC : (required[k as keyof ManaCounts] as number ?? 0);
+                                  const colorlessContrib = colorlessLandCount > 0 && totalColoredPips > 0
+                                    ? Math.round(colorlessLandCount * genericFrac * pipK / totalColoredPips)
+                                    : 0;
+                                  const haveTotal = haveColored + colorlessContrib;
+                                  const need = recommended[k] ?? 0;
+                                  if (need === 0) return null;
+                                  const ok = haveTotal >= need;
+                                  return (
+                                    <View key={k} style={styles.coverageRow}>
+                                      <View style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX[k] }]}>
+                                        <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT[k] }]}>{k}</Text>
+                                      </View>
+                                      <View style={styles.coverageBar}>
+                                        {/* Actual colored sources */}
+                                        {haveColored > 0 && (
+                                          <View style={[styles.coverageFill, {
+                                            backgroundColor: ok ? "#16a34a" : COLOR_HEX[k],
+                                            flex: Math.min(haveColored, need),
+                                          }]} />
+                                        )}
+                                        {/* Colorless contribution (grey) */}
+                                        {colorlessContrib > 0 && (
+                                          <View style={[styles.coverageFill, {
+                                            backgroundColor: "#9e9e9e",
+                                            flex: Math.min(colorlessContrib, Math.max(0, need - haveColored)),
+                                          }]} />
+                                        )}
+                                        {!ok && <View style={[styles.coverageMissing, { flex: need - haveTotal }]} />}
+                                      </View>
+                                      <Text style={[styles.coverageText, { color: ok ? "#16a34a" : "#e67e22" }]}>
+                                        {haveColored}{colorlessContrib > 0 ? `+${colorlessContrib}` : ""}/{need}{" "}
+                                        {ok ? "✓" : `−${need - haveTotal}`}
+                                      </Text>
                                     </View>
-                                    <View style={styles.coverageBar}>
-                                      <View style={[styles.coverageFill, { backgroundColor: ok ? "#16a34a" : "#dc2626", flex: Math.min(have, need) }]} />
-                                      {!ok && <View style={[styles.coverageMissing, { flex: need - have }]} />}
-                                    </View>
-                                    <Text style={[styles.coverageText, { color: ok ? "#16a34a" : "#dc2626" }]}>
-                                      {have}/{need} {ok ? "✓" : `−${need - have}`}
-                                    </Text>
-                                  </View>
-                                );
-                              })}
+                                  );
+                                });
+                              })()}
 
-                              {/* Colorless land coverage note */}
+                              {/* Colorless coverage legend — only when contributing */}
                               {colorlessLandCount > 0 && required.generic > 0 && (
-                                <View style={[styles.coverageRow, { marginTop: 6 }]}>
+                                <View style={[styles.coverageRow, { marginTop: 4 }]}>
                                   <View style={[styles.colorDotTiny, { backgroundColor: "#9e9e9e" }]}>
                                     <Text style={[styles.colorDotTinyText, { color: "#fff" }]}>N</Text>
                                   </View>
-                                  <Text style={[styles.coverageText, { color: "#9e9e9e", flex: 1, marginLeft: 4 }]}>
-                                    {colorlessLandCount}× {showEnglish ? "colorless source" : "farblose Quelle"}{colorlessLandCount !== 1 ? (showEnglish ? "s" : "n") : ""}{" "}
-                                    {showEnglish ? "cover generic {N} costs" : "decken {N}-Bedarf ab"}
+                                  <Text style={[styles.coverageText, { color: "#9e9e9e", flex: 1, marginLeft: 4, fontSize: 11 }]}>
+                                    {colorlessLandCount}× {showEnglish ? "colorless → covers {N} portion of colored spells" : "farblos → deckt {N}-Anteil farbiger Zauber"}
                                   </Text>
-                                  <Text style={[styles.coverageText, { color: "#9e9e9e" }]}>✓</Text>
                                 </View>
                               )}
 
                               {/* Verdict */}
                               {(() => {
-                                const lacking = coloredColors.filter((k) => (recommended[k] ?? 0) > 0 && (availMana[k] ?? 0) < (recommended[k] ?? 0));
+                                const genericFrac2 = required.generic / Math.max(1, totalAllPips);
+                                const lacking = coloredColors.filter((k) => {
+                                  const pipK = k === "C" ? requiredC : (required[k as keyof ManaCounts] as number ?? 0);
+                                  const contrib = colorlessLandCount > 0 && totalColoredPips > 0
+                                    ? Math.round(colorlessLandCount * genericFrac2 * pipK / totalColoredPips)
+                                    : 0;
+                                  return (recommended[k] ?? 0) > 0 && ((availMana[k] ?? 0) + contrib) < (recommended[k] ?? 0);
+                                });
                                 if (lacking.length === 0) {
                                   return (
                                     <View style={[styles.verdict, { backgroundColor: "#16a34a22", borderColor: "#16a34a" }]}>
