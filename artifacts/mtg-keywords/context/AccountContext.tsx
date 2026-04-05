@@ -3,6 +3,8 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { useCardHistory } from "./CardHistoryContext";
 import { useDecks } from "./DeckContext";
 
+const AUTO_SYNC_DELAY = 6_000; // debounce: sync 6s after last deck change
+
 function getApiBase(): string {
   const domain = process.env["EXPO_PUBLIC_DOMAIN"];
   return domain ? `https://${domain}` : "";
@@ -109,6 +111,17 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     }
     prevSignedIn.current = isSignedIn ?? false;
   }, [isSignedIn, loadFromCloud]);
+
+  // Auto-sync: debounce deck changes to cloud when signed in
+  const autoSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFirstMount = useRef(true);
+  useEffect(() => {
+    if (isFirstMount.current) { isFirstMount.current = false; return; }
+    if (!isSignedIn) return;
+    if (autoSyncTimer.current) clearTimeout(autoSyncTimer.current);
+    autoSyncTimer.current = setTimeout(() => { syncToCloud(); }, AUTO_SYNC_DELAY);
+    return () => { if (autoSyncTimer.current) clearTimeout(autoSyncTimer.current); };
+  }, [decks, isSignedIn, syncToCloud]);
 
   const userEmail = user?.primaryEmailAddress?.emailAddress ?? null;
 

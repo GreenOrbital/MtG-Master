@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
@@ -316,7 +317,7 @@ export default function ManapoolScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { showEnglish, setShowEnglish } = useSettings();
-  const { decks, createDeck, updateDeck, deleteDeck, removeCardFromDeck, adjustCardCount } = useDecks();
+  const { decks, createDeck, updateDeck, deleteDeck, removeCardFromDeck, adjustCardCount, importDeck } = useDecks();
 
   const router = useRouter();
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
@@ -329,6 +330,10 @@ export default function ManapoolScreen() {
   const [deckComboChecked, setDeckComboChecked] = useState(false);
   const [showDeckCombosModal, setShowDeckCombosModal] = useState(false);
   const [expandedDeckComboId, setExpandedDeckComboId] = useState<string | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importJson, setImportJson] = useState("");
+  const [importError, setImportError] = useState<string | null>(null);
+  const [exportFeedback, setExportFeedback] = useState<string | null>(null);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 84 + 34 : insets.bottom + 84;
 
@@ -383,6 +388,63 @@ export default function ManapoolScreen() {
     updateDeck({ ...activeDeck, name: editName.trim() });
   }
 
+  // ─── Export deck ───────────────────────────────────────────────────────────
+  async function handleExportDeck(deck: Deck) {
+    const json = JSON.stringify(deck, null, 2);
+    if (Platform.OS === "web") {
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${deck.name.replace(/[^a-zA-Z0-9_\-]/g, "_")}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setExportFeedback(showEnglish ? "Download started" : "Download gestartet");
+    } else {
+      await Clipboard.setStringAsync(json);
+      setExportFeedback(showEnglish ? "Copied to clipboard" : "In Zwischenablage kopiert");
+    }
+    setTimeout(() => setExportFeedback(null), 3000);
+  }
+
+  // ─── Import deck ───────────────────────────────────────────────────────────
+  async function handleOpenImport() {
+    setImportJson("");
+    setImportError(null);
+    if (Platform.OS !== "web") {
+      const text = await Clipboard.getStringAsync();
+      if (text && text.trim().startsWith("{")) setImportJson(text);
+    }
+    setShowImportModal(true);
+  }
+
+  function handleImportDeck() {
+    try {
+      const data = JSON.parse(importJson);
+      if (!data.name || !Array.isArray(data.cards)) {
+        setImportError(showEnglish ? "Invalid deck format" : "Ungültiges Deck-Format");
+        return;
+      }
+      importDeck(data as Deck);
+      setShowImportModal(false);
+      setImportJson("");
+      setImportError(null);
+    } catch {
+      setImportError(showEnglish ? "Could not read JSON" : "JSON konnte nicht gelesen werden");
+    }
+  }
+
+  // ─── Saved-at label ────────────────────────────────────────────────────────
+  function formatSavedAt(ts: number): string {
+    const diff = Math.floor((Date.now() - ts) / 1000);
+    if (diff < 10) return showEnglish ? "Just saved" : "Gerade gespeichert";
+    if (diff < 60) return showEnglish ? `Saved ${diff}s ago` : `Vor ${diff}s gespeichert`;
+    const mins = Math.floor(diff / 60);
+    if (mins < 60) return showEnglish ? `Saved ${mins}m ago` : `Vor ${mins}m gespeichert`;
+    const hrs = Math.floor(mins / 60);
+    return showEnglish ? `Saved ${hrs}h ago` : `Vor ${hrs}h gespeichert`;
+  }
+
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       {/* ── Header ── */}
@@ -411,15 +473,26 @@ export default function ManapoolScreen() {
         {/* ══ DECK LIST VIEW ══ */}
         {!activeDeck && (
           <>
-            <TouchableOpacity
-              style={[styles.newDeckBtn, { backgroundColor: colors.primary }]}
-              onPress={() => setShowNewDeckModal(true)}
-            >
-              <Ionicons name="add-circle-outline" size={20} color="#fff" />
-              <Text style={styles.newDeckBtnText}>
-                {showEnglish ? "New Deck" : "Neues Deck"}
-              </Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity
+                style={[styles.newDeckBtn, { backgroundColor: colors.primary, flex: 1 }]}
+                onPress={() => setShowNewDeckModal(true)}
+              >
+                <Ionicons name="add-circle-outline" size={20} color="#fff" />
+                <Text style={styles.newDeckBtnText}>
+                  {showEnglish ? "New Deck" : "Neues Deck"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.newDeckBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
+                onPress={handleOpenImport}
+              >
+                <Ionicons name="download-outline" size={20} color={colors.primary} />
+                <Text style={[styles.newDeckBtnText, { color: colors.primary }]}>
+                  {showEnglish ? "Import" : "Import"}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             {decks.length === 0 ? (
               <View style={styles.emptyHint}>
@@ -448,8 +521,17 @@ export default function ManapoolScreen() {
                         <Text style={[styles.deckCardName, { color: colors.foreground }]}>{deck.name}</Text>
                         <Text style={[styles.deckCardMeta, { color: colors.mutedForeground }]}>
                           {totalCards} {showEnglish ? "cards" : "Karten"}
+                          {"  ·  "}
+                          <Text style={{ fontSize: 11 }}>{formatSavedAt(deck.savedAt)}</Text>
                         </Text>
                       </View>
+                      <TouchableOpacity
+                        onPress={(e) => { e.stopPropagation?.(); handleExportDeck(deck); }}
+                        style={{ padding: 6, marginRight: 4 }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="share-outline" size={18} color={colors.mutedForeground} />
+                      </TouchableOpacity>
                       <View style={styles.identityDots}>
                         {identity.length === 0 ? (
                           <View style={[styles.identityDot, { backgroundColor: colors.secondary }]}>
@@ -489,6 +571,26 @@ export default function ManapoolScreen() {
                 returnKeyType="done"
                 onSubmitEditing={saveName}
               />
+              <TouchableOpacity
+                onPress={() => handleExportDeck(activeDeck)}
+                style={{ paddingLeft: 8, paddingVertical: 4 }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="share-outline" size={18} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* ── Gespeichert-Indikator ── */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 4, marginTop: -4 }}>
+              <Ionicons name="checkmark-circle" size={13} color="#22c55e" />
+              <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                {formatSavedAt(activeDeck.savedAt)}
+              </Text>
+              {exportFeedback && (
+                <Text style={{ fontSize: 12, color: colors.primary, marginLeft: 8 }}>
+                  · {exportFeedback}
+                </Text>
+              )}
             </View>
 
             {/* ── Karten ── */}
@@ -1279,6 +1381,59 @@ export default function ManapoolScreen() {
             />
             <TouchableOpacity style={[styles.modalCreateBtn, { backgroundColor: colors.primary }]} onPress={handleCreateDeck}>
               <Text style={styles.modalCreateBtnText}>{showEnglish ? "Create" : "Erstellen"}</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── Import Modal ── */}
+      <Modal visible={showImportModal} transparent animationType="fade">
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowImportModal(false)}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.card }]} onStartShouldSetResponder={() => true}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+              {showEnglish ? "Import Deck" : "Deck importieren"}
+            </Text>
+            <Text style={{ fontSize: 13, color: colors.mutedForeground, lineHeight: 18 }}>
+              {showEnglish
+                ? "Paste a previously exported deck JSON below."
+                : "Hier das zuvor exportierte Deck-JSON einfügen."}
+            </Text>
+            <TextInput
+              value={importJson}
+              onChangeText={(t) => { setImportJson(t); setImportError(null); }}
+              placeholder={showEnglish ? "Paste JSON here…" : "JSON hier einfügen…"}
+              placeholderTextColor={colors.mutedForeground}
+              multiline
+              numberOfLines={8}
+              style={[
+                styles.modalInput,
+                {
+                  color: colors.foreground,
+                  borderColor: importError ? "#dc2626" : colors.border,
+                  backgroundColor: colors.background,
+                  minHeight: 120,
+                  textAlignVertical: "top",
+                  fontFamily: "Inter_400Regular",
+                  fontSize: 12,
+                }
+              ]}
+              autoCorrect={false}
+              autoCapitalize="none"
+            />
+            {importError && (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Ionicons name="alert-circle-outline" size={15} color="#dc2626" />
+                <Text style={{ fontSize: 13, color: "#dc2626" }}>{importError}</Text>
+              </View>
+            )}
+            <TouchableOpacity
+              style={[styles.modalCreateBtn, { backgroundColor: importJson.trim() ? colors.primary : colors.secondary }]}
+              onPress={handleImportDeck}
+              disabled={!importJson.trim()}
+            >
+              <Text style={styles.modalCreateBtnText}>
+                {showEnglish ? "Import" : "Importieren"}
+              </Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
