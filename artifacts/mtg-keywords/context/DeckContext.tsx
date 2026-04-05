@@ -15,6 +15,8 @@ export type DeckCard = {
   oracle_text?: string;
   keywords?: string[];
   produced_mana?: string[];
+  priceEur?: number;
+  priceUsd?: number;
   imageUri?: string;
   count: number;
 };

@@ -266,6 +266,50 @@ function detectRamp(cards: DeckCard[]): { count: number; names: string[] } {
   return { count: unique.length, names: unique.slice(0, 5) };
 }
 
+type TypeGroup = { key: string; labelDe: string; labelEn: string; color: string; count: number };
+
+function getTypeBreakdown(cards: DeckCard[]): TypeGroup[] {
+  const groups: Array<{ key: string; labelDe: string; labelEn: string; color: string; match: string }> = [
+    { key: "creature",     labelDe: "Kreaturen",    labelEn: "Creatures",    color: "#d3202a", match: "creature" },
+    { key: "instant",      labelDe: "Spontan",      labelEn: "Instants",     color: "#0e68ab", match: "instant" },
+    { key: "sorcery",      labelDe: "Hexerei",      labelEn: "Sorceries",    color: "#8b2fc9", match: "sorcery" },
+    { key: "enchantment",  labelDe: "Verzauberung", labelEn: "Enchantments", color: "#16a34a", match: "enchantment" },
+    { key: "artifact",     labelDe: "Artefakt",     labelEn: "Artifacts",    color: "#9e9e9e", match: "artifact" },
+    { key: "planeswalker", labelDe: "Planeswalker", labelEn: "Planeswalkers",color: "#f59e0b", match: "planeswalker" },
+    { key: "land",         labelDe: "Länder",       labelEn: "Lands",        color: "#00733e", match: "land" },
+  ];
+  return groups.map((g) => ({
+    ...g,
+    count: cards
+      .filter((c) => (c.type_line ?? "").toLowerCase().includes(g.match))
+      .reduce((a, c) => a + c.count, 0),
+  })).filter((g) => g.count > 0);
+}
+
+type DuplicateCard = { name: string; count: number };
+const BASIC_LANDS = new Set(["Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes", "Snow-Covered Plains", "Snow-Covered Island", "Snow-Covered Swamp", "Snow-Covered Mountain", "Snow-Covered Forest"]);
+
+function getSingletonViolations(cards: DeckCard[]): DuplicateCard[] {
+  return cards
+    .filter((c) => c.count > 1 && !BASIC_LANDS.has(c.name))
+    .map((c) => ({ name: c.name, count: c.count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+function getDeckPrice(cards: DeckCard[]): { totalEur: number | null; totalUsd: number | null; hasData: boolean } {
+  let totalEur = 0; let eurCards = 0;
+  let totalUsd = 0; let usdCards = 0;
+  for (const c of cards) {
+    if (c.priceEur !== undefined) { totalEur += c.priceEur * c.count; eurCards++; }
+    if (c.priceUsd !== undefined) { totalUsd += c.priceUsd * c.count; usdCards++; }
+  }
+  return {
+    totalEur: eurCards > 0 ? totalEur : null,
+    totalUsd: usdCards > 0 ? totalUsd : null,
+    hasData: eurCards > 0 || usdCards > 0,
+  };
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function ManapoolScreen() {
@@ -596,6 +640,114 @@ export default function ManapoolScreen() {
                 })}
               </View>
             )}
+
+            {/* ── Typen-Übersicht ── */}
+            {activeDeck.cards.length > 0 && (() => {
+              const groups = getTypeBreakdown(activeDeck.cards);
+              const total  = groups.reduce((a, g) => a + g.count, 0);
+              if (total === 0) return null;
+              return (
+                <>
+                  <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                    {showEnglish ? "Card Types" : "Kartentypen"}
+                  </Text>
+                  <View style={[styles.analysisBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <View style={styles.typeBar}>
+                      {groups.map((g) => (
+                        <View key={g.key} style={[styles.typeBarSeg, { backgroundColor: g.color, flex: g.count }]} />
+                      ))}
+                    </View>
+                    <View style={styles.typeChips}>
+                      {groups.map((g) => (
+                        <View key={g.key} style={[styles.typeChip, { backgroundColor: g.color + "22", borderColor: g.color + "66" }]}>
+                          <View style={[styles.typeChipDot, { backgroundColor: g.color }]} />
+                          <Text style={[styles.typeChipText, { color: colors.foreground }]}>
+                            {g.count} {showEnglish ? g.labelEn : g.labelDe}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                </>
+              );
+            })()}
+
+            {/* ── Deck-Wert ── */}
+            {activeDeck.cards.length > 0 && (() => {
+              const price = getDeckPrice(activeDeck.cards);
+              if (!price.hasData) return null;
+              const totalCards = activeDeck.cards.reduce((a, c) => a + c.count, 0);
+              return (
+                <>
+                  <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                    {showEnglish ? "Deck Value" : "Deck-Wert"}
+                  </Text>
+                  <View style={[styles.analysisBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    {price.totalEur !== null && (
+                      <View style={styles.analysisRow}>
+                        <Ionicons name="pricetag-outline" size={15} color="#16a34a" />
+                        <Text style={[styles.analysisLabel, { color: colors.foreground }]}>
+                          {showEnglish ? "Total (EUR)" : "Gesamt (EUR)"}
+                        </Text>
+                        <Text style={[styles.analysisValue, { color: "#16a34a" }]}>€ {price.totalEur.toFixed(2)}</Text>
+                      </View>
+                    )}
+                    {price.totalUsd !== null && price.totalEur === null && (
+                      <View style={styles.analysisRow}>
+                        <Ionicons name="pricetag-outline" size={15} color="#16a34a" />
+                        <Text style={[styles.analysisLabel, { color: colors.foreground }]}>
+                          {showEnglish ? "Total (USD)" : "Gesamt (USD)"}
+                        </Text>
+                        <Text style={[styles.analysisValue, { color: "#16a34a" }]}>$ {price.totalUsd?.toFixed(2)}</Text>
+                      </View>
+                    )}
+                    {(price.totalEur !== null || price.totalUsd !== null) && (
+                      <>
+                        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                        <View style={styles.analysisRow}>
+                          <Ionicons name="stats-chart-outline" size={15} color={colors.mutedForeground} />
+                          <Text style={[styles.analysisLabel, { color: colors.foreground }]}>
+                            {showEnglish ? "Avg. per card" : "Ø pro Karte"}
+                          </Text>
+                          <Text style={[styles.analysisStat, { color: colors.mutedForeground }]}>
+                            {price.totalEur !== null
+                              ? `€ ${(price.totalEur / totalCards).toFixed(2)}`
+                              : `$ ${((price.totalUsd ?? 0) / totalCards).toFixed(2)}`}
+                          </Text>
+                        </View>
+                        <Text style={[styles.analysisHint, { color: colors.mutedForeground }]}>
+                          {showEnglish
+                            ? "Based on cards added after this update. Re-add older cards to include them."
+                            : "Basiert auf Karten die nach diesem Update hinzugefügt wurden."}
+                        </Text>
+                      </>
+                    )}
+                  </View>
+                </>
+              );
+            })()}
+
+            {/* ── Singleton-Check (Commander) ── */}
+            {activeDeck.cards.length > 0 && (() => {
+              const violations = getSingletonViolations(activeDeck.cards);
+              if (violations.length === 0) return null;
+              return (
+                <View style={[styles.singletonWarning, { backgroundColor: "#f59e0b11", borderColor: "#f59e0b" }]}>
+                  <View style={styles.singletonHeader}>
+                    <Ionicons name="warning-outline" size={16} color="#f59e0b" />
+                    <Text style={[styles.singletonTitle, { color: "#f59e0b" }]}>
+                      {showEnglish
+                        ? `${violations.length} card${violations.length !== 1 ? "s" : ""} exceed the 1-copy rule`
+                        : `${violations.length} Karte${violations.length !== 1 ? "n" : ""} überschreiten die Singleton-Regel`}
+                    </Text>
+                  </View>
+                  <Text style={[styles.singletonSub, { color: colors.mutedForeground }]}>
+                    {violations.slice(0, 4).map((v) => `${v.name} (${v.count}×)`).join(" · ")}
+                    {violations.length > 4 ? ` +${violations.length - 4}` : ""}
+                  </Text>
+                </View>
+              );
+            })()}
 
             {/* ── Manapool-Analyse ── */}
             {(() => {
@@ -1220,6 +1372,18 @@ const styles = StyleSheet.create({
   modalInput: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 11, fontSize: 16, fontFamily: "Inter_400Regular" },
   modalCreateBtn: { borderRadius: 12, paddingVertical: 13, alignItems: "center" },
   modalCreateBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  // Typen-Übersicht
+  typeBar: { height: 14, borderRadius: 7, flexDirection: "row", overflow: "hidden" },
+  typeBarSeg: {},
+  typeChips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  typeChip: { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
+  typeChipDot: { width: 7, height: 7, borderRadius: 4 },
+  typeChipText: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  // Singleton warning
+  singletonWarning: { borderRadius: 12, borderWidth: 1, padding: 12, gap: 6 },
+  singletonHeader: { flexDirection: "row", alignItems: "center", gap: 7 },
+  singletonTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", flex: 1 },
+  singletonSub: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
   // Deck-Analyse
   analysisBig: { gap: 6 },
   analysisGroup: { gap: 6 },
