@@ -391,15 +391,39 @@ export default function ManapoolScreen() {
   // ─── Export deck ───────────────────────────────────────────────────────────
   async function handleExportDeck(deck: Deck) {
     const json = JSON.stringify(deck, null, 2);
+    const fileName = `${deck.name.replace(/[^a-zA-Z0-9_\-]/g, "_")}.json`;
     if (Platform.OS === "web") {
       const blob = new Blob([json], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${deck.name.replace(/[^a-zA-Z0-9_\-]/g, "_")}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      setExportFeedback(showEnglish ? "Download started" : "Download gestartet");
+      // Use File System Access API for folder picker (Chrome/Edge)
+      if (typeof (window as any).showSaveFilePicker === "function") {
+        try {
+          const handle = await (window as any).showSaveFilePicker({
+            suggestedName: fileName,
+            types: [{ description: "JSON", accept: { "application/json": [".json"] } }],
+          });
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          setExportFeedback(showEnglish ? "Saved" : "Gespeichert");
+        } catch (err: any) {
+          if (err?.name !== "AbortError") {
+            // Fallback if picker fails
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = fileName; a.click();
+            URL.revokeObjectURL(url);
+            setExportFeedback(showEnglish ? "Download started" : "Download gestartet");
+          }
+          return;
+        }
+      } else {
+        // Fallback: direct download (Firefox, Safari)
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = fileName; a.click();
+        URL.revokeObjectURL(url);
+        setExportFeedback(showEnglish ? "Download started" : "Download gestartet");
+      }
     } else {
       await Clipboard.setStringAsync(json);
       setExportFeedback(showEnglish ? "Copied to clipboard" : "In Zwischenablage kopiert");
