@@ -75,8 +75,8 @@ export default function RootLayout() {
           <QueryClientProvider client={queryClient}>
             <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache} proxyUrl={proxyUrl}>
               <ClerkLoaded>
-                <GestureHandlerRootView>
-                  <KeyboardProvider>
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                  <KeyboardProvider style={{ flex: 1 }}>
                     <AppProviders>
                       <RootLayoutNav />
                     </AppProviders>

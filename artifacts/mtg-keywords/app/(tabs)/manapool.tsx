@@ -702,11 +702,24 @@ export default function ManapoolScreen() {
                             {land ? (
                               <>
                                 <Text style={[styles.cardRowMana, { color: colors.mutedForeground }]}>Land</Text>
-                                {lCols.map((cl) => (
-                                  <View key={cl} style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX[cl] }]}>
-                                    <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT[cl] }]}>{cl}</Text>
+                                {lCols.length <= 1 ? (
+                                  lCols.map((cl) => (
+                                    <View key={cl} style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX[cl] }]}>
+                                      <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT[cl] }]}>{cl}</Text>
+                                    </View>
+                                  ))
+                                ) : (
+                                  <View style={[styles.dualLandBadge, { borderColor: colors.border }]}>
+                                    {lCols.map((cl, idx) => (
+                                      <React.Fragment key={cl}>
+                                        {idx > 0 && <Text style={{ fontSize: 9, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>/</Text>}
+                                        <View style={[styles.dualLandDot, { backgroundColor: COLOR_HEX[cl] }]}>
+                                          <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT[cl] }]}>{cl}</Text>
+                                        </View>
+                                      </React.Fragment>
+                                    ))}
                                   </View>
-                                ))}
+                                )}
                               </>
                             ) : (
                               <>
@@ -1587,6 +1600,8 @@ const styles = StyleSheet.create({
   cardCountBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   cardCountBadgeText: { fontSize: 13, fontFamily: "Inter_700Bold" },
   cardDeleteBtn: { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 6 },
+  dualLandBadge: { flexDirection: "row", alignItems: "center", gap: 2, borderRadius: 8, borderWidth: 1, paddingHorizontal: 4, paddingVertical: 1 },
+  dualLandDot: { width: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   cardRowLeft: { flex: 1 },
   cardThumbWrap: { borderRadius: 5, overflow: "hidden" },
   cardThumb: { width: 34, height: 48, borderRadius: 4 },
