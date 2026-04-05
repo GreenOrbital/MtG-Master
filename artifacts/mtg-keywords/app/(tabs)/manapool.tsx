@@ -336,6 +336,7 @@ export default function ManapoolScreen() {
   const [importJson, setImportJson] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
   const [exportFeedback, setExportFeedback] = useState<string | null>(null);
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 84 + 34 : insets.bottom + 84;
 
@@ -362,6 +363,7 @@ export default function ManapoolScreen() {
     setEditName("");
     setDeckCombos([]);
     setDeckComboChecked(false);
+    setExpandedCardId(null);
   }
 
   async function handleCheckDeckCombos() {
@@ -668,81 +670,121 @@ export default function ManapoolScreen() {
                   const mana = c.mana_cost ? parseMana(c.mana_cost) : null;
                   const cols = mana ? COLORS.filter((k) => mana[k] > 0) : [];
                   const lCols = land ? landColors(c) : [];
+                  const isExpanded = expandedCardId === c.id;
+                  const notLast = i < filteredCards.length - 1;
                   return (
-                    <View key={c.id} style={[styles.cardRow,
-                      i < filteredCards.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth }]}>
-                      {/* Thumbnail */}
+                    <View key={c.id}>
+                      {/* ── Collapsed row (always visible) ── */}
                       <TouchableOpacity
-                        style={styles.cardThumbWrap}
-                        onPress={() => router.push({ pathname: "/(tabs)/scan", params: { q: c.name } })}>
-                        {c.imageUri ? (
-                          <Image source={{ uri: c.imageUri }} style={styles.cardThumb} resizeMode="cover" />
-                        ) : (
-                          <View style={[styles.cardThumbPlaceholder, { backgroundColor: colors.secondary }]}>
-                            <Ionicons name="card-outline" size={14} color={colors.mutedForeground} />
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                      {/* Name + Meta */}
-                      <TouchableOpacity style={styles.cardRowLeft}
-                        onPress={() => router.push({ pathname: "/(tabs)/scan", params: { q: c.name } })}>
-                        <Text style={[styles.cardRowName, { color: colors.foreground }]} numberOfLines={1}>
-                          {c.printed_name ?? c.name}
-                        </Text>
-                        <View style={styles.cardRowMeta}>
-                          {land ? (
-                            <>
-                              <Text style={[styles.cardRowMana, { color: colors.mutedForeground }]}>Land</Text>
-                              {lCols.map((cl) => (
-                                <View key={cl} style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX[cl] }]}>
-                                  <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT[cl] }]}>{cl}</Text>
-                                </View>
-                              ))}
-                            </>
+                        activeOpacity={0.7}
+                        onPress={() => setExpandedCardId(isExpanded ? null : c.id)}
+                        style={[styles.cardRow,
+                          notLast && !isExpanded && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth }]}
+                      >
+                        {/* Thumbnail → navigates to card */}
+                        <TouchableOpacity
+                          style={styles.cardThumbWrap}
+                          onPress={() => router.push({ pathname: "/(tabs)/scan", params: { q: c.name } })}>
+                          {c.imageUri ? (
+                            <Image source={{ uri: c.imageUri }} style={styles.cardThumb} resizeMode="cover" />
                           ) : (
-                            <>
-                              {mana && mana.generic > 0 && (
-                                <View style={styles.genericBadge}>
-                                  <Text style={styles.genericBadgeText}>{mana.generic}</Text>
-                                </View>
-                              )}
-                              {c.mana_cost && /\{X\}/i.test(c.mana_cost) && (
-                                <View style={styles.genericBadge}>
-                                  <Text style={styles.genericBadgeText}>X</Text>
-                                </View>
-                              )}
-                              {cols.map((cl) => (
-                                <View key={cl} style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX[cl] }]}>
-                                  <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT[cl] }]}>{cl}</Text>
-                                </View>
-                              ))}
-                              {mana && mana.colorless > 0 && (
-                                <View style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX["C"] }]}>
-                                  <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT["C"] }]}>C</Text>
-                                </View>
-                              )}
-                              {!mana && !c.mana_cost && (
-                                <Text style={[styles.cardRowMana, { color: colors.mutedForeground }]}>—</Text>
-                              )}
-                            </>
+                            <View style={[styles.cardThumbPlaceholder, { backgroundColor: colors.secondary }]}>
+                              <Ionicons name="card-outline" size={14} color={colors.mutedForeground} />
+                            </View>
                           )}
+                        </TouchableOpacity>
+                        {/* Name + Meta */}
+                        <View style={styles.cardRowLeft}>
+                          <Text style={[styles.cardRowName, { color: colors.foreground }]} numberOfLines={1}>
+                            {c.printed_name ?? c.name}
+                          </Text>
+                          <View style={styles.cardRowMeta}>
+                            {land ? (
+                              <>
+                                <Text style={[styles.cardRowMana, { color: colors.mutedForeground }]}>Land</Text>
+                                {lCols.map((cl) => (
+                                  <View key={cl} style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX[cl] }]}>
+                                    <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT[cl] }]}>{cl}</Text>
+                                  </View>
+                                ))}
+                              </>
+                            ) : (
+                              <>
+                                {mana && mana.generic > 0 && (
+                                  <View style={styles.genericBadge}>
+                                    <Text style={styles.genericBadgeText}>{mana.generic}</Text>
+                                  </View>
+                                )}
+                                {c.mana_cost && /\{X\}/i.test(c.mana_cost) && (
+                                  <View style={styles.genericBadge}>
+                                    <Text style={styles.genericBadgeText}>X</Text>
+                                  </View>
+                                )}
+                                {cols.map((cl) => (
+                                  <View key={cl} style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX[cl] }]}>
+                                    <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT[cl] }]}>{cl}</Text>
+                                  </View>
+                                ))}
+                                {mana && mana.colorless > 0 && (
+                                  <View style={[styles.colorDotTiny, { backgroundColor: COLOR_HEX["C"] }]}>
+                                    <Text style={[styles.colorDotTinyText, { color: COLOR_TEXT["C"] }]}>C</Text>
+                                  </View>
+                                )}
+                                {!mana && !c.mana_cost && (
+                                  <Text style={[styles.cardRowMana, { color: colors.mutedForeground }]}>—</Text>
+                                )}
+                              </>
+                            )}
+                          </View>
+                        </View>
+                        {/* Count badge + expand indicator */}
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <View style={[styles.cardCountBadge, { backgroundColor: colors.primary + "33" }]}>
+                            <Text style={[styles.cardCountBadgeText, { color: colors.primary }]}>{c.count}×</Text>
+                          </View>
+                          <Ionicons
+                            name={isExpanded ? "chevron-up" : "create-outline"}
+                            size={15}
+                            color={isExpanded ? colors.primary : colors.mutedForeground}
+                          />
                         </View>
                       </TouchableOpacity>
-                      {/* Stepper */}
-                      <View style={styles.stepper}>
-                        <TouchableOpacity style={[styles.stepBtnSm, { backgroundColor: colors.secondary, borderColor: colors.border }]}
-                          onPress={() => adjustCardCount(activeDeck.id, c.id, -1)}>
-                          <Ionicons name="remove" size={13} color={colors.foreground} />
-                        </TouchableOpacity>
-                        <Text style={[styles.stepValSm, { color: colors.foreground }]}>{c.count}×</Text>
-                        <TouchableOpacity style={[styles.stepBtnSm, { backgroundColor: colors.secondary, borderColor: colors.border }]}
-                          onPress={() => adjustCardCount(activeDeck.id, c.id, 1)}>
-                          <Ionicons name="add" size={13} color={colors.foreground} />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={{ marginLeft: 6 }} onPress={() => removeCardFromDeck(activeDeck.id, c.id)}>
-                          <Ionicons name="trash-outline" size={16} color={colors.destructive} />
-                        </TouchableOpacity>
-                      </View>
+
+                      {/* ── Expanded controls ── */}
+                      {isExpanded && (
+                        <View style={[styles.cardExpandedRow, {
+                          backgroundColor: colors.primary + "11",
+                          borderBottomColor: colors.border,
+                          borderBottomWidth: notLast ? StyleSheet.hairlineWidth : 0,
+                        }]}>
+                          <TouchableOpacity
+                            style={[styles.stepBtnSm, { backgroundColor: colors.secondary, borderColor: colors.border, width: 36, height: 36 }]}
+                            onPress={() => adjustCardCount(activeDeck.id, c.id, -1)}
+                          >
+                            <Ionicons name="remove" size={16} color={colors.foreground} />
+                          </TouchableOpacity>
+                          <Text style={[styles.stepValSm, { color: colors.foreground, fontSize: 17, width: 40 }]}>{c.count}×</Text>
+                          <TouchableOpacity
+                            style={[styles.stepBtnSm, { backgroundColor: colors.secondary, borderColor: colors.border, width: 36, height: 36 }]}
+                            onPress={() => adjustCardCount(activeDeck.id, c.id, 1)}
+                          >
+                            <Ionicons name="add" size={16} color={colors.foreground} />
+                          </TouchableOpacity>
+                          <View style={{ flex: 1 }} />
+                          <TouchableOpacity
+                            style={[styles.cardDeleteBtn, { borderColor: colors.destructive + "99" }]}
+                            onPress={() => {
+                              removeCardFromDeck(activeDeck.id, c.id);
+                              setExpandedCardId(null);
+                            }}
+                          >
+                            <Ionicons name="trash-outline" size={15} color={colors.destructive} />
+                            <Text style={{ fontSize: 13, color: colors.destructive, fontFamily: "Inter_500Medium" }}>
+                              {showEnglish ? "Remove" : "Entfernen"}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
                     </View>
                   );
                 })}
@@ -1541,6 +1583,10 @@ const styles = StyleSheet.create({
   filterEmptyText: { fontSize: 13, fontFamily: "Inter_400Regular" },
   cardList: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
   cardRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingVertical: 8, gap: 8 },
+  cardExpandedRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, gap: 8 },
+  cardCountBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  cardCountBadgeText: { fontSize: 13, fontFamily: "Inter_700Bold" },
+  cardDeleteBtn: { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 6 },
   cardRowLeft: { flex: 1 },
   cardThumbWrap: { borderRadius: 5, overflow: "hidden" },
   cardThumb: { width: 34, height: 48, borderRadius: 4 },
