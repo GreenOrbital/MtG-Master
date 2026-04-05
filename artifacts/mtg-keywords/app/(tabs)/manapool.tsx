@@ -488,17 +488,25 @@ export default function ManapoolScreen() {
                         .filter((c) => !isLand(c) && (c.mana_cost || c.cmc !== undefined))
                         .reduce((a, c) => a + c.count, 0);
                       const avgCMC = nonLandCount > 0 ? required.cmc / nonLandCount : 0;
-                      // Include colorless pips in distribution
-                      const ALL_PIPS = [...COLORS, "C"] as const;
-                      const requiredC = required.colorless; // explicit {C} pips
-                      const totalColoredPips = COLORS.reduce((a, k) => a + (required[k] ?? 0), 0) + requiredC;
+
+                      // Total = all pips including generic (for realistic distribution)
+                      const requiredC = required.colorless;
+                      const totalAllPips = COLORS.reduce((a, k) => a + (required[k] ?? 0), 0)
+                        + requiredC + required.generic;
+                      // Colored-only total for recommended-source ratios (generic needs no specific source)
+                      const totalColoredPips = totalAllPips - required.generic;
+
                       const colorPct: Partial<Record<string, number>> = {};
                       COLORS.forEach((k) => {
-                        if (required[k] > 0 && totalColoredPips > 0)
-                          colorPct[k] = Math.round((required[k] / totalColoredPips) * 100);
+                        if (required[k] > 0 && totalAllPips > 0)
+                          colorPct[k] = Math.round((required[k] / totalAllPips) * 100);
                       });
-                      if (requiredC > 0 && totalColoredPips > 0)
-                        colorPct["C"] = Math.round((requiredC / totalColoredPips) * 100);
+                      if (requiredC > 0 && totalAllPips > 0)
+                        colorPct["C"] = Math.round((requiredC / totalAllPips) * 100);
+                      // Generic mana shown as neutral "N" segment
+                      const genericPct = totalAllPips > 0 ? Math.round((required.generic / totalAllPips) * 100) : 0;
+
+                      // Recommendations only based on colored/colorless pips
                       const recommended: Partial<Record<string, number>> = {};
                       COLORS.forEach((k) => {
                         if (required[k] > 0 && totalColoredPips > 0)
@@ -506,6 +514,8 @@ export default function ManapoolScreen() {
                       });
                       if (requiredC > 0 && totalColoredPips > 0)
                         recommended["C"] = Math.max(1, Math.round((requiredC / totalColoredPips) * landTotal));
+
+                      const ALL_PIPS = [...COLORS, "C"] as const;
                       const coloredColors = ALL_PIPS.filter((k) => (colorPct[k] ?? 0) > 0);
 
                       return (
@@ -521,15 +531,25 @@ export default function ManapoolScreen() {
                             <Text style={[styles.analysisValue, { color: "#f59e0b" }]}>{avgCMC.toFixed(1)}</Text>
                           </View>
 
-                          {/* Farbverteilung */}
-                          {totalColoredPips > 0 && coloredColors.length > 0 && (
+                          {/* Pip-Verteilung (WUBRG + C + generisch) */}
+                          {totalAllPips > 0 && (
                             <>
                               <View style={styles.colorBar}>
+                                {/* Generisches Mana zuerst — neutrales Grau */}
+                                {required.generic > 0 && (
+                                  <View style={[styles.colorBarSeg, { backgroundColor: "#9e9e9e", flex: required.generic }]} />
+                                )}
                                 {coloredColors.map((k) => (
                                   <View key={k} style={[styles.colorBarSeg, { backgroundColor: COLOR_HEX[k], flex: k === "C" ? requiredC : (required[k as keyof ManaCounts] as number) }]} />
                                 ))}
                               </View>
                               <View style={styles.colorChips}>
+                                {/* Generisches Mana-Chip */}
+                                {genericPct > 0 && (
+                                  <View style={[styles.colorChipSm, { backgroundColor: "#9e9e9e" }]}>
+                                    <Text style={[styles.colorChipSmText, { color: "#1a1a1a" }]}>{genericPct}% N</Text>
+                                  </View>
+                                )}
                                 {coloredColors.map((k) => (
                                   <View key={k} style={[styles.colorChipSm, { backgroundColor: COLOR_HEX[k] }]}>
                                     <Text style={[styles.colorChipSmText, { color: COLOR_TEXT[k] }]}>{colorPct[k]}% {k}</Text>
