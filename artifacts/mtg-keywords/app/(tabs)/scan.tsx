@@ -226,17 +226,32 @@ async function fetchAutocompleteSuggestions(query: string): Promise<Suggestion[]
 
 async function fetchGermanSuggestions(query: string): Promise<Suggestion[]> {
   try {
-    const res = await fetch(
-      `https://api.scryfall.com/cards/search?q=lang%3Ade+${encodeURIComponent(query)}&order=name&unique=names`,
-      { headers: HEADERS }
-    );
-    if (!res.ok) return [];
-    const data = (await res.json()) as { data: CardData[] };
-    return data.data.filter((c) => c.printed_name).slice(0, 8).map((c) => ({
-      display: c.printed_name!,
-      resolveById: c.id,
-      prefetchedCard: c,
-    }));
+    // For split/DFC names typed with "/" – search both full and front-face only
+    const primaryQuery = query.split(/\s*\/+\s*/)[0].trim();
+    const searches = [primaryQuery];
+    if (primaryQuery !== query.trim()) searches.push(query.trim());
+
+    const results: Suggestion[] = [];
+    const seen = new Set<string>();
+
+    for (const q of searches) {
+      const res = await fetch(
+        `https://api.scryfall.com/cards/search?q=lang%3Ade+${encodeURIComponent(q)}&order=name&unique=names`,
+        { headers: HEADERS }
+      );
+      if (!res.ok) continue;
+      const data = (await res.json()) as { data: CardData[] };
+      for (const c of data.data) {
+        if (!c.printed_name) continue;
+        const key = c.printed_name.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        results.push({ display: c.printed_name, resolveById: c.id, prefetchedCard: c });
+        if (results.length >= 8) break;
+      }
+      if (results.length >= 8) break;
+    }
+    return results;
   } catch { return []; }
 }
 

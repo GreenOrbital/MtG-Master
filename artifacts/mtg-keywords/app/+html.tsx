@@ -1,4 +1,3 @@
-import { ScrollViewStyleReset } from "expo-router/html";
 import type { PropsWithChildren } from "react";
 
 export default function Root({ children }: PropsWithChildren) {
@@ -7,22 +6,31 @@ export default function Root({ children }: PropsWithChildren) {
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-        {/* Fix iOS Safari dynamic toolbar shift – use dvh instead of 100vh */}
+        {/* viewport-fit=cover fixes iOS Safari safe-area; interactive-widget prevents resize on keyboard */}
         <meta
           name="viewport"
-          content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover"
+          content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
         />
-        <ScrollViewStyleReset />
+        {/* PWA fullscreen on iOS – prevents address-bar bounce */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <style>{`
-          html, body, #root {
+          html, body {
             height: 100%;
-            height: -webkit-fill-available;
-          }
-          body {
-            min-height: 100vh;
-            min-height: -webkit-fill-available;
-            min-height: 100dvh;
+            height: 100dvh;
+            overflow: hidden;
+            /* Prevent iOS Safari overscroll bounce shifting the layout */
             overscroll-behavior: none;
+            -webkit-overflow-scrolling: auto;
+            position: fixed;
+            width: 100%;
+          }
+          #root {
+            display: flex;
+            height: 100%;
+            height: 100dvh;
+            flex: 1;
+            overflow: hidden;
           }
         `}</style>
       </head>
