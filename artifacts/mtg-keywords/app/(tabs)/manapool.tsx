@@ -217,7 +217,7 @@ function classifySpeed(cards: DeckCard[]): SpeedResult | null {
   if (avg < 2.8)  return { labelDe: "Aggro-Midrange", labelEn: "Aggro-Midrange", color: "#e67e22", desc: "Schnell mit mittleren Kurven-Spells", descEn: "Fast with some mid-range spells" };
   if (avg < 3.6)  return { labelDe: "Midrange", labelEn: "Midrange", color: "#f59e0b", desc: "Ausgeglichene Kurve zwischen früh und spät", descEn: "Balanced curve between early and late game" };
   if (avg < 4.5)  return { labelDe: "Control",  labelEn: "Control",  color: "#0e68ab", desc: "Kontrollorientiert mit hohen Manakosten",      descEn: "Control-oriented with higher mana costs" };
-  return           { labelDe: "Big Mana / Combo", labelEn: "Big Mana / Combo", color: "#8b2fc9", desc: "Sehr hohe Kurve — Ramp oder Combo nötig", descEn: "Very high curve — needs ramp or combo" };
+  return           { labelDe: "Big Mana / Combo", labelEn: "Big Mana / Combo", color: "#7c3aed", desc: "Sehr hohe Kurve — Ramp oder Combo nötig", descEn: "Very high curve — needs ramp or combo" };
 }
 
 function detectCardDraw(cards: DeckCard[]): { count: number; names: string[] } {
@@ -274,7 +274,7 @@ function getTypeBreakdown(cards: DeckCard[]): TypeGroup[] {
   const groups: Array<{ key: string; labelDe: string; labelEn: string; color: string; match: string }> = [
     { key: "creature",     labelDe: "Kreaturen",    labelEn: "Creatures",    color: "#d3202a", match: "creature" },
     { key: "instant",      labelDe: "Spontan",      labelEn: "Instants",     color: "#0e68ab", match: "instant" },
-    { key: "sorcery",      labelDe: "Hexerei",      labelEn: "Sorceries",    color: "#8b2fc9", match: "sorcery" },
+    { key: "sorcery",      labelDe: "Hexerei",      labelEn: "Sorceries",    color: "#7c3aed", match: "sorcery" },
     { key: "enchantment",  labelDe: "Verzauberung", labelEn: "Enchantments", color: "#16a34a", match: "enchantment" },
     { key: "artifact",     labelDe: "Artefakt",     labelEn: "Artifacts",    color: "#9e9e9e", match: "artifact" },
     { key: "planeswalker", labelDe: "Planeswalker", labelEn: "Planeswalkers",color: "#f59e0b", match: "planeswalker" },

@@ -736,8 +736,10 @@ export default function CardSearchScreen() {
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
           {showEnglish ? "Search by English or German card name" : "Deutschen oder englischen Kartennamen eingeben"}
         </Text>
-        <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Ionicons name="search" size={18} color={colors.mutedForeground} />
+        <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.primary + "80" },
+          Platform.OS === "ios" ? { shadowColor: colors.primary, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.35, shadowRadius: 10 } : {}
+        ]}>
+          <Ionicons name="search" size={18} color={colors.primary} />
           <TextInput
             value={query}
             onChangeText={(t) => { setQuery(t); if (card) resetCardState(); }}
@@ -813,7 +815,7 @@ export default function CardSearchScreen() {
           <View style={styles.content}>
 
             {/* ── Card info box ── */}
-            <View style={[styles.cardInfoBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.cardInfoBox, { backgroundColor: colors.card, borderColor: colors.border, borderLeftWidth: 4, borderLeftColor: colors.primary }]}>
               <View style={styles.cardInfoTop}>
                 <View style={styles.cardInfoLeft}>
                   {/* Name + star */}
@@ -1520,7 +1522,7 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   title: { fontSize: 26, fontFamily: "Inter_700Bold" },
   subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", marginBottom: 10, lineHeight: 18 },
-  inputRow: { flexDirection: "row", alignItems: "center", borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
+  inputRow: { flexDirection: "row", alignItems: "center", borderRadius: 24, borderWidth: 1.5, paddingHorizontal: 14, paddingVertical: 11, gap: 8 },
   input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", padding: 0 },
   cameraBtn: { borderRadius: 8, padding: 5 },
   recognizeErrorRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 5 },
@@ -1579,7 +1581,7 @@ const styles = StyleSheet.create({
   formatBox: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10 },
   formatHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   legalityGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  legalCard: { borderRadius: 10, borderWidth: 1.5, paddingHorizontal: 10, paddingVertical: 8, minWidth: "30%", flex: 1 },
+  legalCard: { borderRadius: 16, borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 8, minWidth: "30%", flex: 1 },
   legalFormat: { fontSize: 12, fontFamily: "Inter_700Bold" },
   legalStatus: { fontSize: 11, fontFamily: "Inter_600SemiBold", marginTop: 2 },
   legalDesc: { fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 4, lineHeight: 14 },
