@@ -6,6 +6,7 @@ import cardSynergiesRouter from "./card-synergies";
 import deckAnalysisRouter from "./deck-analysis";
 import recognizeCardRouter from "./recognize-card";
 import cardCombosRouter from "./card-combos";
+import deckCombosRouter from "./deck-combos";
 import userDataRouter from "./user-data";
 import translateTextRouter from "./translate-text";
 
@@ -18,6 +19,7 @@ router.use(cardSynergiesRouter);
 router.use(deckAnalysisRouter);
 router.use(recognizeCardRouter);
 router.use(cardCombosRouter);
+router.use(deckCombosRouter);
 router.use(userDataRouter);
 router.use(translateTextRouter);
 

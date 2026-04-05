@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Image,
   Modal,
@@ -25,6 +26,66 @@ import { useColors } from "@/hooks/useColors";
 const COLOR_HEX: Record<string, string> = { W: "#f5f0dc", U: "#0e68ab", B: "#2c2c2c", R: "#d3202a", G: "#00733e", C: "#888888" };
 const COLOR_TEXT: Record<string, string> = { W: "#1a1a1a", U: "#fff", B: "#e0e0e0", R: "#fff", G: "#fff", C: "#fff" };
 const COLORS = ["W", "U", "B", "R", "G"] as const;
+
+// ─── Combo types & helpers ────────────────────────────────────────────────────
+
+type ComboData = {
+  id: string;
+  cards: Array<{ name: string; imageSmall?: string }>;
+  produces: string[];
+  description: string;
+  popularity?: number;
+};
+
+const COMBO_EFFECT_DE: Record<string, string> = {
+  "infinite mana": "Unendliches Mana",
+  "infinite life": "Unendlich Leben",
+  "infinite damage": "Unendlicher Schaden",
+  "infinite tokens": "Unendlich Spielsteine",
+  "infinite draw": "Unendlich Ziehen",
+  "infinite mill": "Unendliches Mühlen",
+  "infinite loop": "Unendliche Schleife",
+  "infinite combat phases": "Unendliche Kampfphasen",
+  "infinite turns": "Unendliche Runden",
+  "win the game": "Spiel gewonnen",
+  "draw your deck": "Deck ziehen",
+  "exile all": "Alles verbannen",
+  "destroy all": "Alles zerstören",
+};
+
+function translateComboEffect(effect: string): string {
+  const lower = effect.toLowerCase().trim();
+  if (COMBO_EFFECT_DE[lower]) return COMBO_EFFECT_DE[lower];
+  for (const [key, val] of Object.entries(COMBO_EFFECT_DE)) {
+    if (lower.includes(key) || key.includes(lower)) return val;
+  }
+  return effect;
+}
+
+function getApiBase(): string {
+  const domain = process.env["EXPO_PUBLIC_DOMAIN"];
+  return domain ? `https://${domain}` : "";
+}
+
+async function fetchDeckCombos(cardNames: string[]): Promise<ComboData[]> {
+  try {
+    const apiBase = getApiBase();
+    if (!apiBase) {
+      return [];
+    }
+    const res = await fetch(`${apiBase}/api/deck-combos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cardNames }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!res.ok) return [];
+    const data = await res.json() as { results?: ComboData[] };
+    return Array.isArray(data.results) ? data.results : [];
+  } catch {
+    return [];
+  }
+}
 
 
 type ManaCounts = { W: number; U: number; B: number; R: number; G: number; colorless: number; generic: number; cmc: number };
@@ -150,6 +211,11 @@ export default function ManapoolScreen() {
   const [showNewDeckModal, setShowNewDeckModal] = useState(false);
   const [newDeckName, setNewDeckName] = useState("");
   const [cardFilter, setCardFilter] = useState<string>("all");
+  const [deckCombos, setDeckCombos] = useState<ComboData[]>([]);
+  const [deckComboLoading, setDeckComboLoading] = useState(false);
+  const [deckComboChecked, setDeckComboChecked] = useState(false);
+  const [showDeckCombosModal, setShowDeckCombosModal] = useState(false);
+  const [expandedDeckComboId, setExpandedDeckComboId] = useState<string | null>(null);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 84 + 34 : insets.bottom + 84;
 
@@ -166,11 +232,29 @@ export default function ManapoolScreen() {
   function openDeck(deck: Deck) {
     setActiveDeckId(deck.id);
     setEditName(deck.name);
+    setDeckCombos([]);
+    setDeckComboChecked(false);
+    setExpandedDeckComboId(null);
   }
 
   function closeDeck() {
     setActiveDeckId(null);
     setEditName("");
+    setDeckCombos([]);
+    setDeckComboChecked(false);
+  }
+
+  async function handleCheckDeckCombos() {
+    if (!activeDeck || deckComboLoading) return;
+    const cardNames = activeDeck.cards.map((c) => c.name);
+    setDeckComboLoading(true);
+    setDeckComboChecked(false);
+    setDeckCombos([]);
+    const results = await fetchDeckCombos(cardNames);
+    setDeckCombos(results);
+    setDeckComboChecked(true);
+    setDeckComboLoading(false);
+    setShowDeckCombosModal(true);
   }
 
   function handleCreateDeck() {
@@ -671,6 +755,31 @@ export default function ManapoolScreen() {
               );
             })()}
 
+            {/* ── Kombos suchen ── */}
+            {activeDeck.cards.length > 0 && (
+              <TouchableOpacity
+                style={[styles.comboCheckBtn, { backgroundColor: colors.primary + "22", borderColor: colors.primary }]}
+                onPress={handleCheckDeckCombos}
+                disabled={deckComboLoading}
+              >
+                {deckComboLoading ? (
+                  <ActivityIndicator color={colors.primary} size="small" />
+                ) : (
+                  <Ionicons name="sparkles-outline" size={18} color={colors.primary} />
+                )}
+                <Text style={[styles.comboCheckBtnText, { color: colors.primary }]}>
+                  {deckComboLoading
+                    ? (showEnglish ? "Searching combos…" : "Suche Kombos…")
+                    : deckComboChecked
+                      ? (showEnglish ? `${deckCombos.length} Combo${deckCombos.length !== 1 ? "s" : ""} found` : `${deckCombos.length} Kombo${deckCombos.length !== 1 ? "s" : ""} gefunden`)
+                      : (showEnglish ? "Check for combos" : "Kombos im Deck prüfen")}
+                </Text>
+                {deckComboChecked && deckCombos.length > 0 && (
+                  <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            )}
+
             {/* ── Delete Deck ── */}
             <TouchableOpacity style={[styles.deleteDeckBtn, { borderColor: colors.destructive }]}
               onPress={() => {
@@ -696,6 +805,108 @@ export default function ManapoolScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* ── Deck Combos Modal ── */}
+      <Modal visible={showDeckCombosModal} transparent animationType="slide">
+        <View style={styles.comboModalOverlay}>
+          <View style={[styles.comboModalSheet, { backgroundColor: colors.card }]}>
+            {/* Header */}
+            <View style={styles.comboModalHeader}>
+              <Ionicons name="sparkles" size={20} color={colors.primary} />
+              <Text style={[styles.comboModalTitle, { color: colors.foreground }]}>
+                {showEnglish ? "Deck Combos" : "Deck-Kombos"}
+              </Text>
+              <TouchableOpacity onPress={() => setShowDeckCombosModal(false)} style={styles.comboModalClose}>
+                <Ionicons name="close" size={22} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+
+            {deckCombos.length === 0 ? (
+              <View style={styles.comboEmpty}>
+                <Ionicons name="search-outline" size={40} color={colors.mutedForeground} />
+                <Text style={[styles.comboEmptyTitle, { color: colors.foreground }]}>
+                  {showEnglish ? "No combos found" : "Keine Kombos gefunden"}
+                </Text>
+                <Text style={[styles.comboEmptyText, { color: colors.mutedForeground }]}>
+                  {showEnglish
+                    ? "No known combos between cards in this deck were found."
+                    : "Zwischen den Karten in diesem Deck wurden keine bekannten Kombos gefunden."}
+                </Text>
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false} style={styles.comboModalScroll}>
+                <Text style={[styles.comboModalSub, { color: colors.mutedForeground }]}>
+                  {showEnglish
+                    ? `${deckCombos.length} combo${deckCombos.length !== 1 ? "s" : ""} possible with cards in this deck`
+                    : `${deckCombos.length} Kombo${deckCombos.length !== 1 ? "s" : ""} mit Karten dieses Decks möglich`}
+                </Text>
+                {deckCombos.map((combo) => {
+                  const isExpanded = expandedDeckComboId === combo.id;
+                  return (
+                    <TouchableOpacity
+                      key={combo.id}
+                      style={[styles.deckComboCard, { backgroundColor: colors.background, borderColor: colors.border }]}
+                      activeOpacity={0.8}
+                      onPress={() => setExpandedDeckComboId(isExpanded ? null : combo.id)}
+                    >
+                      {/* Card images row */}
+                      <View style={styles.deckComboImages}>
+                        {combo.cards.slice(0, 5).map((c, i) => (
+                          <View key={`${combo.id}-${i}`} style={[styles.deckComboImageWrap, { marginLeft: i > 0 ? -14 : 0, zIndex: combo.cards.length - i }]}>
+                            {c.imageSmall ? (
+                              <Image source={{ uri: c.imageSmall }} style={styles.deckComboImage} resizeMode="cover" />
+                            ) : (
+                              <View style={[styles.deckComboImagePlaceholder, { backgroundColor: colors.secondary }]}>
+                                <Ionicons name="card-outline" size={12} color={colors.mutedForeground} />
+                              </View>
+                            )}
+                          </View>
+                        ))}
+                        {combo.cards.length > 5 && (
+                          <View style={[styles.deckComboImageMore, { backgroundColor: colors.secondary, marginLeft: -14 }]}>
+                            <Text style={[styles.deckComboImageMoreText, { color: colors.mutedForeground }]}>+{combo.cards.length - 5}</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Effects */}
+                      <View style={styles.deckComboEffects}>
+                        {combo.produces.slice(0, 3).map((effect, i) => (
+                          <View key={i} style={[styles.deckComboEffectTag, { backgroundColor: colors.primary + "22", borderColor: colors.primary + "55" }]}>
+                            <Text style={[styles.deckComboEffectText, { color: colors.primary }]} numberOfLines={1}>
+                              {showEnglish ? effect : translateComboEffect(effect)}
+                            </Text>
+                          </View>
+                        ))}
+                        <Ionicons
+                          name={isExpanded ? "chevron-up" : "chevron-down"}
+                          size={14}
+                          color={colors.mutedForeground}
+                          style={{ marginLeft: "auto" }}
+                        />
+                      </View>
+
+                      {/* Expanded: card names + description */}
+                      {isExpanded && (
+                        <View style={[styles.deckComboDesc, { borderTopColor: colors.border }]}>
+                          <Text style={[styles.deckComboCardNames, { color: colors.mutedForeground }]}>
+                            {combo.cards.map((c) => c.name).join(" · ")}
+                          </Text>
+                          {combo.description ? (
+                            <Text style={[styles.deckComboDescText, { color: colors.foreground }]}>
+                              {combo.description}
+                            </Text>
+                          ) : null}
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* ── New Deck Modal ── */}
       <Modal visible={showNewDeckModal} transparent animationType="fade">
@@ -809,4 +1020,32 @@ const styles = StyleSheet.create({
   modalInput: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 11, fontSize: 16, fontFamily: "Inter_400Regular" },
   modalCreateBtn: { borderRadius: 12, paddingVertical: 13, alignItems: "center" },
   modalCreateBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  // Combo check button
+  comboCheckBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 12, borderWidth: 1, paddingVertical: 14 },
+  comboCheckBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  // Combo modal
+  comboModalOverlay: { flex: 1, backgroundColor: "#00000080", justifyContent: "flex-end" },
+  comboModalSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: "85%", gap: 0 },
+  comboModalHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 4 },
+  comboModalTitle: { fontSize: 18, fontFamily: "Inter_700Bold", flex: 1 },
+  comboModalClose: { padding: 4 },
+  comboModalSub: { fontSize: 13, fontFamily: "Inter_400Regular", marginBottom: 14 },
+  comboModalScroll: { flexGrow: 0 },
+  comboEmpty: { alignItems: "center", paddingVertical: 36, gap: 12 },
+  comboEmptyTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  comboEmptyText: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 18 },
+  // Combo cards
+  deckComboCard: { borderRadius: 12, borderWidth: 1, padding: 12, gap: 8, marginBottom: 8 },
+  deckComboImages: { flexDirection: "row", alignItems: "center" },
+  deckComboImageWrap: { borderRadius: 6, overflow: "hidden", borderWidth: 1.5, borderColor: "#ffffff30" },
+  deckComboImage: { width: 36, height: 50, borderRadius: 4 },
+  deckComboImagePlaceholder: { width: 36, height: 50, borderRadius: 4, alignItems: "center", justifyContent: "center" },
+  deckComboImageMore: { width: 36, height: 50, borderRadius: 6, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: "#ffffff30" },
+  deckComboImageMoreText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  deckComboEffects: { flexDirection: "row", flexWrap: "wrap", gap: 5, alignItems: "center" },
+  deckComboEffectTag: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3 },
+  deckComboEffectText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  deckComboDesc: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 10, gap: 6 },
+  deckComboCardNames: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
+  deckComboDescText: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
 });
