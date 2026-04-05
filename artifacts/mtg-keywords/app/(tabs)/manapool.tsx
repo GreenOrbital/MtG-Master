@@ -1240,32 +1240,33 @@ export default function ManapoolScreen() {
               </TouchableOpacity>
             )}
 
-            {/* ── Speichern / Importieren ── */}
-            <View style={[styles.savedStatusBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {/* ── Speichern & Exportieren ── */}
+            <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 4 }]}>
+              {showEnglish ? "Save & Export" : "Speichern & Exportieren"}
+            </Text>
+
+            {/* Status */}
+            <View style={[styles.savedStatusBox, { backgroundColor: "#22c55e18", borderColor: "#22c55e55" }]}>
+              <Ionicons name="checkmark-circle" size={16} color="#22c55e" />
               {exportFeedback ? (
-                <>
-                  <Ionicons name="checkmark-circle" size={15} color="#22c55e" />
-                  <Text style={[styles.savedStatusText, { color: "#22c55e", flex: 1 }]}>{exportFeedback}</Text>
-                </>
+                <Text style={[styles.savedStatusText, { color: "#22c55e", flex: 1 }]}>{exportFeedback}</Text>
               ) : (
-                <>
-                  <Ionicons name="checkmark-circle" size={15} color="#22c55e" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.savedStatusText, { color: colors.foreground }]}>
-                      {showEnglish ? "Auto-saved" : "Automatisch gespeichert"}
-                    </Text>
-                    <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 1 }}>
-                      {formatSavedAt(activeDeck.savedAt)}
-                      {"  ·  "}
-                      {isSignedIn
-                        ? (showEnglish ? "Local + Cloud" : "Lokal + Cloud")
-                        : (showEnglish ? "Local (sign in for cloud backup)" : "Lokal (anmelden für Cloud-Backup)")}
-                    </Text>
-                  </View>
-                </>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.savedStatusText, { color: colors.foreground }]}>
+                    {showEnglish ? "Auto-saved" : "Automatisch gespeichert"}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 1 }}>
+                    {formatSavedAt(activeDeck.savedAt)}
+                    {"  ·  "}
+                    {isSignedIn
+                      ? (showEnglish ? "Local + Cloud" : "Lokal + Cloud")
+                      : (showEnglish ? "Local (log in for cloud backup)" : "Lokal (anmelden für Cloud-Backup)")}
+                  </Text>
+                </View>
               )}
             </View>
 
+            {/* Buttons */}
             <View style={{ flexDirection: "row", gap: 10 }}>
               <TouchableOpacity
                 style={[styles.deckActionBtn, { backgroundColor: colors.primary, flex: 1 }]}
@@ -1277,7 +1278,7 @@ export default function ManapoolScreen() {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.deckActionBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
+                style={[styles.deckActionBtn, { backgroundColor: colors.card, borderColor: colors.primary, borderWidth: 1.5 }]}
                 onPress={handleOpenImport}
               >
                 <Ionicons name="download-outline" size={17} color={colors.primary} />
