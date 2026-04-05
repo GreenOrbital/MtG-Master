@@ -18,6 +18,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { useAccount } from "@/context/AccountContext";
 import { type Deck, type DeckCard, useDecks } from "@/context/DeckContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useColors } from "@/hooks/useColors";
@@ -318,6 +319,7 @@ export default function ManapoolScreen() {
   const insets = useSafeAreaInsets();
   const { showEnglish, setShowEnglish } = useSettings();
   const { decks, createDeck, updateDeck, deleteDeck, removeCardFromDeck, adjustCardCount, importDeck } = useDecks();
+  const { isSignedIn } = useAccount();
 
   const router = useRouter();
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
@@ -404,7 +406,7 @@ export default function ManapoolScreen() {
           const writable = await handle.createWritable();
           await writable.write(blob);
           await writable.close();
-          setExportFeedback(showEnglish ? "Saved" : "Gespeichert");
+          setExportFeedback(showEnglish ? `Saved: ${fileName}` : `Gespeichert: ${fileName}`);
         } catch (err: any) {
           if (err?.name !== "AbortError") {
             // Fallback if picker fails
@@ -412,7 +414,7 @@ export default function ManapoolScreen() {
             const a = document.createElement("a");
             a.href = url; a.download = fileName; a.click();
             URL.revokeObjectURL(url);
-            setExportFeedback(showEnglish ? "Download started" : "Download gestartet");
+            setExportFeedback(showEnglish ? `Downloaded: ${fileName}` : `Heruntergeladen: ${fileName}`);
           }
           return;
         }
@@ -422,13 +424,13 @@ export default function ManapoolScreen() {
         const a = document.createElement("a");
         a.href = url; a.download = fileName; a.click();
         URL.revokeObjectURL(url);
-        setExportFeedback(showEnglish ? "Download started" : "Download gestartet");
+        setExportFeedback(showEnglish ? `Downloaded: ${fileName}` : `Heruntergeladen: ${fileName}`);
       }
     } else {
       await Clipboard.setStringAsync(json);
       setExportFeedback(showEnglish ? "Copied to clipboard" : "In Zwischenablage kopiert");
     }
-    setTimeout(() => setExportFeedback(null), 3000);
+    setTimeout(() => setExportFeedback(null), 6000);
   }
 
   // ─── Import deck ───────────────────────────────────────────────────────────
@@ -595,25 +597,53 @@ export default function ManapoolScreen() {
                 returnKeyType="done"
                 onSubmitEditing={saveName}
               />
+            </View>
+
+            {/* ── Speichern / Importieren Buttons ── */}
+            <View style={{ flexDirection: "row", gap: 10 }}>
               <TouchableOpacity
+                style={[styles.deckActionBtn, { backgroundColor: colors.primary, flex: 1 }]}
                 onPress={() => handleExportDeck(activeDeck)}
-                style={{ paddingLeft: 8, paddingVertical: 4 }}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Ionicons name="share-outline" size={18} color={colors.primary} />
+                <Ionicons name="save-outline" size={17} color="#fff" />
+                <Text style={[styles.deckActionBtnText, { color: "#fff" }]}>
+                  {showEnglish ? "Save as file" : "Als Datei speichern"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.deckActionBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
+                onPress={handleOpenImport}
+              >
+                <Ionicons name="download-outline" size={17} color={colors.primary} />
+                <Text style={[styles.deckActionBtnText, { color: colors.primary }]}>
+                  {showEnglish ? "Import" : "Importieren"}
+                </Text>
               </TouchableOpacity>
             </View>
 
-            {/* ── Gespeichert-Indikator ── */}
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 4, marginTop: -4 }}>
-              <Ionicons name="checkmark-circle" size={13} color="#22c55e" />
-              <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
-                {formatSavedAt(activeDeck.savedAt)}
-              </Text>
-              {exportFeedback && (
-                <Text style={{ fontSize: 12, color: colors.primary, marginLeft: 8 }}>
-                  · {exportFeedback}
-                </Text>
+            {/* ── Gespeichert-Status ── */}
+            <View style={[styles.savedStatusBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {exportFeedback ? (
+                <>
+                  <Ionicons name="checkmark-circle" size={15} color="#22c55e" />
+                  <Text style={[styles.savedStatusText, { color: "#22c55e" }]}>{exportFeedback}</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle" size={15} color="#22c55e" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.savedStatusText, { color: colors.foreground }]}>
+                      {showEnglish ? "Auto-saved" : "Automatisch gespeichert"}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 1 }}>
+                      {formatSavedAt(activeDeck.savedAt)}
+                      {"  ·  "}
+                      {isSignedIn
+                        ? (showEnglish ? "Local + Cloud" : "Lokal + Cloud")
+                        : (showEnglish ? "Local (sign in for cloud backup)" : "Lokal (anmelden für Cloud-Backup)")}
+                    </Text>
+                  </View>
+                </>
               )}
             </View>
 
@@ -1545,6 +1575,10 @@ const styles = StyleSheet.create({
   curveCmc: { fontSize: 9, fontFamily: "Inter_400Regular", marginTop: 2 },
   deleteDeckBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 12, borderWidth: 1, paddingVertical: 12 },
   deleteDeckText: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  deckActionBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 16 },
+  deckActionBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  savedStatusBox: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 12, borderWidth: 1, paddingHorizontal: 13, paddingVertical: 10 },
+  savedStatusText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   modalOverlay: { flex: 1, backgroundColor: "#00000080", justifyContent: "center", alignItems: "center", padding: 24 },
   modalSheet: { borderRadius: 16, padding: 20, width: "100%", gap: 14 },
   modalTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
