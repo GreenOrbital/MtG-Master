@@ -197,6 +197,75 @@ function sumMana(cards: Deck["cards"]): ManaCounts {
   return total;
 }
 
+// ─── Deck-Analyse Hilfsfunktionen ────────────────────────────────────────────
+
+type SpeedResult = { labelDe: string; labelEn: string; color: string; desc: string; descEn: string };
+
+function classifySpeed(cards: DeckCard[]): SpeedResult | null {
+  const nonLands = cards.filter((c) => !isLand(c));
+  const counted = nonLands.filter((c) => c.cmc !== undefined || c.mana_cost);
+  if (counted.length === 0) return null;
+  const totalCmc = counted.reduce((a, c) => {
+    const cmc = c.cmc !== undefined ? c.cmc : parseMana(c.mana_cost ?? "").cmc;
+    return a + cmc * c.count;
+  }, 0);
+  const totalCount = counted.reduce((a, c) => a + c.count, 0);
+  const avg = totalCmc / totalCount;
+  if (avg < 2.0)  return { labelDe: "Aggro",   labelEn: "Aggro",   color: "#d3202a", desc: "Sehr schnelles Deck mit niedrigen Manakosten",  descEn: "Very fast deck with low mana costs" };
+  if (avg < 2.8)  return { labelDe: "Aggro-Midrange", labelEn: "Aggro-Midrange", color: "#e67e22", desc: "Schnell mit mittleren Kurven-Spells", descEn: "Fast with some mid-range spells" };
+  if (avg < 3.6)  return { labelDe: "Midrange", labelEn: "Midrange", color: "#f59e0b", desc: "Ausgeglichene Kurve zwischen früh und spät", descEn: "Balanced curve between early and late game" };
+  if (avg < 4.5)  return { labelDe: "Control",  labelEn: "Control",  color: "#0e68ab", desc: "Kontrollorientiert mit hohen Manakosten",      descEn: "Control-oriented with higher mana costs" };
+  return           { labelDe: "Big Mana / Combo", labelEn: "Big Mana / Combo", color: "#8b2fc9", desc: "Sehr hohe Kurve — Ramp oder Combo nötig", descEn: "Very high curve — needs ramp or combo" };
+}
+
+function detectCardDraw(cards: DeckCard[]): { count: number; names: string[] } {
+  const DRAW_RE = /\bdraw(?:s)?\s+(?:a|\d+|two|three|four|five|x)\s+card/i;
+  const KEYWORD_DRAW = /\bcycling\b|\bscry\b|\bdraw\b/i;
+  const matched: string[] = [];
+  for (const c of cards) {
+    if (isLand(c)) continue;
+    const text = c.oracle_text ?? "";
+    const kw   = (c.keywords ?? []).join(" ");
+    if (DRAW_RE.test(text) || KEYWORD_DRAW.test(kw)) {
+      for (let i = 0; i < c.count; i++) matched.push(c.name);
+    }
+  }
+  const unique = [...new Set(matched)];
+  return { count: unique.length, names: unique.slice(0, 5) };
+}
+
+function detectRemoval(cards: DeckCard[]): { count: number; names: string[] } {
+  const DESTROY_RE  = /destroy\s+target|exile\s+target/i;
+  const DAMAGE_RE   = /deals?\s+\d+\s+damage\s+to\s+(?:any\s+target|target\s+(?:creature|player|planeswalker))/i;
+  const MINUS_RE    = /gets?\s+[−\-]\d+\/[−\-]\d+/i;
+  const BOUNCE_RE   = /return\s+target\s+(?:creature|artifact|enchantment|permanent).*to\s+(?:its|their)\s+owner/i;
+  const matched: string[] = [];
+  for (const c of cards) {
+    if (isLand(c)) continue;
+    const text = c.oracle_text ?? "";
+    if (DESTROY_RE.test(text) || DAMAGE_RE.test(text) || MINUS_RE.test(text) || BOUNCE_RE.test(text)) {
+      for (let i = 0; i < c.count; i++) matched.push(c.name);
+    }
+  }
+  const unique = [...new Set(matched)];
+  return { count: unique.length, names: unique.slice(0, 5) };
+}
+
+function detectRamp(cards: DeckCard[]): { count: number; names: string[] } {
+  const LAND_SEARCH_RE = /search\s+your\s+library\s+for\s+(?:a|an|up\s+to\s+\d+)\s+(?:\w+\s+)*land/i;
+  const MANA_ADD_RE    = /add\s+(?:\{|\d|one|two|three|four|five)/i;
+  const matched: string[] = [];
+  for (const c of cards) {
+    if (isLand(c)) continue;
+    const text = c.oracle_text ?? "";
+    if (LAND_SEARCH_RE.test(text) || MANA_ADD_RE.test(text)) {
+      for (let i = 0; i < c.count; i++) matched.push(c.name);
+    }
+  }
+  const unique = [...new Set(matched)];
+  return { count: unique.length, names: unique.slice(0, 5) };
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function ManapoolScreen() {
@@ -755,6 +824,137 @@ export default function ManapoolScreen() {
               );
             })()}
 
+            {/* ── Deck-Analyse: Geschwindigkeit, Card Draw, Removal, Ramp ── */}
+            {(() => {
+              const speed   = classifySpeed(activeDeck.cards);
+              const draw    = detectCardDraw(activeDeck.cards);
+              const removal = detectRemoval(activeDeck.cards);
+              const ramp    = detectRamp(activeDeck.cards);
+              const totalNonLand = activeDeck.cards.filter((c) => !isLand(c)).reduce((a, c) => a + c.count, 0);
+              const hasOracleText = activeDeck.cards.some((c) => c.oracle_text);
+              if (!speed && !hasOracleText) return null;
+
+              // Recommended values (rough rule of thumb for 60-card / commander decks)
+              const isCommander = activeDeck.cards.reduce((a, c) => a + c.count, 0) >= 90;
+              const drawTarget    = isCommander ? 12 : 8;
+              const removalTarget = isCommander ? 10 : 6;
+              const rampTarget    = isCommander ? 10 : 4;
+
+              function RatioBar({ have, need, color }: { have: number; need: number; color: string }) {
+                const pct = need > 0 ? Math.min(1, have / need) : 1;
+                const ok  = have >= need;
+                return (
+                  <View style={styles.ratioBar}>
+                    <View style={[styles.ratioFill, { flex: pct, backgroundColor: ok ? "#16a34a" : color }]} />
+                    <View style={[styles.ratioEmpty, { flex: Math.max(0, 1 - pct) }]} />
+                  </View>
+                );
+              }
+
+              return (
+                <>
+                  <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                    {showEnglish ? "Deck Analysis" : "Deck-Analyse"}
+                  </Text>
+                  <View style={[styles.analysisBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+
+                    {/* Geschwindigkeit */}
+                    {speed && (
+                      <View style={styles.analysisBig}>
+                        <View style={styles.analysisRow}>
+                          <Ionicons name="speedometer-outline" size={15} color={speed.color} />
+                          <Text style={[styles.analysisLabel, { color: colors.foreground }]}>
+                            {showEnglish ? "Style" : "Spielstil"}
+                          </Text>
+                          <View style={[styles.speedBadge, { backgroundColor: speed.color + "22", borderColor: speed.color }]}>
+                            <Text style={[styles.speedBadgeText, { color: speed.color }]}>
+                              {showEnglish ? speed.labelEn : speed.labelDe}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={[styles.analysisHint, { color: colors.mutedForeground }]}>
+                          {showEnglish ? speed.descEn : speed.desc}
+                        </Text>
+                      </View>
+                    )}
+
+                    {hasOracleText && (
+                      <>
+                        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+                        {/* Card Draw */}
+                        <View style={styles.analysisGroup}>
+                          <View style={styles.analysisRow}>
+                            <Ionicons name="book-outline" size={15} color="#0e68ab" />
+                            <Text style={[styles.analysisLabel, { color: colors.foreground }]}>
+                              {showEnglish ? "Card Draw" : "Karten ziehen"}
+                            </Text>
+                            <Text style={[styles.analysisStat, { color: draw.count >= drawTarget ? "#16a34a" : "#f59e0b" }]}>
+                              {draw.count} / ~{drawTarget}
+                            </Text>
+                          </View>
+                          <RatioBar have={draw.count} need={drawTarget} color="#0e68ab" />
+                          {draw.names.length > 0 && (
+                            <Text style={[styles.analysisHint, { color: colors.mutedForeground }]} numberOfLines={1}>
+                              {draw.names.join(" · ")}
+                            </Text>
+                          )}
+                        </View>
+
+                        {/* Removal */}
+                        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                        <View style={styles.analysisGroup}>
+                          <View style={styles.analysisRow}>
+                            <Ionicons name="skull-outline" size={15} color="#d3202a" />
+                            <Text style={[styles.analysisLabel, { color: colors.foreground }]}>
+                              {showEnglish ? "Removal" : "Removal"}
+                            </Text>
+                            <Text style={[styles.analysisStat, { color: removal.count >= removalTarget ? "#16a34a" : "#f59e0b" }]}>
+                              {removal.count} / ~{removalTarget}
+                            </Text>
+                          </View>
+                          <RatioBar have={removal.count} need={removalTarget} color="#d3202a" />
+                          {removal.names.length > 0 && (
+                            <Text style={[styles.analysisHint, { color: colors.mutedForeground }]} numberOfLines={1}>
+                              {removal.names.join(" · ")}
+                            </Text>
+                          )}
+                        </View>
+
+                        {/* Ramp */}
+                        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                        <View style={styles.analysisGroup}>
+                          <View style={styles.analysisRow}>
+                            <Ionicons name="trending-up-outline" size={15} color="#16a34a" />
+                            <Text style={[styles.analysisLabel, { color: colors.foreground }]}>
+                              {showEnglish ? "Ramp / Mana acceleration" : "Ramp / Manabeschleunigung"}
+                            </Text>
+                            <Text style={[styles.analysisStat, { color: ramp.count >= rampTarget ? "#16a34a" : "#f59e0b" }]}>
+                              {ramp.count} / ~{rampTarget}
+                            </Text>
+                          </View>
+                          <RatioBar have={ramp.count} need={rampTarget} color="#16a34a" />
+                          {ramp.names.length > 0 && (
+                            <Text style={[styles.analysisHint, { color: colors.mutedForeground }]} numberOfLines={1}>
+                              {ramp.names.join(" · ")}
+                            </Text>
+                          )}
+                        </View>
+
+                        {!hasOracleText && totalNonLand > 0 && (
+                          <Text style={[styles.analysisHint, { color: colors.mutedForeground, marginTop: 4 }]}>
+                            {showEnglish
+                              ? "Add cards via search to enable draw/removal/ramp detection."
+                              : "Füge Karten über die Suche hinzu für vollständige Analyse."}
+                          </Text>
+                        )}
+                      </>
+                    )}
+                  </View>
+                </>
+              );
+            })()}
+
             {/* ── Kombos suchen ── */}
             {activeDeck.cards.length > 0 && (
               <TouchableOpacity
@@ -1020,6 +1220,16 @@ const styles = StyleSheet.create({
   modalInput: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 11, fontSize: 16, fontFamily: "Inter_400Regular" },
   modalCreateBtn: { borderRadius: 12, paddingVertical: 13, alignItems: "center" },
   modalCreateBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  // Deck-Analyse
+  analysisBig: { gap: 6 },
+  analysisGroup: { gap: 6 },
+  analysisStat: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  analysisHint: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
+  speedBadge: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
+  speedBadgeText: { fontSize: 12, fontFamily: "Inter_700Bold" },
+  ratioBar: { height: 8, borderRadius: 4, flexDirection: "row", overflow: "hidden", backgroundColor: "#33333344" },
+  ratioFill: { borderRadius: 4 },
+  ratioEmpty: {},
   // Combo check button
   comboCheckBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 12, borderWidth: 1, paddingVertical: 14 },
   comboCheckBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },

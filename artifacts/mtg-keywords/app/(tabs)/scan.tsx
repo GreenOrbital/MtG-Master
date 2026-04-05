@@ -1363,6 +1363,8 @@ export default function CardSearchScreen() {
                           mana_cost: card.mana_cost,
                           cmc: card.cmc,
                           type_line: card.type_line,
+                          oracle_text: card.oracle_text ?? card.card_faces?.map((f) => f.oracle_text).filter(Boolean).join("\n"),
+                          keywords: card.keywords,
                           produced_mana: card.produced_mana,
                           imageUri: (src as CardData | CardPrint).image_uris?.normal ?? (src as CardData | CardPrint).card_faces?.[0]?.image_uris?.normal,
                         }, addCount);
