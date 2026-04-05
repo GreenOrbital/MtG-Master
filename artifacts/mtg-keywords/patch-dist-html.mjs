@@ -1,6 +1,6 @@
 /**
- * Post-build script: patches dist/index.html to fix iOS Safari viewport shifting.
- * Replaces the default Expo viewport meta and injects PWA/iOS meta tags + CSS.
+ * Post-build script: patches dist/index.html for iOS Safari viewport stability.
+ * Tested against iPhone 17 Pro (iOS 18+) dynamic toolbar behavior.
  */
 import { readFileSync, writeFileSync } from "fs";
 import { resolve, dirname } from "path";
@@ -11,46 +11,54 @@ const htmlPath = resolve(__dirname, "dist/index.html");
 
 let html = readFileSync(htmlPath, "utf8");
 
-// 1. Replace viewport to add viewport-fit=cover + interactive-widget
+// 1. Replace viewport meta — viewport-fit=cover for notch/Dynamic Island,
+//    interactive-widget=resizes-content keeps layout stable when keyboard opens
 html = html.replace(
   /<meta name="viewport"[^>]*>/,
   `<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />`
 );
 
-// 2. Inject iOS PWA meta + CSS fix right before </head>
-const iosMeta = `
+// 2. Replace or remove Expo's expo-reset style block (we provide our own below)
+html = html.replace(
+  /<style id="expo-reset">[\s\S]*?<\/style>/,
+  `<style id="expo-reset">/* replaced by viewport-fix */</style>`
+);
+
+// 3. Inject iOS PWA meta + stable-height CSS just before </head>
+const inject = `
+  <!-- iOS PWA: hide browser chrome when added to home screen -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <style id="viewport-fix">
+    /*
+     * -webkit-fill-available fills the visible viewport (excluding Safari toolbars)
+     * on iOS without causing reflows when the toolbar shows/hides.
+     * Using 100% (inherited) is the safest fallback; dvh would shift on toolbar animation.
+     */
     html {
       height: 100%;
-      height: 100dvh;
+      /* iOS 15+ small viewport — never taller than visible area with toolbar shown */
+      height: -webkit-fill-available;
     }
     body {
-      /* Lock body so iOS Safari toolbar can't shift content */
-      position: fixed;
-      width: 100%;
+      margin: 0;
       height: 100%;
-      height: 100dvh;
+      height: -webkit-fill-available;
       overflow: hidden;
+      /* Prevent iOS rubber-band bounce from shifting the layout */
       overscroll-behavior: none;
+      -webkit-overflow-scrolling: auto;
     }
     #root {
       display: flex;
-      height: 100%;
-      height: 100dvh;
       flex: 1;
+      height: 100%;
+      height: -webkit-fill-available;
       overflow: hidden;
     }
   </style>`;
 
-html = html.replace("</head>", `${iosMeta}\n</head>`);
-
-// 3. Remove duplicate expo-reset height/overflow rules that conflict
-html = html.replace(
-  /<style id="expo-reset">[\s\S]*?<\/style>/,
-  `<style id="expo-reset">/* overridden by viewport-fix */</style>`
-);
+html = html.replace("</head>", `${inject}\n</head>`);
 
 writeFileSync(htmlPath, html, "utf8");
-console.log("✓ dist/index.html patched for iOS viewport fix");
+console.log("✓ dist/index.html patched (iOS Safari viewport fix)");

@@ -916,6 +916,12 @@ export default function ManapoolScreen() {
             {(() => {
               const availMana = computeLandMana(activeDeck.cards);
               const landTotal = activeDeck.cards.filter(isLand).reduce((a, c) => a + c.count, 0);
+              // Colorless-only lands: can pay for generic {N} but not for any WUBRG color
+              const colorlessLandCount = activeDeck.cards
+                .filter((c) => isLand(c) && !COLORS.some((col) => landColors(c).includes(col)))
+                .reduce((a, c) => a + c.count, 0);
+              // Effective lands available for colored mana duties
+              const effectiveColoredLands = Math.max(0, landTotal - colorlessLandCount);
               const required = sumMana(activeDeck.cards);
               if (landTotal === 0 && required.cmc === 0) return null;
               // hasColors = any land produces mana (WUBRG or C)
@@ -974,14 +980,16 @@ export default function ManapoolScreen() {
                       // Generic mana shown as neutral "N" segment
                       const genericPct = totalAllPips > 0 ? Math.round((required.generic / totalAllPips) * 100) : 0;
 
-                      // Recommendations only based on colored/colorless pips
+                      // Recommendations: colorless lands handle generic {N}, so only
+                      // effectiveColoredLands (non-colorless) need to produce WUBRG/C.
                       const recommended: Partial<Record<string, number>> = {};
+                      const recBase = effectiveColoredLands > 0 ? effectiveColoredLands : landTotal;
                       COLORS.forEach((k) => {
                         if (required[k] > 0 && totalColoredPips > 0)
-                          recommended[k] = Math.max(1, Math.round((required[k] / totalColoredPips) * landTotal));
+                          recommended[k] = Math.max(1, Math.round((required[k] / totalColoredPips) * recBase));
                       });
                       if (requiredC > 0 && totalColoredPips > 0)
-                        recommended["C"] = Math.max(1, Math.round((requiredC / totalColoredPips) * landTotal));
+                        recommended["C"] = Math.max(1, Math.round((requiredC / totalColoredPips) * recBase));
 
                       const ALL_PIPS = [...COLORS, "C"] as const;
                       const coloredColors = ALL_PIPS.filter((k) => (colorPct[k] ?? 0) > 0);
@@ -1066,6 +1074,20 @@ export default function ManapoolScreen() {
                                   </View>
                                 );
                               })}
+
+                              {/* Colorless land coverage note */}
+                              {colorlessLandCount > 0 && required.generic > 0 && (
+                                <View style={[styles.coverageRow, { marginTop: 6 }]}>
+                                  <View style={[styles.colorDotTiny, { backgroundColor: "#9e9e9e" }]}>
+                                    <Text style={[styles.colorDotTinyText, { color: "#fff" }]}>N</Text>
+                                  </View>
+                                  <Text style={[styles.coverageText, { color: "#9e9e9e", flex: 1, marginLeft: 4 }]}>
+                                    {colorlessLandCount}× {showEnglish ? "colorless source" : "farblose Quelle"}{colorlessLandCount !== 1 ? (showEnglish ? "s" : "n") : ""}{" "}
+                                    {showEnglish ? "cover generic {N} costs" : "decken {N}-Bedarf ab"}
+                                  </Text>
+                                  <Text style={[styles.coverageText, { color: "#9e9e9e" }]}>✓</Text>
+                                </View>
+                              )}
 
                               {/* Verdict */}
                               {(() => {
