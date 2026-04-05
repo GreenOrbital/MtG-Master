@@ -257,20 +257,56 @@ async function fetchCardById(id: string): Promise<CardData | null> {
   } catch { return null; }
 }
 
+// Fetch German localization for a card and overlay onto card data
+async function overlayGermanData(card: CardData): Promise<CardData> {
+  try {
+    // Strip DFC second face for search (e.g. "Front // Back" → "Front")
+    const searchName = card.name.split(" // ")[0].trim();
+    const res = await fetch(
+      `https://api.scryfall.com/cards/search?q=${encodeURIComponent(`!"${searchName}" lang:de`)}&unique=prints&order=released`,
+      { headers: HEADERS }
+    );
+    if (!res.ok) return card;
+    const data = (await res.json()) as { data?: CardData[] };
+    const de = data.data?.[0];
+    if (!de) return card;
+    return {
+      ...card,
+      printed_name: de.printed_name ?? card.printed_name,
+      printed_text: de.printed_text ?? card.printed_text,
+      printed_type_line: de.printed_type_line ?? card.printed_type_line,
+      // Keep English oracle_text for keyword matching; German goes in printed_text
+    };
+  } catch { return card; }
+}
+
 async function fetchCardByName(name: string): Promise<CardData | null> {
   try {
-    // Try fuzzy first (more forgiving for slight spelling differences)
+    // For split / DFC cards the AI might return "Front // Back" or "Front / Back"
+    // Scryfall finds them by front face only
+    const primaryName = name.split(/\s*\/+\s*/)[0].trim();
+
+    // Try fuzzy on the primary name
     const res = await fetch(
-      `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`,
+      `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(primaryName)}`,
       { headers: HEADERS }
     );
-    if (res.ok) return (await res.json()) as CardData;
-    // Fallback: exact (for cards Scryfall fuzzy can't handle)
-    const res2 = await fetch(
-      `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`,
-      { headers: HEADERS }
-    );
-    return res2.ok ? ((await res2.json()) as CardData) : null;
+    if (res.ok) {
+      const card = (await res.json()) as CardData;
+      return await overlayGermanData(card);
+    }
+    // Fallback: full name fuzzy (in case the "/" was part of original name)
+    if (primaryName !== name.trim()) {
+      const res2 = await fetch(
+        `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name.trim())}`,
+        { headers: HEADERS }
+      );
+      if (res2.ok) {
+        const card2 = (await res2.json()) as CardData;
+        return await overlayGermanData(card2);
+      }
+    }
+    return null;
   } catch { return null; }
 }
 
