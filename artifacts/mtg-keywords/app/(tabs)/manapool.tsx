@@ -599,54 +599,6 @@ export default function ManapoolScreen() {
               />
             </View>
 
-            {/* ── Speichern / Importieren Buttons ── */}
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              <TouchableOpacity
-                style={[styles.deckActionBtn, { backgroundColor: colors.primary, flex: 1 }]}
-                onPress={() => handleExportDeck(activeDeck)}
-              >
-                <Ionicons name="save-outline" size={17} color="#fff" />
-                <Text style={[styles.deckActionBtnText, { color: "#fff" }]}>
-                  {showEnglish ? "Save as file" : "Als Datei speichern"}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.deckActionBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
-                onPress={handleOpenImport}
-              >
-                <Ionicons name="download-outline" size={17} color={colors.primary} />
-                <Text style={[styles.deckActionBtnText, { color: colors.primary }]}>
-                  {showEnglish ? "Import" : "Importieren"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* ── Gespeichert-Status ── */}
-            <View style={[styles.savedStatusBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              {exportFeedback ? (
-                <>
-                  <Ionicons name="checkmark-circle" size={15} color="#22c55e" />
-                  <Text style={[styles.savedStatusText, { color: "#22c55e" }]}>{exportFeedback}</Text>
-                </>
-              ) : (
-                <>
-                  <Ionicons name="checkmark-circle" size={15} color="#22c55e" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.savedStatusText, { color: colors.foreground }]}>
-                      {showEnglish ? "Auto-saved" : "Automatisch gespeichert"}
-                    </Text>
-                    <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 1 }}>
-                      {formatSavedAt(activeDeck.savedAt)}
-                      {"  ·  "}
-                      {isSignedIn
-                        ? (showEnglish ? "Local + Cloud" : "Lokal + Cloud")
-                        : (showEnglish ? "Local (sign in for cloud backup)" : "Lokal (anmelden für Cloud-Backup)")}
-                    </Text>
-                  </View>
-                </>
-              )}
-            </View>
-
             {/* ── Karten ── */}
             <View style={styles.cardListHeader}>
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -1287,6 +1239,53 @@ export default function ManapoolScreen() {
                 )}
               </TouchableOpacity>
             )}
+
+            {/* ── Speichern / Importieren ── */}
+            <View style={[styles.savedStatusBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {exportFeedback ? (
+                <>
+                  <Ionicons name="checkmark-circle" size={15} color="#22c55e" />
+                  <Text style={[styles.savedStatusText, { color: "#22c55e", flex: 1 }]}>{exportFeedback}</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle" size={15} color="#22c55e" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.savedStatusText, { color: colors.foreground }]}>
+                      {showEnglish ? "Auto-saved" : "Automatisch gespeichert"}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 1 }}>
+                      {formatSavedAt(activeDeck.savedAt)}
+                      {"  ·  "}
+                      {isSignedIn
+                        ? (showEnglish ? "Local + Cloud" : "Lokal + Cloud")
+                        : (showEnglish ? "Local (sign in for cloud backup)" : "Lokal (anmelden für Cloud-Backup)")}
+                    </Text>
+                  </View>
+                </>
+              )}
+            </View>
+
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity
+                style={[styles.deckActionBtn, { backgroundColor: colors.primary, flex: 1 }]}
+                onPress={() => handleExportDeck(activeDeck)}
+              >
+                <Ionicons name="save-outline" size={17} color="#fff" />
+                <Text style={[styles.deckActionBtnText, { color: "#fff" }]}>
+                  {showEnglish ? "Save as file" : "Als Datei speichern"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.deckActionBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}
+                onPress={handleOpenImport}
+              >
+                <Ionicons name="download-outline" size={17} color={colors.primary} />
+                <Text style={[styles.deckActionBtnText, { color: colors.primary }]}>
+                  {showEnglish ? "Import" : "Importieren"}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             {/* ── Delete Deck ── */}
             <TouchableOpacity style={[styles.deleteDeckBtn, { borderColor: colors.destructive }]}
