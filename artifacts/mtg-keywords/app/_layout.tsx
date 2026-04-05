@@ -16,6 +16,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import OfflineGuard from "@/components/OfflineGuard";
 import { AccountProvider } from "@/context/AccountContext";
 import { CardHistoryProvider } from "@/context/CardHistoryContext";
 import { DeckProvider } from "@/context/DeckContext";
@@ -70,19 +71,21 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache} proxyUrl={proxyUrl}>
-            <ClerkLoaded>
-              <GestureHandlerRootView>
-                <KeyboardProvider>
-                  <AppProviders>
-                    <RootLayoutNav />
-                  </AppProviders>
-                </KeyboardProvider>
-              </GestureHandlerRootView>
-            </ClerkLoaded>
-          </ClerkProvider>
-        </QueryClientProvider>
+        <OfflineGuard>
+          <QueryClientProvider client={queryClient}>
+            <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache} proxyUrl={proxyUrl}>
+              <ClerkLoaded>
+                <GestureHandlerRootView>
+                  <KeyboardProvider>
+                    <AppProviders>
+                      <RootLayoutNav />
+                    </AppProviders>
+                  </KeyboardProvider>
+                </GestureHandlerRootView>
+              </ClerkLoaded>
+            </ClerkProvider>
+          </QueryClientProvider>
+        </OfflineGuard>
       </ErrorBoundary>
     </SafeAreaProvider>
   );
