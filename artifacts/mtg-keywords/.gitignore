@@ -5,8 +5,8 @@ node_modules/
 
 # Expo
 .expo/
-dist/
 web-build/
+# dist/ intentionally NOT ignored — pre-built static files are committed as fallback
 expo-env.d.ts
 
 # Native
