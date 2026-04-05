@@ -259,11 +259,18 @@ async function fetchCardById(id: string): Promise<CardData | null> {
 
 async function fetchCardByName(name: string): Promise<CardData | null> {
   try {
+    // Try fuzzy first (more forgiving for slight spelling differences)
     const res = await fetch(
+      `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`,
+      { headers: HEADERS }
+    );
+    if (res.ok) return (await res.json()) as CardData;
+    // Fallback: exact (for cards Scryfall fuzzy can't handle)
+    const res2 = await fetch(
       `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`,
       { headers: HEADERS }
     );
-    return res.ok ? ((await res.json()) as CardData) : null;
+    return res2.ok ? ((await res2.json()) as CardData) : null;
   } catch { return null; }
 }
 
@@ -599,8 +606,9 @@ export default function CardSearchScreen() {
     }
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ["images"],
-      allowsEditing: false,
-      quality: 0.5,
+      allowsEditing: true,
+      aspect: [3, 4],
+      quality: 0.85,
       base64: true,
     });
     if (result.canceled || !result.assets?.[0]?.base64) return;
