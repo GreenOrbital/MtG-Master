@@ -10,6 +10,7 @@ import {
   Modal,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -705,6 +706,54 @@ export default function ManapoolScreen() {
     } else {
       await Clipboard.setStringAsync(json);
       setExportFeedback(showEnglish ? "Copied to clipboard" : "In Zwischenablage kopiert");
+    }
+    setTimeout(() => setExportFeedback(null), 6000);
+  }
+
+  // ─── Export deck as Manabox TXT ────────────────────────────────────────────
+  async function handleExportManabox(deck: Deck) {
+    // Manabox format: "<count> <english card name>" per line
+    const lines = deck.cards.map((c) => `${c.count} ${c.name}`);
+    const txt = lines.join("\n");
+    const fileName = `${deck.name.replace(/[^a-zA-Z0-9_\-]/g, "_")}_manabox.txt`;
+
+    if (Platform.OS === "web") {
+      const blob = new Blob([txt], { type: "text/plain" });
+      if (typeof (window as any).showSaveFilePicker === "function") {
+        try {
+          const handle = await (window as any).showSaveFilePicker({
+            suggestedName: fileName,
+            types: [{ description: "Text", accept: { "text/plain": [".txt"] } }],
+          });
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          setExportFeedback(showEnglish ? `Saved: ${fileName}` : `Gespeichert: ${fileName}`);
+        } catch (err: any) {
+          if (err?.name !== "AbortError") {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = fileName; a.click();
+            URL.revokeObjectURL(url);
+            setExportFeedback(showEnglish ? `Downloaded: ${fileName}` : `Heruntergeladen: ${fileName}`);
+          }
+        }
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = fileName; a.click();
+        URL.revokeObjectURL(url);
+        setExportFeedback(showEnglish ? `Downloaded: ${fileName}` : `Heruntergeladen: ${fileName}`);
+      }
+    } else {
+      // On mobile: open native share sheet so user can send to Manabox, Files, etc.
+      try {
+        await Share.share({ message: txt, title: fileName });
+      } catch {
+        // Fallback: copy to clipboard
+        await Clipboard.setStringAsync(txt);
+        setExportFeedback(showEnglish ? "Copied to clipboard" : "In Zwischenablage kopiert");
+      }
     }
     setTimeout(() => setExportFeedback(null), 6000);
   }
@@ -1788,7 +1837,7 @@ export default function ManapoolScreen() {
               )}
             </View>
 
-            {/* Buttons */}
+            {/* Buttons row 1: Save + Import */}
             <View style={{ flexDirection: "row", gap: 10 }}>
               <TouchableOpacity
                 style={[styles.deckActionBtn, { backgroundColor: colors.primary, flex: 1 }]}
@@ -1809,6 +1858,17 @@ export default function ManapoolScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+
+            {/* Button row 2: Manabox export */}
+            <TouchableOpacity
+              style={[styles.deckActionBtn, { backgroundColor: "#1a2a1a", borderColor: "#4ade80", borderWidth: 1.5, marginTop: 2 }]}
+              onPress={() => handleExportManabox(activeDeck)}
+            >
+              <Ionicons name="grid-outline" size={17} color="#4ade80" />
+              <Text style={[styles.deckActionBtnText, { color: "#4ade80" }]}>
+                {showEnglish ? "Export for Manabox (.txt)" : "Für Manabox exportieren (.txt)"}
+              </Text>
+            </TouchableOpacity>
 
             {/* ── Delete Deck ── */}
             <TouchableOpacity style={[styles.deleteDeckBtn, { borderColor: colors.destructive }]}
