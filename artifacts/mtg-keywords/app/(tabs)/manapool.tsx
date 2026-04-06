@@ -314,15 +314,28 @@ type SynergyGroup = {
   color: string;
   descDe: string;
   descEn: string;
+  roleLabelDe: string;
+  roleLabelEn: string;
+  synLabelDe: string;
+  synLabelEn: string;
   cards: string[];
+  coreCards: DeckCard[];
+  synergyCards: DeckCard[];
 };
+
+// Deduplicate DeckCard[] by name, preserving first occurrence
+function dedupByName(cs: DeckCard[]): DeckCard[] {
+  const seen = new Set<string>();
+  return cs.filter((c) => { if (seen.has(c.name)) return false; seen.add(c.name); return true; });
+}
 
 function detectDeckSynergies(cards: DeckCard[]): SynergyGroup[] {
   const nonLands = cards.filter((c) => !isLand(c));
   const getText  = (c: DeckCard) => (c.oracle_text ?? "").toLowerCase();
   const getType  = (c: DeckCard) => (c.type_line ?? "").toLowerCase();
   const getKw    = (c: DeckCard) => (c.keywords ?? []).join(" ").toLowerCase();
-  const names    = (cs: DeckCard[]) => [...new Set(cs.map((c) => c.name))];
+  const allNames = (core: DeckCard[], syn: DeckCard[]) =>
+    [...new Set([...core, ...syn].map((c) => c.name))];
 
   const groups: SynergyGroup[] = [];
 
@@ -349,139 +362,151 @@ function detectDeckSynergies(cards: DeckCard[]): SynergyGroup[] {
   ];
 
   for (const tribe of TRIBES) {
-    const isType = cards.filter((c) => getType(c).includes(tribe.key));
-    const cares  = nonLands.filter((c) => !getType(c).includes(tribe.key) && getText(c).includes(tribe.key));
-    const all    = [...new Set([...isType, ...cares])];
-    if (all.length < 2) continue;
+    const coreCards = dedupByName(cards.filter((c) => getType(c).includes(tribe.key)));
+    const synCards  = dedupByName(nonLands.filter((c) =>
+      !getType(c).includes(tribe.key) && getText(c).includes(tribe.key)
+    ));
+    if (coreCards.length + synCards.length < 2) continue;
     groups.push({
       ...tribe,
-      descDe: `${isType.length} ${tribe.labelDe.split("-")[0]}s im Deck, ${cares.length} Karte${cares.length !== 1 ? "n" : ""} die mit ihnen interagier${cares.length !== 1 ? "en" : "t"}.`,
-      descEn: `${isType.length} ${tribe.key}${isType.length !== 1 ? "s" : ""} in the deck, ${cares.length} card${cares.length !== 1 ? "s" : ""} that interact with them.`,
-      cards: names(all),
+      roleLabelDe: "Stammesmitglieder", roleLabelEn: "Tribe Members",
+      synLabelDe: "Verstärker & Lords",  synLabelEn: "Amplifiers & Lords",
+      descDe: `${coreCards.length} ${tribe.labelDe.split("-")[0]}${coreCards.length !== 1 ? "s" : ""} im Deck, ${synCards.length} Karte${synCards.length !== 1 ? "n" : ""} als Unterstützung.`,
+      descEn: `${coreCards.length} ${tribe.key}${coreCards.length !== 1 ? "s" : ""} in the deck, ${synCards.length} card${synCards.length !== 1 ? "s" : ""} supporting them.`,
+      cards: allNames(coreCards, synCards),
+      coreCards, synergyCards: synCards,
     });
   }
 
   // ── Mechanische Synergien ────────────────────────────────────────────────────
 
-  // Friedhof
-  const gyard = nonLands.filter((c) => {
-    const t = getText(c);
-    return /graveyard|dies|from your graveyard|put into a graveyard|exile.*graveyard/i.test(t);
-  });
-  if (gyard.length >= 2) groups.push({
+  function mechGroup(params: {
+    key: string; labelDe: string; labelEn: string; icon: string; color: string;
+    descDe: string; descEn: string;
+    roleLabelDe: string; roleLabelEn: string; synLabelDe: string; synLabelEn: string;
+    coreRe: RegExp; synRe: RegExp; pool?: DeckCard[]; minTotal?: number;
+  }) {
+    const pool = params.pool ?? nonLands;
+    const coreCards = dedupByName(pool.filter((c) => params.coreRe.test(getText(c) + getKw(c))));
+    const synCards  = dedupByName(pool.filter((c) =>
+      !params.coreRe.test(getText(c) + getKw(c)) && params.synRe.test(getText(c) + getKw(c))
+    ));
+    const min = params.minTotal ?? 2;
+    if (coreCards.length + synCards.length < min) return;
+    groups.push({
+      key: params.key, labelDe: params.labelDe, labelEn: params.labelEn,
+      icon: params.icon, color: params.color,
+      descDe: params.descDe, descEn: params.descEn,
+      roleLabelDe: params.roleLabelDe, roleLabelEn: params.roleLabelEn,
+      synLabelDe: params.synLabelDe, synLabelEn: params.synLabelEn,
+      cards: allNames(coreCards, synCards),
+      coreCards, synergyCards: synCards,
+    });
+  }
+
+  mechGroup({
     key: "graveyard", labelDe: "Friedhof-Synergien", labelEn: "Graveyard Synergy",
     icon: "cloudy-night-outline", color: "#718096",
-    descDe: "Karten die Sterbe-Trigger auslösen, aus dem Friedhof wirken oder Karten zurückholen.",
-    descEn: "Cards that trigger on death, cast from the graveyard, or recur cards from it.",
-    cards: names(gyard),
+    descDe: "Quellen (sterben/ablegen) und Nutzer (aus dem Friedhof wirken/zurückholen) arbeiten zusammen.",
+    descEn: "Sources (dies/mill) and consumers (cast/return from graveyard) work together.",
+    roleLabelDe: "Friedhof-Quellen", roleLabelEn: "Graveyard Sources",
+    synLabelDe: "Friedhof-Nutzer", synLabelEn: "Graveyard Consumers",
+    coreRe: /\bdies\b|put.*into.*graveyard|mill/i,
+    synRe:  /from your graveyard|return.*from.*graveyard|cast.*from.*graveyard/i,
   });
 
-  // Opfern / Sacrifice
-  const sac = nonLands.filter((c) => /sacrifice/i.test(getText(c)));
-  if (sac.length >= 2) groups.push({
+  mechGroup({
     key: "sacrifice", labelDe: "Opfer-Synergien", labelEn: "Sacrifice Synergy",
     icon: "flash-outline", color: "#d3202a",
-    descDe: "Karten die geopfert werden oder von Opfern profitieren (Sterbe-Trigger, Mana, Stärke).",
-    descEn: "Cards that sacrifice or profit from sacrifice (death triggers, mana, power boosts).",
-    cards: names(sac),
+    descDe: "Opfer-Outlets erzeugen Mana/Effekte; Sterbe-Trigger kassieren den Bonus.",
+    descEn: "Sacrifice outlets generate mana/effects; death triggers collect the bonus.",
+    roleLabelDe: "Opfer-Outlets", roleLabelEn: "Sacrifice Outlets",
+    synLabelDe: "Sterbe-Trigger", synLabelEn: "Death Triggers",
+    coreRe: /sacrifice a|sacrifice another|sacrifice target/i,
+    synRe:  /whenever.*sacrifice|whenever.*creature dies|whenever a creature you control dies/i,
   });
 
-  // +1/+1 Zähler
-  const counters = nonLands.filter((c) => /\+1\/\+1 counter|proliferate|add.*counter|put.*counter/i.test(getText(c) + getKw(c)));
-  if (counters.length >= 2) groups.push({
+  mechGroup({
     key: "counters", labelDe: "+1/+1-Zähler", labelEn: "+1/+1 Counters",
     icon: "trending-up-outline", color: "#16a34a",
-    descDe: "Karten die Zähler verteilen, erhalten oder von ihnen profitieren.",
-    descEn: "Cards that put, receive, or benefit from +1/+1 counters.",
-    cards: names(counters),
+    descDe: "Verteiler legen Zähler ab; Proliferate-Karten und Profiteure multiplizieren sie.",
+    descEn: "Distributors put counters; proliferate cards and payoffs multiply them.",
+    roleLabelDe: "Zähler-Verteiler", roleLabelEn: "Counter Distributors",
+    synLabelDe: "Proliferate & Nutzer", synLabelEn: "Proliferate & Payoffs",
+    coreRe: /put.*\+1\/\+1 counter|enters.*\+1\/\+1/i,
+    synRe:  /proliferate|for each counter|for each \+1\/\+1/i,
   });
 
-  // Tokens
-  const tokens = nonLands.filter((c) => /create.*token|create a.*token|token creature/i.test(getText(c)));
-  if (tokens.length >= 2) groups.push({
+  mechGroup({
     key: "tokens", labelDe: "Token-Synergien", labelEn: "Token Synergy",
     icon: "copy-outline", color: "#f59e0b",
-    descDe: "Karten die Kreaturen-Tokens erzeugen oder von vielen Kreaturen profitieren.",
-    descEn: "Cards that create creature tokens or benefit from having many creatures.",
-    cards: names(tokens),
+    descDe: "Token-Generatoren schaffen Kreaturen; Token-Nutzer profitieren von der Masse.",
+    descEn: "Token generators create creatures; token payoffs benefit from the crowd.",
+    roleLabelDe: "Token-Generatoren", roleLabelEn: "Token Generators",
+    synLabelDe: "Token-Nutzer", synLabelEn: "Token Payoffs",
+    coreRe: /create.*token|create a.*token/i,
+    synRe:  /for each creature|whenever.*creature enters|whenever a token|number of creatures/i,
   });
 
-  // ETB (Enters the Battlefield)
-  const etb = nonLands.filter((c) => /enters the battlefield|when.*enters|whenever.*enters/i.test(getText(c)));
-  if (etb.length >= 3) groups.push({
+  mechGroup({
     key: "etb", labelDe: "ETB-Trigger", labelEn: "ETB Triggers",
     icon: "enter-outline", color: "#06b6d4",
-    descDe: "Karten mit Betretungseffekten — stark mit Blinkern und Kopiereffekten.",
-    descEn: "Cards with enter-the-battlefield triggers — great with blink and copy effects.",
-    cards: names(etb),
+    descDe: "ETB-Trigger-Karten + Blinker/Kopierer die diese Trigger mehrfach auslösen.",
+    descEn: "ETB-trigger cards + blink/copy effects that re-trigger them repeatedly.",
+    roleLabelDe: "ETB-Quellen", roleLabelEn: "ETB Sources",
+    synLabelDe: "Blinker & Kopierer", synLabelEn: "Blink & Copy",
+    coreRe: /when.*enters the battlefield|whenever.*enters the battlefield/i,
+    synRe:  /blink|flicker|exile.*return.*owner|copy.*permanent|copy.*creature/i,
+    minTotal: 3,
   });
 
-  // Lebenspunkte gewinnen
-  const lifegain = nonLands.filter((c) => /you gain.*life|gain.*life|lifelink/i.test(getText(c) + getKw(c)));
-  if (lifegain.length >= 2) groups.push({
-    key: "lifegain", labelDe: "Lebenspunkte-Synergie", labelEn: "Lifegain Synergy",
+  mechGroup({
+    key: "lifegain", labelDe: "Lebensgewinn-Synergie", labelEn: "Lifegain Synergy",
     icon: "heart-outline", color: "#ef4444",
-    descDe: "Karten mit Lebensgewinn oder die davon profitieren wenn du Leben gewinnst.",
-    descEn: "Cards with lifelink or that trigger/improve when you gain life.",
-    cards: names(lifegain),
+    descDe: "Lebensgewinn-Quellen und Karten die auslösen wenn du Leben gewinnst.",
+    descEn: "Life gain sources and cards that trigger when you gain life.",
+    roleLabelDe: "Lebensgewinn", roleLabelEn: "Life Gain",
+    synLabelDe: "Lebensgewinn-Trigger", synLabelEn: "Lifegain Triggers",
+    coreRe: /lifelink|you gain.*life|gains? \d+ life/i,
+    synRe:  /whenever you gain life|each time you gain life/i,
   });
 
-  // Tap/Untap
-  const tapUntap = nonLands.filter((c) => /tap.*add|whenever.*taps|untap|convoke|exhausted/i.test(getText(c)));
-  if (tapUntap.length >= 2) groups.push({
-    key: "tap", labelDe: "Tap/Untap-Synergie", labelEn: "Tap/Untap Synergy",
-    icon: "refresh-outline", color: "#0e68ab",
-    descDe: "Karten die mit Tap/Untap-Mechaniken interagieren (Convoke, Mana-Quellen, Vigilance).",
-    descEn: "Cards that interact with tapping/untapping (Convoke, mana sources, Vigilance).",
-    cards: names(tapUntap),
-  });
-
-  // Landfall
-  const landfall = nonLands.filter((c) => /landfall|whenever.*land.*enters|land enters the battlefield/i.test(getText(c)));
-  if (landfall.length >= 2) groups.push({
+  mechGroup({
     key: "landfall", labelDe: "Landfall-Synergie", labelEn: "Landfall Synergy",
     icon: "earth-outline", color: "#16a34a",
-    descDe: "Karten die auslösen wenn du ein Land ins Spiel bringst.",
-    descEn: "Cards that trigger whenever you put a land into play.",
-    cards: names(landfall),
+    descDe: "Landfall-Trigger und Karten die mehr Länder ins Spiel bringen.",
+    descEn: "Landfall triggers and cards that accelerate land drops.",
+    roleLabelDe: "Landfall-Trigger", roleLabelEn: "Landfall Triggers",
+    synLabelDe: "Mana-Rampe", synLabelEn: "Ramp",
+    coreRe: /landfall|whenever.*land.*enters the battlefield/i,
+    synRe:  /search.*land|put.*land.*into play|additional land/i,
+    pool: nonLands,
   });
 
-  // Sprüche / Zauber (Prowess, Magecraft, Storm)
-  const spellsMatter = nonLands.filter((c) =>
-    /prowess|magecraft|storm|whenever you cast|each spell you cast|number of spells/i.test(getText(c) + getKw(c))
-  );
-  if (spellsMatter.length >= 2) groups.push({
+  mechGroup({
     key: "spells", labelDe: "Zauber-Synergie", labelEn: "Spells Matter",
     icon: "sparkles-outline", color: "#7c3aed",
-    descDe: "Karten die von jedem gespielten Zauber profitieren (Prowess, Magecraft, Storm).",
-    descEn: "Cards that profit from each spell cast (Prowess, Magecraft, Storm).",
-    cards: names(spellsMatter),
+    descDe: "Sprüche stärken Prowess/Magecraft-Karten; alle profitieren voneinander.",
+    descEn: "Spells power up Prowess/Magecraft cards; they all benefit from each other.",
+    roleLabelDe: "Prowess & Magecraft", roleLabelEn: "Prowess & Magecraft",
+    synLabelDe: "Zauber-Quellen", synLabelEn: "Spell Sources",
+    coreRe: /prowess|magecraft|whenever you cast.*spell|whenever.*cast.*instant|whenever.*cast.*sorcery/i,
+    synRe:  /\binstant\b|\bsorcery\b/i,
+    pool: nonLands,
   });
 
-  // Abwerfen / Discard + Madness
-  const discard = nonLands.filter((c) => /discard|madness|hellbent|whenever.*discard/i.test(getText(c) + getKw(c)));
-  if (discard.length >= 2) groups.push({
+  mechGroup({
     key: "discard", labelDe: "Abwurf-Synergie", labelEn: "Discard Synergy",
     icon: "hand-left-outline", color: "#718096",
-    descDe: "Karten mit Abwurf-Effekten oder Madness — profitieren voneinander.",
-    descEn: "Cards with discard effects or Madness — they benefit from each other.",
-    cards: names(discard),
+    descDe: "Abwurf-Outlets ermöglichen Madness und andere Abwurf-Payoffs.",
+    descEn: "Discard outlets enable Madness and other discard payoffs.",
+    roleLabelDe: "Abwurf-Outlets", roleLabelEn: "Discard Outlets",
+    synLabelDe: "Madness & Nutzer", synLabelEn: "Madness & Payoffs",
+    coreRe: /discard a card|you may discard/i,
+    synRe:  /madness|whenever.*discard|hellbent/i,
   });
 
-  // Flug / Flying matters
-  const flying = nonLands.filter((c) =>
-    /\bflying\b/i.test(getKw(c)) ||
-    /creature with flying|creatures you control.*fly|fly.*creatures you control/i.test(getText(c))
-  );
-  if (flying.length >= 3) groups.push({
-    key: "flying", labelDe: "Fliegende Synergien", labelEn: "Flying Synergy",
-    icon: "airplane-outline", color: "#06b6d4",
-    descDe: "Kreaturen mit Flugfähigkeit und Karten die fliegende Wesen stärken.",
-    descEn: "Flying creatures and cards that buff or care about creatures with flying.",
-    cards: names(flying),
-  });
-
-  // Sort by number of cards desc, limit to top 8
+  // Sort by total card count desc, limit to top 8
   groups.sort((a, b) => b.cards.length - a.cards.length);
   return groups.slice(0, 8);
 }
@@ -1628,15 +1653,79 @@ export default function ManapoolScreen() {
                           </TouchableOpacity>
                           {isExp && (
                             <View style={[styles.synergyBody, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
-                              <Text style={[styles.analysisDetail, { color: colors.mutedForeground, marginBottom: 8 }]}>
+                              <Text style={[styles.analysisDetail, { color: colors.mutedForeground, marginBottom: 12 }]}>
                                 {showEnglish ? group.descEn : group.descDe}
                               </Text>
-                              <View style={styles.synergyCardGrid}>
-                                {group.cards.map((name) => (
-                                  <View key={name} style={[styles.synergyCardChip, { backgroundColor: group.color + "15", borderColor: group.color + "40" }]}>
-                                    <Text style={[styles.synergyCardChipText, { color: colors.foreground }]} numberOfLines={1}>{name}</Text>
-                                  </View>
-                                ))}
+                              {/* ─ Card images with arrow ─ */}
+                              <View style={styles.synergyImgRow}>
+                                {/* Left group: core cards */}
+                                <View style={styles.synergyImgGroup}>
+                                  {group.coreCards.length > 0 && (
+                                    <Text style={[styles.synergyRoleLabel, { color: group.color }]}>
+                                      {showEnglish ? group.roleLabelEn : group.roleLabelDe}
+                                    </Text>
+                                  )}
+                                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.synergyImgScroll}>
+                                    {(group.coreCards.length > 0 ? group.coreCards : group.synergyCards).map((card) => (
+                                      <View key={card.name} style={styles.synergyCardThumb}>
+                                        {card.imageUri ? (
+                                          <Image
+                                            source={{ uri: card.imageUri }}
+                                            style={styles.synergyCardImg}
+                                            resizeMode="cover"
+                                          />
+                                        ) : (
+                                          <View style={[styles.synergyCardImgPlaceholder, { backgroundColor: group.color + "33" }]}>
+                                            <Text style={[styles.synergyCardImgInitial, { color: group.color }]}>
+                                              {card.name.charAt(0)}
+                                            </Text>
+                                          </View>
+                                        )}
+                                        <Text style={[styles.synergyCardThumbName, { color: colors.mutedForeground }]} numberOfLines={1}>
+                                          {card.name}
+                                        </Text>
+                                      </View>
+                                    ))}
+                                  </ScrollView>
+                                </View>
+
+                                {/* Arrow + right group: synergy cards */}
+                                {group.coreCards.length > 0 && group.synergyCards.length > 0 && (
+                                  <>
+                                    <View style={styles.synergyArrowCol}>
+                                      <View style={[styles.synergyArrowCircle, { backgroundColor: group.color + "22", borderColor: group.color + "55" }]}>
+                                        <Ionicons name="arrow-forward" size={16} color={group.color} />
+                                      </View>
+                                    </View>
+                                    <View style={styles.synergyImgGroup}>
+                                      <Text style={[styles.synergyRoleLabel, { color: group.color }]}>
+                                        {showEnglish ? group.synLabelEn : group.synLabelDe}
+                                      </Text>
+                                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.synergyImgScroll}>
+                                        {group.synergyCards.map((card) => (
+                                          <View key={card.name} style={styles.synergyCardThumb}>
+                                            {card.imageUri ? (
+                                              <Image
+                                                source={{ uri: card.imageUri }}
+                                                style={styles.synergyCardImg}
+                                                resizeMode="cover"
+                                              />
+                                            ) : (
+                                              <View style={[styles.synergyCardImgPlaceholder, { backgroundColor: group.color + "33" }]}>
+                                                <Text style={[styles.synergyCardImgInitial, { color: group.color }]}>
+                                                  {card.name.charAt(0)}
+                                                </Text>
+                                              </View>
+                                            )}
+                                            <Text style={[styles.synergyCardThumbName, { color: colors.mutedForeground }]} numberOfLines={1}>
+                                              {card.name}
+                                            </Text>
+                                          </View>
+                                        ))}
+                                      </ScrollView>
+                                    </View>
+                                  </>
+                                )}
                               </View>
                             </View>
                           )}
@@ -2054,10 +2143,22 @@ const styles = StyleSheet.create({
   synergyTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   synergyCountBadge: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2, minWidth: 26, alignItems: "center" },
   synergyCountText: { fontSize: 12, fontFamily: "Inter_700Bold" },
-  synergyBody: { paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1 },
+  synergyBody: { paddingHorizontal: 12, paddingVertical: 12, borderTopWidth: 1 },
   synergyCardGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   synergyCardChip: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 4, maxWidth: 200 },
   synergyCardChipText: { fontSize: 11, fontFamily: "Inter_500Medium" },
+  // Synergy image row layout
+  synergyImgRow: { flexDirection: "row", alignItems: "flex-start", gap: 4 },
+  synergyImgGroup: { flex: 1, minWidth: 0 },
+  synergyImgScroll: { flexGrow: 0 },
+  synergyRoleLabel: { fontSize: 10, fontFamily: "Inter_600SemiBold", letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 6 },
+  synergyCardThumb: { width: 56, marginRight: 6, alignItems: "center" },
+  synergyCardImg: { width: 56, height: 78, borderRadius: 4, backgroundColor: "#1a1a2e" },
+  synergyCardImgPlaceholder: { width: 56, height: 78, borderRadius: 4, alignItems: "center", justifyContent: "center" },
+  synergyCardImgInitial: { fontSize: 22, fontFamily: "Inter_700Bold" },
+  synergyCardThumbName: { fontSize: 9, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 3, lineHeight: 12 },
+  synergyArrowCol: { width: 32, alignItems: "center", justifyContent: "center", paddingTop: 24, flexShrink: 0 },
+  synergyArrowCircle: { width: 28, height: 28, borderRadius: 14, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   ratioBar: { height: 8, borderRadius: 4, flexDirection: "row", overflow: "hidden", backgroundColor: "#33333344" },
   ratioFill: { borderRadius: 4 },
   ratioEmpty: {},
