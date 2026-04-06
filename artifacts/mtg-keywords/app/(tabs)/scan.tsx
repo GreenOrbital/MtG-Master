@@ -9,6 +9,7 @@ import {
   Animated,
   ActivityIndicator,
   Image,
+  LayoutAnimation,
   Linking,
   Modal,
   Platform,
@@ -17,6 +18,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  UIManager,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -28,6 +30,11 @@ import { useDecks } from "@/context/DeckContext";
 import { useSettings } from "@/context/SettingsContext";
 import { MTG_KEYWORDS, type MtgKeyword } from "@/data/keywords";
 import { useColors } from "@/hooks/useColors";
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -49,9 +56,9 @@ type CardData = {
   toughness?: string;
   set_name?: string;
   rarity?: string;
-  image_uris?: { normal?: string; small?: string };
+  image_uris?: { normal?: string; small?: string; art_crop?: string };
   card_faces?: Array<{
-    image_uris?: { normal?: string; small?: string };
+    image_uris?: { normal?: string; small?: string; art_crop?: string };
     oracle_text?: string;
     printed_text?: string;
     flavor_text?: string;
@@ -513,43 +520,37 @@ export default function CardSearchScreen() {
   const [pickedDeckId, setPickedDeckId] = useState<string | null>(null);
 
   // ── Animations ────────────────────────────────────────────────────────────
-  // NOTE: never use opacity:0 as starting value — if animation fails the card stays invisible.
-  // We only animate translateY (slide) so cards are always visible.
-  const slideAnim   = useRef(new Animated.Value(0)).current;
-  const starScale   = useRef(new Animated.Value(1)).current;
-  const pulseAnim   = useRef(new Animated.Value(1)).current;
-
-  const nativeDrv = Platform.OS !== "web";
+  const starScale = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const nd = Platform.OS !== "web"; // useNativeDriver: true only on native
 
   // Pulse the empty-state search icon forever
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 0.45, duration: 1400, useNativeDriver: nativeDrv }),
-        Animated.timing(pulseAnim, { toValue: 1,    duration: 1400, useNativeDriver: nativeDrv }),
+        Animated.timing(pulseAnim, { toValue: 0.45, duration: 1400, useNativeDriver: nd }),
+        Animated.timing(pulseAnim, { toValue: 1,    duration: 1400, useNativeDriver: nd }),
       ])
     );
     loop.start();
     return () => loop.stop();
   }, []);
 
-  // Slide-up whenever a new card arrives (no opacity — always visible)
-  useEffect(() => {
-    if (card) {
-      slideAnim.setValue(24);
-      Animated.spring(slideAnim, { toValue: 0, tension: 120, friction: 9, useNativeDriver: nativeDrv }).start();
-    }
-  }, [card?.id]);
-
-  const cardAnimStyle = {
-    transform: [{ translateY: slideAnim }],
-  };
+  // LayoutAnimation: animates the appearance of card content in the layout
+  // Safe: works by animating layout geometry, never hides content via opacity
+  function triggerCardAppearance() {
+    LayoutAnimation.configureNext({
+      duration: 320,
+      create: { type: "easeInEaseOut", property: "opacity" },
+      update: { type: "spring", springDamping: 0.7 },
+    });
+  }
 
   function bounceStarAnim() {
     starScale.setValue(1);
     Animated.sequence([
-      Animated.spring(starScale, { toValue: 1.55, tension: 320, friction: 4, useNativeDriver: nativeDrv }),
-      Animated.spring(starScale, { toValue: 1,    tension: 320, friction: 4, useNativeDriver: nativeDrv }),
+      Animated.spring(starScale, { toValue: 1.55, tension: 320, friction: 4, useNativeDriver: nd }),
+      Animated.spring(starScale, { toValue: 1,    tension: 320, friction: 4, useNativeDriver: nd }),
     ]).start();
   }
 
@@ -623,6 +624,7 @@ export default function CardSearchScreen() {
 
   function applyCard(data: CardData) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    triggerCardAppearance(); // animate layout before state change
     const oracleText = data.oracle_text ?? data.card_faces?.map((f) => f.oracle_text).join(" ") ?? "";
     setCard(data);
     setSelectedPrint(null);
@@ -756,6 +758,7 @@ export default function CardSearchScreen() {
   const displayOracle    = card?.printed_text ?? card?.card_faces?.map((f) => f.printed_text ?? f.oracle_text).join("\n—\n") ?? card?.oracle_text ?? "";
   const displayFlavor    = card?.flavor_text ?? card?.card_faces?.find((f) => f.flavor_text)?.flavor_text;
   const cardImageUri     = card?.image_uris?.normal ?? card?.card_faces?.[0]?.image_uris?.normal;
+  const cardArtUri       = card?.image_uris?.art_crop ?? card?.card_faces?.[0]?.image_uris?.art_crop ?? cardImageUri;
   const scryfallUrl      = card?.scryfall_uri ?? (card ? `https://scryfall.com/search?q=${encodeURIComponent(card.name)}` : "");
   const cardmarketUrl    = card ? `https://www.cardmarket.com/de/Magic/Products/Search?searchString=${encodeURIComponent(card.name)}` : "";
   const eurPrice         = card?.prices?.eur ? `€ ${parseFloat(card.prices.eur).toFixed(2)}` : null;
@@ -857,13 +860,13 @@ export default function CardSearchScreen() {
         )}
 
         {card && !loadingCard && (
-          <Animated.View style={[styles.content, cardAnimStyle]}>
+          <View style={styles.content}>
 
             {/* ── Arena-style Hero Image ── */}
-            {cardImageUri && (
+            {cardArtUri && (
               <TouchableOpacity onPress={() => setShowImageZoom(true)} activeOpacity={0.9} style={styles.heroSection}>
                 <Image
-                  source={{ uri: cardImageUri }}
+                  source={{ uri: cardArtUri }}
                   style={styles.heroImage}
                   resizeMode="cover"
                 />
@@ -1395,7 +1398,7 @@ export default function CardSearchScreen() {
               </View>
             )}
 
-          </Animated.View>
+          </View>
         )}
 
         {/* ── Image Zoom Modal ── */}
@@ -1632,7 +1635,7 @@ const styles = StyleSheet.create({
   errorBox: { borderRadius: 14, borderWidth: 1, padding: 20, alignItems: "center", gap: 8, marginTop: 20 },
   errorText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
   content: { gap: 14 },
-  heroSection: { borderRadius: 16, overflow: "hidden", height: 240 },
+  heroSection: { borderRadius: 16, overflow: "hidden", height: 180 },
   heroImage: { width: "100%", height: "100%", position: "absolute" },
   heroGradient: { flex: 1, justifyContent: "flex-end", padding: 16 },
   heroBottom: { flexDirection: "row", alignItems: "flex-end", gap: 12 },
