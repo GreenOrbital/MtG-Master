@@ -304,6 +304,188 @@ function detectRamp(cards: DeckCard[]): { count: number; names: string[] } {
   return { count: unique.length, names: unique.slice(0, 5) };
 }
 
+// ─── Deck-Synergie-Erkennung ─────────────────────────────────────────────────
+
+type SynergyGroup = {
+  key: string;
+  labelDe: string;
+  labelEn: string;
+  icon: string;
+  color: string;
+  descDe: string;
+  descEn: string;
+  cards: string[];
+};
+
+function detectDeckSynergies(cards: DeckCard[]): SynergyGroup[] {
+  const nonLands = cards.filter((c) => !isLand(c));
+  const getText  = (c: DeckCard) => (c.oracle_text ?? "").toLowerCase();
+  const getType  = (c: DeckCard) => (c.type_line ?? "").toLowerCase();
+  const getKw    = (c: DeckCard) => (c.keywords ?? []).join(" ").toLowerCase();
+  const names    = (cs: DeckCard[]) => [...new Set(cs.map((c) => c.name))];
+
+  const groups: SynergyGroup[] = [];
+
+  // ── Tribal ──────────────────────────────────────────────────────────────────
+  const TRIBES: Array<{ key: string; labelDe: string; labelEn: string; icon: string; color: string }> = [
+    { key: "zombie",    labelDe: "Zombie-Stamm",    labelEn: "Zombie Tribal",    icon: "skull-outline",         color: "#7c3aed" },
+    { key: "vampire",   labelDe: "Vampir-Stamm",    labelEn: "Vampire Tribal",   icon: "moon-outline",          color: "#d3202a" },
+    { key: "dragon",    labelDe: "Drachen-Stamm",   labelEn: "Dragon Tribal",    icon: "flame-outline",         color: "#e67e22" },
+    { key: "elf",       labelDe: "Elfen-Stamm",     labelEn: "Elf Tribal",       icon: "leaf-outline",          color: "#16a34a" },
+    { key: "goblin",    labelDe: "Goblin-Stamm",    labelEn: "Goblin Tribal",    icon: "bug-outline",           color: "#ef4444" },
+    { key: "human",     labelDe: "Mensch-Stamm",    labelEn: "Human Tribal",     icon: "person-outline",        color: "#f59e0b" },
+    { key: "spirit",    labelDe: "Geist-Stamm",     labelEn: "Spirit Tribal",    icon: "eye-outline",           color: "#06b6d4" },
+    { key: "angel",     labelDe: "Engel-Stamm",     labelEn: "Angel Tribal",     icon: "star-outline",          color: "#f59e0b" },
+    { key: "merfolk",   labelDe: "Meerfolk-Stamm",  labelEn: "Merfolk Tribal",   icon: "water-outline",         color: "#0e68ab" },
+    { key: "knight",    labelDe: "Ritter-Stamm",    labelEn: "Knight Tribal",    icon: "shield-outline",        color: "#e67e22" },
+    { key: "wizard",    labelDe: "Zauberer-Stamm",  labelEn: "Wizard Tribal",    icon: "sparkles-outline",      color: "#7c3aed" },
+    { key: "warrior",   labelDe: "Krieger-Stamm",   labelEn: "Warrior Tribal",   icon: "fitness-outline",       color: "#d3202a" },
+    { key: "soldier",   labelDe: "Soldat-Stamm",    labelEn: "Soldier Tribal",   icon: "shield-checkmark-outline", color: "#0e68ab" },
+    { key: "rogue",     labelDe: "Schurken-Stamm",  labelEn: "Rogue Tribal",     icon: "glasses-outline",       color: "#718096" },
+    { key: "cleric",    labelDe: "Kleriker-Stamm",  labelEn: "Cleric Tribal",    icon: "heart-circle-outline",  color: "#16a34a" },
+    { key: "shaman",    labelDe: "Schamanen-Stamm", labelEn: "Shaman Tribal",    icon: "bonfire-outline",       color: "#e67e22" },
+    { key: "demon",     labelDe: "Dämon-Stamm",     labelEn: "Demon Tribal",     icon: "skull",                 color: "#7c3aed" },
+    { key: "beast",     labelDe: "Bestien-Stamm",   labelEn: "Beast Tribal",     icon: "paw-outline",           color: "#16a34a" },
+  ];
+
+  for (const tribe of TRIBES) {
+    const isType = cards.filter((c) => getType(c).includes(tribe.key));
+    const cares  = nonLands.filter((c) => !getType(c).includes(tribe.key) && getText(c).includes(tribe.key));
+    const all    = [...new Set([...isType, ...cares])];
+    if (all.length < 2) continue;
+    groups.push({
+      ...tribe,
+      descDe: `${isType.length} ${tribe.labelDe.split("-")[0]}s im Deck, ${cares.length} Karte${cares.length !== 1 ? "n" : ""} die mit ihnen interagier${cares.length !== 1 ? "en" : "t"}.`,
+      descEn: `${isType.length} ${tribe.key}${isType.length !== 1 ? "s" : ""} in the deck, ${cares.length} card${cares.length !== 1 ? "s" : ""} that interact with them.`,
+      cards: names(all),
+    });
+  }
+
+  // ── Mechanische Synergien ────────────────────────────────────────────────────
+
+  // Friedhof
+  const gyard = nonLands.filter((c) => {
+    const t = getText(c);
+    return /graveyard|dies|from your graveyard|put into a graveyard|exile.*graveyard/i.test(t);
+  });
+  if (gyard.length >= 2) groups.push({
+    key: "graveyard", labelDe: "Friedhof-Synergien", labelEn: "Graveyard Synergy",
+    icon: "cloudy-night-outline", color: "#718096",
+    descDe: "Karten die Sterbe-Trigger auslösen, aus dem Friedhof wirken oder Karten zurückholen.",
+    descEn: "Cards that trigger on death, cast from the graveyard, or recur cards from it.",
+    cards: names(gyard),
+  });
+
+  // Opfern / Sacrifice
+  const sac = nonLands.filter((c) => /sacrifice/i.test(getText(c)));
+  if (sac.length >= 2) groups.push({
+    key: "sacrifice", labelDe: "Opfer-Synergien", labelEn: "Sacrifice Synergy",
+    icon: "flash-outline", color: "#d3202a",
+    descDe: "Karten die geopfert werden oder von Opfern profitieren (Sterbe-Trigger, Mana, Stärke).",
+    descEn: "Cards that sacrifice or profit from sacrifice (death triggers, mana, power boosts).",
+    cards: names(sac),
+  });
+
+  // +1/+1 Zähler
+  const counters = nonLands.filter((c) => /\+1\/\+1 counter|proliferate|add.*counter|put.*counter/i.test(getText(c) + getKw(c)));
+  if (counters.length >= 2) groups.push({
+    key: "counters", labelDe: "+1/+1-Zähler", labelEn: "+1/+1 Counters",
+    icon: "trending-up-outline", color: "#16a34a",
+    descDe: "Karten die Zähler verteilen, erhalten oder von ihnen profitieren.",
+    descEn: "Cards that put, receive, or benefit from +1/+1 counters.",
+    cards: names(counters),
+  });
+
+  // Tokens
+  const tokens = nonLands.filter((c) => /create.*token|create a.*token|token creature/i.test(getText(c)));
+  if (tokens.length >= 2) groups.push({
+    key: "tokens", labelDe: "Token-Synergien", labelEn: "Token Synergy",
+    icon: "copy-outline", color: "#f59e0b",
+    descDe: "Karten die Kreaturen-Tokens erzeugen oder von vielen Kreaturen profitieren.",
+    descEn: "Cards that create creature tokens or benefit from having many creatures.",
+    cards: names(tokens),
+  });
+
+  // ETB (Enters the Battlefield)
+  const etb = nonLands.filter((c) => /enters the battlefield|when.*enters|whenever.*enters/i.test(getText(c)));
+  if (etb.length >= 3) groups.push({
+    key: "etb", labelDe: "ETB-Trigger", labelEn: "ETB Triggers",
+    icon: "enter-outline", color: "#06b6d4",
+    descDe: "Karten mit Betretungseffekten — stark mit Blinkern und Kopiereffekten.",
+    descEn: "Cards with enter-the-battlefield triggers — great with blink and copy effects.",
+    cards: names(etb),
+  });
+
+  // Lebenspunkte gewinnen
+  const lifegain = nonLands.filter((c) => /you gain.*life|gain.*life|lifelink/i.test(getText(c) + getKw(c)));
+  if (lifegain.length >= 2) groups.push({
+    key: "lifegain", labelDe: "Lebenspunkte-Synergie", labelEn: "Lifegain Synergy",
+    icon: "heart-outline", color: "#ef4444",
+    descDe: "Karten mit Lebensgewinn oder die davon profitieren wenn du Leben gewinnst.",
+    descEn: "Cards with lifelink or that trigger/improve when you gain life.",
+    cards: names(lifegain),
+  });
+
+  // Tap/Untap
+  const tapUntap = nonLands.filter((c) => /tap.*add|whenever.*taps|untap|convoke|exhausted/i.test(getText(c)));
+  if (tapUntap.length >= 2) groups.push({
+    key: "tap", labelDe: "Tap/Untap-Synergie", labelEn: "Tap/Untap Synergy",
+    icon: "refresh-outline", color: "#0e68ab",
+    descDe: "Karten die mit Tap/Untap-Mechaniken interagieren (Convoke, Mana-Quellen, Vigilance).",
+    descEn: "Cards that interact with tapping/untapping (Convoke, mana sources, Vigilance).",
+    cards: names(tapUntap),
+  });
+
+  // Landfall
+  const landfall = nonLands.filter((c) => /landfall|whenever.*land.*enters|land enters the battlefield/i.test(getText(c)));
+  if (landfall.length >= 2) groups.push({
+    key: "landfall", labelDe: "Landfall-Synergie", labelEn: "Landfall Synergy",
+    icon: "earth-outline", color: "#16a34a",
+    descDe: "Karten die auslösen wenn du ein Land ins Spiel bringst.",
+    descEn: "Cards that trigger whenever you put a land into play.",
+    cards: names(landfall),
+  });
+
+  // Sprüche / Zauber (Prowess, Magecraft, Storm)
+  const spellsMatter = nonLands.filter((c) =>
+    /prowess|magecraft|storm|whenever you cast|each spell you cast|number of spells/i.test(getText(c) + getKw(c))
+  );
+  if (spellsMatter.length >= 2) groups.push({
+    key: "spells", labelDe: "Zauber-Synergie", labelEn: "Spells Matter",
+    icon: "sparkles-outline", color: "#7c3aed",
+    descDe: "Karten die von jedem gespielten Zauber profitieren (Prowess, Magecraft, Storm).",
+    descEn: "Cards that profit from each spell cast (Prowess, Magecraft, Storm).",
+    cards: names(spellsMatter),
+  });
+
+  // Abwerfen / Discard + Madness
+  const discard = nonLands.filter((c) => /discard|madness|hellbent|whenever.*discard/i.test(getText(c) + getKw(c)));
+  if (discard.length >= 2) groups.push({
+    key: "discard", labelDe: "Abwurf-Synergie", labelEn: "Discard Synergy",
+    icon: "hand-left-outline", color: "#718096",
+    descDe: "Karten mit Abwurf-Effekten oder Madness — profitieren voneinander.",
+    descEn: "Cards with discard effects or Madness — they benefit from each other.",
+    cards: names(discard),
+  });
+
+  // Flug / Flying matters
+  const flying = nonLands.filter((c) =>
+    /\bflying\b/i.test(getKw(c)) ||
+    /creature with flying|creatures you control.*fly|fly.*creatures you control/i.test(getText(c))
+  );
+  if (flying.length >= 3) groups.push({
+    key: "flying", labelDe: "Fliegende Synergien", labelEn: "Flying Synergy",
+    icon: "airplane-outline", color: "#06b6d4",
+    descDe: "Kreaturen mit Flugfähigkeit und Karten die fliegende Wesen stärken.",
+    descEn: "Flying creatures and cards that buff or care about creatures with flying.",
+    cards: names(flying),
+  });
+
+  // Sort by number of cards desc, limit to top 8
+  groups.sort((a, b) => b.cards.length - a.cards.length);
+  return groups.slice(0, 8);
+}
+
 type TypeGroup = { key: string; labelDe: string; labelEn: string; color: string; count: number };
 
 function getTypeBreakdown(cards: DeckCard[]): TypeGroup[] {
@@ -368,6 +550,7 @@ export default function ManapoolScreen() {
   const [deckComboChecked, setDeckComboChecked] = useState(false);
   const [showDeckCombosModal, setShowDeckCombosModal] = useState(false);
   const [expandedDeckComboId, setExpandedDeckComboId] = useState<string | null>(null);
+  const [expandedSynergyKey, setExpandedSynergyKey] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importJson, setImportJson] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
@@ -1405,6 +1588,66 @@ export default function ManapoolScreen() {
               );
             })()}
 
+            {/* ── Synergie-Gruppen ── */}
+            {(() => {
+              const synergies = detectDeckSynergies(activeDeck.cards);
+              if (synergies.length === 0) return null;
+              return (
+                <>
+                  <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                    {showEnglish ? "Synergy Groups" : "Synergie-Gruppen"}
+                  </Text>
+                  <View style={[styles.analysisBox, { backgroundColor: colors.card, borderColor: colors.border, gap: 0, padding: 0, overflow: "hidden" }]}>
+                    {synergies.map((group, idx) => {
+                      const isExp = expandedSynergyKey === group.key;
+                      return (
+                        <View key={group.key}>
+                          {idx > 0 && <View style={[styles.divider, { backgroundColor: colors.border }]} />}
+                          <TouchableOpacity
+                            style={styles.synergyHeader}
+                            onPress={() => {
+                              setExpandedSynergyKey(isExp ? null : group.key);
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <View style={[styles.synergyColorBar, { backgroundColor: group.color }]} />
+                            <Ionicons name={group.icon as any} size={15} color={group.color} />
+                            <View style={{ flex: 1 }}>
+                              <Text style={[styles.synergyTitle, { color: colors.foreground }]}>
+                                {showEnglish ? group.labelEn : group.labelDe}
+                              </Text>
+                            </View>
+                            <View style={[styles.synergyCountBadge, { backgroundColor: group.color + "22", borderColor: group.color + "55" }]}>
+                              <Text style={[styles.synergyCountText, { color: group.color }]}>{group.cards.length}</Text>
+                            </View>
+                            <Ionicons
+                              name={isExp ? "chevron-up" : "chevron-down"}
+                              size={14}
+                              color={colors.mutedForeground}
+                            />
+                          </TouchableOpacity>
+                          {isExp && (
+                            <View style={[styles.synergyBody, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
+                              <Text style={[styles.analysisDetail, { color: colors.mutedForeground, marginBottom: 8 }]}>
+                                {showEnglish ? group.descEn : group.descDe}
+                              </Text>
+                              <View style={styles.synergyCardGrid}>
+                                {group.cards.map((name) => (
+                                  <View key={name} style={[styles.synergyCardChip, { backgroundColor: group.color + "15", borderColor: group.color + "40" }]}>
+                                    <Text style={[styles.synergyCardChipText, { color: colors.foreground }]} numberOfLines={1}>{name}</Text>
+                                  </View>
+                                ))}
+                              </View>
+                            </View>
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                </>
+              );
+            })()}
+
             {/* ── Kombos suchen ── */}
             {activeDeck.cards.length > 0 && (
               <TouchableOpacity
@@ -1805,6 +2048,16 @@ const styles = StyleSheet.create({
   tipText: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16, flex: 1 },
   speedBadge: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
   speedBadgeText: { fontSize: 12, fontFamily: "Inter_700Bold" },
+  // Synergy groups
+  synergyHeader: { flexDirection: "row", alignItems: "center", paddingVertical: 11, paddingHorizontal: 12, gap: 9 },
+  synergyColorBar: { width: 3, height: 28, borderRadius: 2 },
+  synergyTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  synergyCountBadge: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2, minWidth: 26, alignItems: "center" },
+  synergyCountText: { fontSize: 12, fontFamily: "Inter_700Bold" },
+  synergyBody: { paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1 },
+  synergyCardGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  synergyCardChip: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 4, maxWidth: 200 },
+  synergyCardChipText: { fontSize: 11, fontFamily: "Inter_500Medium" },
   ratioBar: { height: 8, borderRadius: 4, flexDirection: "row", overflow: "hidden", backgroundColor: "#33333344" },
   ratioFill: { borderRadius: 4 },
   ratioEmpty: {},
