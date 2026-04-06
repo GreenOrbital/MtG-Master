@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
 
 import { useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -674,8 +673,6 @@ export default function CardSearchScreen() {
   }, [card, decks]);
   const [addCount, setAddCount] = useState(1);
   const [showImageZoom, setShowImageZoom] = useState(false);
-  const [loadingRecognize, setLoadingRecognize] = useState(false);
-  const [recognizeError, setRecognizeError] = useState("");
   const [similarCards, setSimilarCards] = useState<CardData[]>([]);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [combos, setCombos] = useState<ComboData[]>([]);
@@ -810,60 +807,7 @@ export default function CardSearchScreen() {
     setShowSimilarSection(false); setShowBoosterSection(false);
   }
 
-  async function recognizeCard() {
-    setRecognizeError("");
-    if (Platform.OS !== "web") {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== "granted") {
-        setRecognizeError(showEnglish ? "Camera permission denied." : "Kamera-Zugriff verweigert.");
-        return;
-      }
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [3, 4],
-      quality: 0.85,
-      base64: true,
-    });
-    if (result.canceled || !result.assets?.[0]?.base64) return;
-
-    const { base64, mimeType } = result.assets[0];
-    setLoadingRecognize(true);
-    resetCardState();
-    try {
-      const apiBase = getApiBase();
-      if (!apiBase) {
-        setRecognizeError(showEnglish ? "Server not available. Photo recognition requires an internet connection." : "Server nicht verfügbar. Kamera-Erkennung benötigt eine Internetverbindung.");
-        setLoadingRecognize(false);
-        return;
-      }
-      const r = await fetch(`${apiBase}/api/recognize-card`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: base64, mimeType: mimeType ?? "image/jpeg" }),
-        signal: AbortSignal.timeout(15000),
-      });
-      const { cardName } = (await r.json()) as { cardName: string | null };
-      if (!cardName) {
-        setRecognizeError(showEnglish ? "Card not recognized. Try a clearer photo." : "Karte nicht erkannt. Schärferes Foto versuchen.");
-        setLoadingRecognize(false);
-        return;
-      }
-      setQuery(cardName);
-      setLoadingRecognize(false);
-      setLoadingCard(true);
-      const data = await fetchCardByName(cardName);
-      setLoadingCard(false);
-      if (!data) setErrorMsg(showEnglish ? `"${cardName}" not found.` : `"${cardName}" nicht gefunden.`);
-      else applyCard(data);
-    } catch {
-      setRecognizeError(showEnglish ? "Recognition failed." : "Erkennung fehlgeschlagen.");
-      setLoadingRecognize(false);
-    }
-  }
-
-  function clearAll() { setQuery(""); setSuggestions([]); setShowSuggestions(false); setInputFocused(false); resetCardState(); setRecognizeError(""); }
+  function clearAll() { setQuery(""); setSuggestions([]); setShowSuggestions(false); setInputFocused(false); resetCardState(); }
 
   const showDropdown = inputFocused && suggestions.length > 0;
 
@@ -916,32 +860,13 @@ export default function CardSearchScreen() {
             onFocus={() => { setInputFocused(true); setShowSuggestions(true); }}
             onBlur={() => setTimeout(() => setInputFocused(false), 200)}
           />
-          {(loadingSuggestions || loadingRecognize) && <ActivityIndicator size="small" color={colors.primary} />}
-          {query.length > 0 && !loadingSuggestions && !loadingRecognize && (
+          {loadingSuggestions && <ActivityIndicator size="small" color={colors.primary} />}
+          {query.length > 0 && !loadingSuggestions && (
             <TouchableOpacity onPress={clearAll}>
               <Ionicons name="close-circle" size={18} color={colors.mutedForeground} />
             </TouchableOpacity>
           )}
-          {!loadingRecognize && (
-            <TouchableOpacity onPress={recognizeCard} style={[styles.cameraBtn, { backgroundColor: colors.primary + "22" }]}>
-              <Ionicons name="camera-outline" size={18} color={colors.primary} />
-            </TouchableOpacity>
-          )}
         </View>
-        {recognizeError ? (
-          <View style={styles.recognizeErrorRow}>
-            <Ionicons name="alert-circle-outline" size={14} color={colors.destructive} />
-            <Text style={[styles.recognizeErrorText, { color: colors.destructive }]}>{recognizeError}</Text>
-          </View>
-        ) : null}
-        {loadingRecognize && (
-          <View style={styles.recognizeHintRow}>
-            <Ionicons name="sparkles-outline" size={13} color={colors.primary} />
-            <Text style={[styles.recognizeHintText, { color: colors.primary }]}>
-              {showEnglish ? "KI is reading your card…" : "KI liest deine Karte…"}
-            </Text>
-          </View>
-        )}
         {showDropdown && (
           <View style={[styles.dropdown, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {suggestions.map((s, i) => (
@@ -1870,11 +1795,6 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", marginBottom: 10, lineHeight: 18 },
   inputRow: { flexDirection: "row", alignItems: "center", borderRadius: 24, borderWidth: 1.5, paddingHorizontal: 14, paddingVertical: 11, gap: 8 },
   input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", padding: 0 },
-  cameraBtn: { borderRadius: 8, padding: 5 },
-  recognizeErrorRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 5 },
-  recognizeErrorText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
-  recognizeHintRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 5 },
-  recognizeHintText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   dropdown: {
     position: "absolute", left: 16, right: 16, top: "100%",
     borderRadius: 12, borderWidth: 1, marginTop: 4, zIndex: 100, overflow: "hidden",
