@@ -327,7 +327,7 @@ export default function ManapoolScreen() {
   const [editName, setEditName] = useState("");
   const [showNewDeckModal, setShowNewDeckModal] = useState(false);
   const [newDeckName, setNewDeckName] = useState("");
-  const [cardFilter, setCardFilter] = useState<string>("all");
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [deckCombos, setDeckCombos] = useState<ComboData[]>([]);
   const [deckComboLoading, setDeckComboLoading] = useState(false);
   const [deckComboChecked, setDeckComboChecked] = useState(false);
@@ -343,13 +343,40 @@ export default function ManapoolScreen() {
 
   const activeDeck = decks.find((d) => d.id === activeDeckId) ?? null;
 
-  const filteredCards = useMemo(() => {
+  const CARD_CATEGORIES = [
+    { key: "creature",     labelDe: "Kreaturen",    labelEn: "Creatures",     color: "#d3202a", match: "creature" },
+    { key: "instant",      labelDe: "Spontanzauber",labelEn: "Instants",      color: "#0e68ab", match: "instant" },
+    { key: "sorcery",      labelDe: "Hexereien",    labelEn: "Sorceries",     color: "#7c3aed", match: "sorcery" },
+    { key: "enchantment",  labelDe: "Verzauberungen",labelEn: "Enchantments", color: "#16a34a", match: "enchantment" },
+    { key: "artifact",     labelDe: "Artefakte",    labelEn: "Artifacts",     color: "#9e9e9e", match: "artifact" },
+    { key: "planeswalker", labelDe: "Planeswalker", labelEn: "Planeswalkers", color: "#f59e0b", match: "planeswalker" },
+    { key: "land",         labelDe: "Länder",       labelEn: "Lands",         color: "#00733e", match: "land" },
+    { key: "other",        labelDe: "Sonstiges",    labelEn: "Other",         color: "#718096", match: "" },
+  ] as const;
+
+  const groupedCards = useMemo(() => {
     if (!activeDeck) return [];
-    if (cardFilter === "all") return activeDeck.cards;
-    return activeDeck.cards.filter((c) =>
-      (c.type_line ?? "").toLowerCase().includes(cardFilter)
-    );
-  }, [activeDeck, cardFilter]);
+    const matched = new Set<string>();
+    const result = CARD_CATEGORIES.slice(0, 7).map((cat) => {
+      const cards = activeDeck.cards.filter((c) => {
+        const tl = (c.type_line ?? "").toLowerCase();
+        if (tl.includes(cat.match)) { matched.add(c.id); return true; }
+        return false;
+      });
+      return { ...cat, cards };
+    });
+    const other = activeDeck.cards.filter((c) => !matched.has(c.id));
+    result.push({ ...CARD_CATEGORIES[7], cards: other });
+    return result.filter((g) => g.cards.length > 0);
+  }, [activeDeck]);
+
+  function toggleCategory(key: string) {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
 
   function openDeck(deck: Deck) {
     setActiveDeckId(deck.id);
@@ -357,6 +384,8 @@ export default function ManapoolScreen() {
     setDeckCombos([]);
     setDeckComboChecked(false);
     setExpandedDeckComboId(null);
+    setExpandedCategories(new Set());
+    setExpandedCardId(null);
   }
 
   function closeDeck() {
@@ -365,6 +394,7 @@ export default function ManapoolScreen() {
     setDeckCombos([]);
     setDeckComboChecked(false);
     setExpandedCardId(null);
+    setExpandedCategories(new Set());
   }
 
   async function handleCheckDeckCombos() {
@@ -611,44 +641,6 @@ export default function ManapoolScreen() {
               </Text>
             </View>
 
-            {/* ── Filter-Leiste ── */}
-            {activeDeck.cards.length > 0 && (() => {
-              const filters: { key: string; de: string; en: string }[] = [
-                { key: "all",         de: "Alle",           en: "All" },
-                { key: "creature",    de: "Kreaturen",      en: "Creatures" },
-                { key: "instant",     de: "Spontan",        en: "Instants" },
-                { key: "sorcery",     de: "Hexerei",        en: "Sorceries" },
-                { key: "enchantment", de: "Verzauberung",   en: "Enchant." },
-                { key: "artifact",    de: "Artefakt",       en: "Artifacts" },
-                { key: "planeswalker",de: "Planeswalker",   en: "PW" },
-                { key: "land",        de: "Länder",         en: "Lands" },
-              ];
-              return (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}
-                  contentContainerStyle={styles.filterRow}>
-                  {filters.map((f) => {
-                    const cnt = f.key === "all"
-                      ? activeDeck.cards.reduce((a,c)=>a+c.count,0)
-                      : activeDeck.cards.filter(c=>(c.type_line??"").toLowerCase().includes(f.key)).reduce((a,c)=>a+c.count,0);
-                    if (f.key !== "all" && cnt === 0) return null;
-                    const active = cardFilter === f.key;
-                    return (
-                      <TouchableOpacity key={f.key}
-                        style={[styles.filterBtn,
-                          active ? { backgroundColor: colors.primary, borderColor: colors.primary }
-                                 : { backgroundColor: colors.card, borderColor: colors.border }]}
-                        onPress={() => setCardFilter(f.key)}>
-                        <Text style={[styles.filterBtnText, { color: active ? "#fff" : colors.mutedForeground }]}>
-                          {showEnglish ? f.en : f.de}
-                        </Text>
-                        <Text style={[styles.filterBtnCount, { color: active ? "#ffffffaa" : colors.primary }]}>{cnt}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              );
-            })()}
-
             {activeDeck.cards.length === 0 ? (
               <View style={[styles.emptyCards, { borderColor: colors.border }]}>
                 <Ionicons name="card-outline" size={28} color={colors.mutedForeground} />
@@ -659,20 +651,43 @@ export default function ManapoolScreen() {
                 </Text>
               </View>
             ) : (
-              <View style={[styles.cardList, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                {filteredCards.length === 0 ? (
-                  <View style={styles.filterEmpty}>
-                    <Text style={[styles.filterEmptyText, { color: colors.mutedForeground }]}>
-                      {showEnglish ? "No cards in this category" : "Keine Karten in dieser Kategorie"}
-                    </Text>
-                  </View>
-                ) : filteredCards.map((c, i) => {
+              <View style={{ gap: 6 }}>
+                {groupedCards.map((group) => {
+                  const isOpen = expandedCategories.has(group.key);
+                  const totalCount = group.cards.reduce((a, c) => a + c.count, 0);
+                  return (
+                    <View key={group.key} style={[styles.categorySection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                      {/* Category header */}
+                      <TouchableOpacity
+                        style={styles.categoryHeader}
+                        activeOpacity={0.75}
+                        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); toggleCategory(group.key); }}
+                      >
+                        <View style={[styles.categoryColorBar, { backgroundColor: group.color }]} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.categoryTitle, { color: colors.foreground }]}>
+                            {showEnglish ? group.labelEn : group.labelDe}
+                          </Text>
+                          <Text style={[styles.categorySubtitle, { color: colors.mutedForeground }]}>
+                            {group.cards.length} {showEnglish ? "type(s)" : "Typ(en)"} · {totalCount} {showEnglish ? "card(s)" : "Karte(n)"}
+                          </Text>
+                        </View>
+                        <View style={[styles.categoryCountBadge, { backgroundColor: group.color + "33", borderColor: group.color + "88" }]}>
+                          <Text style={[styles.categoryCountText, { color: group.color }]}>{totalCount}</Text>
+                        </View>
+                        <Ionicons name={isOpen ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} style={{ marginLeft: 6 }} />
+                      </TouchableOpacity>
+
+                      {/* Cards in this category */}
+                      {isOpen && (
+                        <View style={{ borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, overflow: "hidden" }}>
+                          {group.cards.map((c, i) => {
                   const land = isLand(c);
                   const mana = c.mana_cost ? parseMana(c.mana_cost) : null;
                   const cols = mana ? COLORS.filter((k) => mana[k] > 0) : [];
                   const lCols = land ? landColors(c) : [];
                   const isExpanded = expandedCardId === c.id;
-                  const notLast = i < filteredCards.length - 1;
+                  const notLast = i < group.cards.length - 1;
                   return (
                     <View key={c.id}>
                       {/* ── Collapsed row (always visible) ── */}
@@ -798,6 +813,11 @@ export default function ManapoolScreen() {
                               {showEnglish ? "Remove" : "Entfernen"}
                             </Text>
                           </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                  );
+                          })}
                         </View>
                       )}
                     </View>
@@ -1641,14 +1661,14 @@ const styles = StyleSheet.create({
   emptyCards: { borderRadius: 12, borderWidth: 1, borderStyle: "dashed", padding: 20, alignItems: "center", gap: 8 },
   emptyCardsText: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 18 },
   cardListHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  filterScroll: { marginBottom: 8 },
-  filterRow: { flexDirection: "row", gap: 7, paddingVertical: 4 },
-  filterBtn: { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 20, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 6 },
-  filterBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  filterBtnCount: { fontSize: 11, fontFamily: "Inter_700Bold" },
-  filterEmpty: { padding: 20, alignItems: "center" },
-  filterEmptyText: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  cardList: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
+  categorySection: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
+  categoryHeader: { flexDirection: "row", alignItems: "center", paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
+  categoryColorBar: { width: 4, height: 36, borderRadius: 2 },
+  categoryTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  categorySubtitle: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 },
+  categoryCountBadge: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 3, minWidth: 30, alignItems: "center" },
+  categoryCountText: { fontSize: 13, fontFamily: "Inter_700Bold" },
+  cardList: { overflow: "hidden" },
   cardRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingVertical: 8, gap: 8 },
   cardExpandedRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, gap: 8 },
   cardCountBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
