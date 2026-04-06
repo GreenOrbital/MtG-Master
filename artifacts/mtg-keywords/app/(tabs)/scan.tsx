@@ -931,30 +931,34 @@ export default function CardSearchScreen() {
                     resizeMode="contain"
                   />
 
-                  {/* Layer 2: AI subject window — only the detected subject moves.
-                      Artwork occupies ~14%–57% top, 6.5%–93.5% wide inside heroSection.
-                      GPT-4o returns bounding box as % of art_crop; we convert to heroSection pixels. */}
-                  {heroSize && parallaxBox && (() => {
-                    const AW_L = 0.065, AW_T = 0.14, AW_W = 0.87, AW_H = 0.43;
-                    const sx = heroSize.w * (AW_L + (parallaxBox.x / 100) * AW_W);
-                    const sy = heroSize.h * (AW_T + (parallaxBox.y / 100) * AW_H);
-                    const sw = heroSize.w * (parallaxBox.w / 100) * AW_W;
-                    const sh = heroSize.h * (parallaxBox.h / 100) * AW_H;
+                  {/* Layer 2: same card image, animated, masked with a soft radial gradient.
+                      Using the SAME cardImageUri as Layer 1 guarantees pixel-perfect alignment —
+                      no seam, no colour shift. The gradient fades the animated layer to transparent
+                      at the edges of the artwork window so it blends seamlessly into the frozen card.
+                      Subject centre is driven by the AI bounding box; falls back to artwork centre. */}
+                  {(() => {
+                    // Centre of the subject in artwork-area % (0–100). Default ≈ artwork centre.
+                    const cx = parallaxBox ? Math.round(parallaxBox.x + parallaxBox.w / 2) : 50;
+                    const cy = parallaxBox ? Math.round(parallaxBox.y + parallaxBox.h / 2) : 42;
+                    // Web: radial gradient mask — opaque at subject, fades to transparent at edges
+                    const maskStyle: object = Platform.OS === "web" ? {
+                      WebkitMaskImage: `radial-gradient(ellipse 75% 80% at ${cx}% ${cy}%, black 0%, black 25%, rgba(0,0,0,0.5) 50%, transparent 72%)`,
+                      maskImage:       `radial-gradient(ellipse 75% 80% at ${cx}% ${cy}%, black 0%, black 25%, rgba(0,0,0,0.5) 50%, transparent 72%)`,
+                    } : {};
                     return (
                       <View
                         pointerEvents="none"
-                        style={{
-                          position: "absolute",
-                          left: sx, top: sy, width: sw, height: sh,
-                          overflow: "hidden",
-                        }}
+                        style={[styles.artworkWindow, maskStyle as object]}
                       >
+                        {/* Same image source as Layer 1 — renders pixel-for-pixel identically.
+                            The only difference is the animated transform. */}
                         <Animated.Image
                           source={{ uri: cardImageUri }}
                           style={{
                             position: "absolute",
-                            left: -sx, top: -sy,
-                            width: heroSize.w, height: heroSize.h,
+                            // Fill the heroSection (not just artworkWindow) so the artwork aligns perfectly
+                            left: "-7.5%", top: "-33%",
+                            width: "115%", height: "233%",
                             transform: [
                               { translateX: liveX },
                               { translateY: liveY },
@@ -1739,6 +1743,15 @@ const styles = StyleSheet.create({
   heroSection: { borderRadius: 18, overflow: "hidden", aspectRatio: 63 / 88, width: "82%", backgroundColor: "#0d0d1f" },
   heroImage: { width: "100%", height: "100%" },
   heroControls: { flexDirection: "row", alignItems: "center", gap: 10, width: "82%" },
+  // Artwork window positioned over the painting area of a standard MtG card
+  artworkWindow: {
+    position: "absolute",
+    top: "14%",
+    bottom: "43%",
+    left: "6.5%",
+    right: "6.5%",
+    overflow: "hidden",
+  },
   heroCardName: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#ffffff" },
   heroCardEnName: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#ffffffaa", marginTop: 2 },
   cardInfoBox: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
