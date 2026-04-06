@@ -202,7 +202,7 @@ function sumMana(cards: Deck["cards"]): ManaCounts {
 
 // ─── Deck-Analyse Hilfsfunktionen ────────────────────────────────────────────
 
-type SpeedResult = { labelDe: string; labelEn: string; color: string; desc: string; descEn: string };
+type SpeedResult = { labelDe: string; labelEn: string; color: string; desc: string; descEn: string; detail: string; detailEn: string; tips: string[]; tipsEn: string[] };
 
 function classifySpeed(cards: DeckCard[]): SpeedResult | null {
   const nonLands = cards.filter((c) => !isLand(c));
@@ -214,11 +214,46 @@ function classifySpeed(cards: DeckCard[]): SpeedResult | null {
   }, 0);
   const totalCount = counted.reduce((a, c) => a + c.count, 0);
   const avg = totalCmc / totalCount;
-  if (avg < 2.0)  return { labelDe: "Aggro",   labelEn: "Aggro",   color: "#d3202a", desc: "Sehr schnelles Deck mit niedrigen Manakosten",  descEn: "Very fast deck with low mana costs" };
-  if (avg < 2.8)  return { labelDe: "Aggro-Midrange", labelEn: "Aggro-Midrange", color: "#e67e22", desc: "Schnell mit mittleren Kurven-Spells", descEn: "Fast with some mid-range spells" };
-  if (avg < 3.6)  return { labelDe: "Midrange", labelEn: "Midrange", color: "#f59e0b", desc: "Ausgeglichene Kurve zwischen früh und spät", descEn: "Balanced curve between early and late game" };
-  if (avg < 4.5)  return { labelDe: "Control",  labelEn: "Control",  color: "#0e68ab", desc: "Kontrollorientiert mit hohen Manakosten",      descEn: "Control-oriented with higher mana costs" };
-  return           { labelDe: "Big Mana / Combo", labelEn: "Big Mana / Combo", color: "#7c3aed", desc: "Sehr hohe Kurve — Ramp oder Combo nötig", descEn: "Very high curve — needs ramp or combo" };
+  if (avg < 2.0) return {
+    labelDe: "Aggro", labelEn: "Aggro", color: "#d3202a",
+    desc: "Sehr schnelles Deck mit niedrigen Manakosten", descEn: "Very fast deck with low mana costs",
+    detail: "Aggro-Decks gewinnen in den ersten 3–5 Runden durch günstigen, konstanten Druck. Jede Karte sollte sofort Wirkung zeigen.",
+    detailEn: "Aggro decks win in turns 3–5 with cheap, relentless pressure. Every card should have immediate impact.",
+    tips: ["Halte die Kurve flach (≤ 2 Mana)", "Priorisiere 1- und 2-Mana-Kreaturen", "Haste und Eile sind wertvoll"],
+    tipsEn: ["Keep the curve low (≤ 2 mana)", "Prioritize 1- and 2-drop creatures", "Haste and evasion are key"],
+  };
+  if (avg < 2.8) return {
+    labelDe: "Aggro-Midrange", labelEn: "Aggro-Midrange", color: "#e67e22",
+    desc: "Schnell mit mittleren Kurven-Spells", descEn: "Fast with some mid-range spells",
+    detail: "Du startest früh mit Druck und hast starke 3–4-Mana-Bedrohungen als Rückhalt. Flexibel gegen Aggro und Control.",
+    detailEn: "You apply early pressure backed up by powerful 3–4 mana threats. Flexible against aggro and control.",
+    tips: ["Gute 1–2 Drops als Fundament", "3–4 Mana Threats als Finisher", "Removal für kritische Gegner-Kreaturen"],
+    tipsEn: ["Solid 1–2 drops as foundation", "3–4 mana threats as finishers", "Removal for key opposing creatures"],
+  };
+  if (avg < 3.6) return {
+    labelDe: "Midrange", labelEn: "Midrange", color: "#f59e0b",
+    desc: "Ausgeglichene Kurve zwischen früh und spät", descEn: "Balanced curve between early and late game",
+    detail: "Midrange spielt die stärksten Karten je nach Situation — flexibel gegen alle Spielstile. Du musst weder schnell noch langsam spielen.",
+    detailEn: "Midrange plays the best card for each situation — flexible against all archetypes.",
+    tips: ["Starke 3–5 Mana-Allrounder bevorzugen", "Gutes Verhältnis Removal/Threats", "Card Draw für späte Spielphasen"],
+    tipsEn: ["Prefer strong 3–5 mana value cards", "Balance removal and threats", "Card draw for late-game staying power"],
+  };
+  if (avg < 4.5) return {
+    labelDe: "Control", labelEn: "Control", color: "#0e68ab",
+    desc: "Kontrollorientiert mit hohen Manakosten", descEn: "Control-oriented with higher mana costs",
+    detail: "Control verzögert das Spiel mit Counterzaubern, Removal und Wrath-Effekten und gewinnt dann mit mächtigen späten Karten.",
+    detailEn: "Control slows the game with counterspells, removal, and wraths — then wins with powerful late-game cards.",
+    tips: ["Mehr Removal und Counterspells", "Wrath-Effekte für Boardclears", "Wenige aber starke Win-Conditions"],
+    tipsEn: ["More removal and counterspells", "Wrath effects for board clears", "Few but powerful win conditions"],
+  };
+  return {
+    labelDe: "Big Mana / Combo", labelEn: "Big Mana / Combo", color: "#7c3aed",
+    desc: "Sehr hohe Kurve — Ramp oder Combo nötig", descEn: "Very high curve — needs ramp or combo",
+    detail: "Mit so hohen Manakosten brauchst du zwingend viel Ramp. Alternativ: Spielst du auf einen Combo-Sieg ab?",
+    detailEn: "With such high costs you absolutely need ramp. Alternatively — are you aiming for a combo win?",
+    tips: ["Ramp stark erhöhen (Signets, Mana-Fels, Elfen)", "Frühe Schutzmaßnahmen einbauen", "Kombo-Linien klar definieren"],
+    tipsEn: ["Increase ramp significantly (Signets, Sol Ring, dorks)", "Add early protection pieces", "Define clear combo lines"],
+  };
 }
 
 function detectCardDraw(cards: DeckCard[]): { count: number; names: string[] } {
@@ -1264,6 +1299,17 @@ export default function ManapoolScreen() {
                         <Text style={[styles.analysisHint, { color: colors.mutedForeground }]}>
                           {showEnglish ? speed.descEn : speed.desc}
                         </Text>
+                        <Text style={[styles.analysisDetail, { color: colors.mutedForeground }]}>
+                          {showEnglish ? speed.detailEn : speed.detail}
+                        </Text>
+                        <View style={styles.tipsList}>
+                          {(showEnglish ? speed.tipsEn : speed.tips).map((tip, i) => (
+                            <View key={i} style={styles.tipRow}>
+                              <View style={[styles.tipDot, { backgroundColor: speed.color }]} />
+                              <Text style={[styles.tipText, { color: colors.mutedForeground }]}>{tip}</Text>
+                            </View>
+                          ))}
+                        </View>
                       </View>
                     )}
 
@@ -1288,6 +1334,11 @@ export default function ManapoolScreen() {
                               {draw.names.join(" · ")}
                             </Text>
                           )}
+                          <Text style={[styles.analysisDetail, { color: colors.mutedForeground }]}>
+                            {showEnglish
+                              ? `Card advantage is crucial — you run out of gas without draw. Cycling, Scry and draw spells count. Target: ~${drawTarget} for ${isCommander ? "Commander" : "60-card"} decks.`
+                              : `Kartenvorteil ist entscheidend — ohne Nachziehen läufst du leer. Cycling, Scry und Zieh-Sprüche zählen. Ziel: ~${drawTarget} für ${isCommander ? "Commander" : "60-Karten"}-Decks.`}
+                          </Text>
                         </View>
 
                         {/* Removal */}
@@ -1308,6 +1359,11 @@ export default function ManapoolScreen() {
                               {removal.names.join(" · ")}
                             </Text>
                           )}
+                          <Text style={[styles.analysisDetail, { color: colors.mutedForeground }]}>
+                            {showEnglish
+                              ? `Removal eliminates opposing threats: destroy, exile, bounce or -X/-X effects. ${isCommander ? "In Commander you face 3 opponents — more removal is vital." : "Instant-speed removal is especially flexible."}`
+                              : `Removal eliminiert gegnerische Bedrohungen: Zerstören, Verbannen, Prellen oder -X/-X. ${isCommander ? "Im Commander spielst du gegen 3 Gegner — mehr Removal ist wichtiger." : "Spontanzauber-Removal ist besonders flexibel."}`}
+                          </Text>
                         </View>
 
                         {/* Ramp */}
@@ -1328,6 +1384,11 @@ export default function ManapoolScreen() {
                               {ramp.names.join(" · ")}
                             </Text>
                           )}
+                          <Text style={[styles.analysisDetail, { color: colors.mutedForeground }]}>
+                            {showEnglish
+                              ? `Ramp lets you cast expensive spells earlier. Signets, mana dorks, Sol Ring and land-fetch spells all count. ${isCommander ? "Commander decks need ~10 ramp pieces for consistency." : "Even 60-card decks benefit from 3–4 ramp sources."}`
+                              : `Ramp lässt dich teure Karten früher spielen. Signets, Mana-Elfen, Sol Ring und Land-Suche zählen. ${isCommander ? "Commander-Decks brauchen ~10 Ramp-Karten für Konstanz." : "Auch 60-Karten-Decks profitieren von 3–4 Ramp-Quellen."}`}
+                          </Text>
                         </View>
 
                         {!hasOracleText && totalNonLand > 0 && (
@@ -1737,6 +1798,11 @@ const styles = StyleSheet.create({
   analysisGroup: { gap: 6 },
   analysisStat: { fontSize: 14, fontFamily: "Inter_700Bold" },
   analysisHint: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
+  analysisDetail: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 17, opacity: 0.75, marginTop: 2 },
+  tipsList: { gap: 4, marginTop: 4 },
+  tipRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  tipDot: { width: 5, height: 5, borderRadius: 3 },
+  tipText: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16, flex: 1 },
   speedBadge: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
   speedBadgeText: { fontSize: 12, fontFamily: "Inter_700Bold" },
   ratioBar: { height: 8, borderRadius: 4, flexDirection: "row", overflow: "hidden", backgroundColor: "#33333344" },
