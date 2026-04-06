@@ -9,6 +9,7 @@ import cardCombosRouter from "./card-combos";
 import deckCombosRouter from "./deck-combos";
 import userDataRouter from "./user-data";
 import translateTextRouter from "./translate-text";
+import cardParallaxRouter from "./card-parallax";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(cardCombosRouter);
 router.use(deckCombosRouter);
 router.use(userDataRouter);
 router.use(translateTextRouter);
+router.use(cardParallaxRouter);
 
 export default router;

@@ -18,3 +18,4 @@
 //   export type Post = typeof postsTable.$inferSelect;
 
 export * from "./user-cloud-data";
+export * from "./card-parallax-cache";
