@@ -8,6 +8,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   ActivityIndicator,
+  Easing,
   Image,
   LayoutAnimation,
   Linking,
@@ -23,7 +24,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import CinemagraphParticles from "@/components/CinemagraphParticles";
 import { KeywordCard } from "@/components/KeywordCard";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { type CompactCard, useCardHistory } from "@/context/CardHistoryContext";
@@ -526,8 +526,10 @@ export default function CardSearchScreen() {
   const [pickedDeckId, setPickedDeckId] = useState<string | null>(null);
 
   // ── Animations ────────────────────────────────────────────────────────────
-  const starScale   = useRef(new Animated.Value(1)).current;
-  const pulseAnim   = useRef(new Animated.Value(1)).current;
+  const starScale    = useRef(new Animated.Value(1)).current;
+  const pulseAnim    = useRef(new Animated.Value(1)).current;
+  const livePhotoAnim = useRef(new Animated.Value(0)).current;
+  const livePhotoRef  = useRef<{ stop(): void } | null>(null);
   const nd = Platform.OS !== "web"; // useNativeDriver: true only on native
 
   // Pulse the empty-state search icon forever
@@ -541,6 +543,30 @@ export default function CardSearchScreen() {
     loop.start();
     return () => loop.stop();
   }, []);
+
+  // Live Photo: the card image itself drifts along an organic 4-waypoint path.
+  // Multi-waypoint interpolation gives a floating, non-mechanical feel.
+  // Values are very small (< 8px, < 2% scale) so the image stays fully visible.
+  useEffect(() => {
+    livePhotoRef.current?.stop();
+    if (!card) { livePhotoAnim.setValue(0); return; }
+    livePhotoAnim.setValue(0);
+    const ease = Easing.inOut(Easing.sin);
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(livePhotoAnim, { toValue: 1, duration: 7000, easing: ease, useNativeDriver: nd }),
+        Animated.timing(livePhotoAnim, { toValue: 0, duration: 7000, easing: ease, useNativeDriver: nd }),
+      ])
+    );
+    livePhotoRef.current = loop;
+    loop.start();
+    return () => loop.stop();
+  }, [card?.id]);
+
+  // Non-linear path via multi-stop interpolation — gives organic floating motion
+  const liveX     = livePhotoAnim.interpolate({ inputRange: [0, 0.3, 0.6, 1], outputRange: [0,  6, -4,  0] });
+  const liveY     = livePhotoAnim.interpolate({ inputRange: [0, 0.3, 0.6, 1], outputRange: [0, -5,  3,  0] });
+  const liveScale = livePhotoAnim.interpolate({ inputRange: [0, 0.5, 1],       outputRange: [1.0, 1.02, 1.0] });
 
   // LayoutAnimation: animates the appearance of card content in the layout
   function triggerCardAppearance() {
@@ -871,20 +897,17 @@ export default function CardSearchScreen() {
             {cardImageUri && (
               <View style={styles.heroWrapper}>
                 <TouchableOpacity onPress={() => setShowImageZoom(true)} activeOpacity={0.9} style={styles.heroSection}>
-                  {/* Static full card image */}
-                  <Image
+                  {/* Live Photo: card image drifts along organic 4-waypoint path */}
+                  <Animated.Image
                     source={{ uri: cardImageUri }}
-                    style={styles.heroImage}
+                    style={[styles.heroImage, {
+                      transform: [
+                        { translateX: liveX },
+                        { translateY: liveY },
+                        { scale: liveScale },
+                      ],
+                    }]}
                     resizeMode="contain"
-                  />
-                  {/* Cinemagraph: per-card thematic effect based on oracle text + type */}
-                  <CinemagraphParticles
-                    cardId={card.id}
-                    cardColors={cardColors}
-                    cardName={card.name}
-                    oracleText={card.oracle_text}
-                    typeLine={card.type_line}
-                    keywords={card.keywords}
                   />
                 </TouchableOpacity>
                 {/* Controls row below the card */}
