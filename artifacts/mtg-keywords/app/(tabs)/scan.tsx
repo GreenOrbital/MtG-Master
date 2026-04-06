@@ -524,6 +524,7 @@ export default function CardSearchScreen() {
   const [showDeckPicker, setShowDeckPicker] = useState(false);
   const [addedToDeck, setAddedToDeck] = useState<string | null>(null);
   const [pickedDeckId, setPickedDeckId] = useState<string | null>(null);
+  const [heroSize, setHeroSize] = useState<{ w: number; h: number } | null>(null);
 
   // ── Animations ────────────────────────────────────────────────────────────
   const starScale    = useRef(new Animated.Value(1)).current;
@@ -893,23 +894,43 @@ export default function CardSearchScreen() {
         {card && !loadingCard && (
           <View style={styles.content}>
 
-            {/* ── Full Card with Cinemagraph Shimmer ── */}
+            {/* ── True Cinemagraph: frozen card + animated artwork window ── */}
             {cardImageUri && (
               <View style={styles.heroWrapper}>
-                <TouchableOpacity onPress={() => setShowImageZoom(true)} activeOpacity={0.9} style={styles.heroSection}>
-                  {/* Live Photo: card image drifts along organic 4-waypoint path */}
-                  <Animated.Image
+                <View style={styles.heroSection}>
+                  {/* ── Layer 1: static full card — completely frozen ── */}
+                  <Image
                     source={{ uri: cardImageUri }}
-                    style={[styles.heroImage, {
-                      transform: [
-                        { translateX: liveX },
-                        { translateY: liveY },
-                        { scale: liveScale },
-                      ],
-                    }]}
+                    style={styles.heroImage}
                     resizeMode="contain"
                   />
-                </TouchableOpacity>
+
+                  {/* ── Layer 2: art_crop animated over the artwork area only ──
+                      Standard MtG card artwork occupies ~14%–57% from top, 7%–93% wide.
+                      This layer moves while the card frame / title / text-box stay frozen. */}
+                  {cardArtUri && (
+                    <View style={styles.artworkWindow} pointerEvents="none">
+                      <Animated.Image
+                        source={{ uri: cardArtUri }}
+                        style={[StyleSheet.absoluteFillObject, {
+                          transform: [
+                            { translateX: liveX },
+                            { translateY: liveY },
+                            { scale: liveScale },
+                          ],
+                        }]}
+                        resizeMode="cover"
+                      />
+                    </View>
+                  )}
+
+                  {/* tap-to-zoom overlay */}
+                  <TouchableOpacity
+                    onPress={() => setShowImageZoom(true)}
+                    activeOpacity={0.9}
+                    style={StyleSheet.absoluteFillObject}
+                  />
+                </View>
                 {/* Controls row below the card */}
                 <View style={styles.heroControls}>
                   <View style={{ flex: 1 }}>
@@ -1675,6 +1696,16 @@ const styles = StyleSheet.create({
   heroSection: { borderRadius: 18, overflow: "hidden", aspectRatio: 63 / 88, width: "82%", backgroundColor: "#0d0d1f" },
   heroImage: { width: "100%", height: "100%" },
   heroControls: { flexDirection: "row", alignItems: "center", gap: 10, width: "82%" },
+  // Artwork window: covers the artwork area of a standard MtG card (title bar ~14%, text box from ~57%)
+  artworkWindow: {
+    position: "absolute",
+    top: "14%",
+    bottom: "43%",
+    left: "6.5%",
+    right: "6.5%",
+    overflow: "hidden",
+    borderRadius: 2,
+  },
 
   heroCardName: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#ffffff" },
   heroCardEnName: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#ffffffaa", marginTop: 2 },
