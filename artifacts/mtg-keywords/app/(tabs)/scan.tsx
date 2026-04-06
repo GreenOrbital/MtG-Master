@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { LinearGradient } from "expo-linear-gradient";
+
 import { useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -23,6 +23,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import CinemagraphParticles from "@/components/CinemagraphParticles";
 import { KeywordCard } from "@/components/KeywordCard";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { type CompactCard, useCardHistory } from "@/context/CardHistoryContext";
@@ -522,8 +523,6 @@ export default function CardSearchScreen() {
   // ── Animations ────────────────────────────────────────────────────────────
   const starScale   = useRef(new Animated.Value(1)).current;
   const pulseAnim   = useRef(new Animated.Value(1)).current;
-  const shimmer    = useRef(new Animated.Value(0)).current;
-  const shimmerRef = useRef<{ stop: () => void } | null>(null);
   const nd = Platform.OS !== "web"; // useNativeDriver: true only on native
 
   // Pulse the empty-state search icon forever
@@ -537,27 +536,6 @@ export default function CardSearchScreen() {
     loop.start();
     return () => loop.stop();
   }, []);
-
-  // Cinemagraph shimmer: card stays static, a diagonal light stripe sweeps across
-  // the artwork area every ~8 seconds. First 25% of loop = sweep, rest = idle.
-  useEffect(() => {
-    shimmerRef.current?.stop();
-    if (!card) { shimmer.setValue(0); return; }
-    shimmer.setValue(0);
-    const loop = Animated.loop(
-      Animated.timing(shimmer, { toValue: 1, duration: 8000, useNativeDriver: nd })
-    );
-    shimmerRef.current = loop;
-    loop.start();
-    return () => loop.stop();
-  }, [card?.id]);
-
-  // translateX: moves from off-left to off-right during first 25% of loop, then jumps back
-  const shimmerTranslate = shimmer.interpolate({
-    inputRange:  [0,    0.25, 0.251, 1  ],
-    outputRange: [-220, 480,  -220,  -220],
-    extrapolate: "clamp",
-  });
 
   // LayoutAnimation: animates the appearance of card content in the layout
   function triggerCardAppearance() {
@@ -894,20 +872,8 @@ export default function CardSearchScreen() {
                     style={styles.heroImage}
                     resizeMode="contain"
                   />
-                  {/* Cinemagraph shimmer — diagonal light sweep over artwork area */}
-                  <View style={styles.shimmerMask} pointerEvents="none">
-                    <Animated.View style={[
-                      styles.shimmerStripe,
-                      { transform: [{ translateX: shimmerTranslate }, { rotate: "-18deg" }] },
-                    ]}>
-                      <LinearGradient
-                        colors={["transparent", "rgba(255,255,255,0.10)", "rgba(255,255,255,0.30)", "rgba(255,255,255,0.10)", "transparent"]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.shimmerGradient}
-                      />
-                    </Animated.View>
-                  </View>
+                  {/* Cinemagraph: thematic particles rise from the artwork */}
+                  <CinemagraphParticles cardColors={cardColors} cardId={card.id} />
                 </TouchableOpacity>
                 {/* Controls row below the card */}
                 <View style={styles.heroControls}>
@@ -1674,9 +1640,7 @@ const styles = StyleSheet.create({
   heroSection: { borderRadius: 18, overflow: "hidden", aspectRatio: 63 / 88, width: "82%", backgroundColor: "#0d0d1f" },
   heroImage: { width: "100%", height: "100%" },
   heroControls: { flexDirection: "row", alignItems: "center", gap: 10, width: "82%" },
-  shimmerMask: { position: "absolute", top: "12%", left: 0, right: 0, height: "43%", overflow: "hidden" },
-  shimmerStripe: { position: "absolute", top: 0, bottom: 0, width: 90 },
-  shimmerGradient: { flex: 1 },
+
   heroCardName: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#ffffff" },
   heroCardEnName: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#ffffffaa", marginTop: 2 },
   cardInfoBox: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
