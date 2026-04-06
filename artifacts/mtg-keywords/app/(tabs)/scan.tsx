@@ -518,12 +518,14 @@ export default function CardSearchScreen() {
   const starScale   = useRef(new Animated.Value(1)).current;
   const pulseAnim   = useRef(new Animated.Value(1)).current;
 
+  const nativeDrv = Platform.OS !== "web";
+
   // Pulse the empty-state search icon forever
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 0.45, duration: 1400, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1,    duration: 1400, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0.45, duration: 1400, useNativeDriver: nativeDrv }),
+        Animated.timing(pulseAnim, { toValue: 1,    duration: 1400, useNativeDriver: nativeDrv }),
       ])
     );
     loop.start();
@@ -536,8 +538,8 @@ export default function CardSearchScreen() {
       heroOpacity.setValue(0);
       cardAnim.setValue(0);
       Animated.parallel([
-        Animated.timing(cardAnim, { toValue: 1, duration: 340, useNativeDriver: true }),
-        Animated.timing(heroOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(cardAnim, { toValue: 1, duration: 340, useNativeDriver: nativeDrv }),
+        Animated.timing(heroOpacity, { toValue: 1, duration: 500, useNativeDriver: nativeDrv }),
       ]).start();
     }
   }, [card?.id]);
@@ -550,8 +552,8 @@ export default function CardSearchScreen() {
   function bounceStarAnim() {
     starScale.setValue(1);
     Animated.sequence([
-      Animated.spring(starScale, { toValue: 1.55, tension: 320, friction: 4, useNativeDriver: true }),
-      Animated.spring(starScale, { toValue: 1,    tension: 320, friction: 4, useNativeDriver: true }),
+      Animated.spring(starScale, { toValue: 1.55, tension: 320, friction: 4, useNativeDriver: nativeDrv }),
+      Animated.spring(starScale, { toValue: 1,    tension: 320, friction: 4, useNativeDriver: nativeDrv }),
     ]).start();
   }
 
@@ -868,7 +870,7 @@ export default function CardSearchScreen() {
                   source={{ uri: cardImageUri }}
                   style={[styles.heroImage, { opacity: heroOpacity }]}
                   resizeMode="cover"
-                  onLoad={() => Animated.timing(heroOpacity, { toValue: 1, duration: 500, useNativeDriver: true }).start()}
+                  onLoad={() => Animated.timing(heroOpacity, { toValue: 1, duration: 500, useNativeDriver: nativeDrv }).start()}
                 />
                 <LinearGradient
                   colors={["transparent", "rgba(5,5,16,0.75)", "rgba(5,5,16,0.97)"]}
