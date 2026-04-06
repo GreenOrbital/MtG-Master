@@ -520,8 +520,10 @@ export default function CardSearchScreen() {
   const [pickedDeckId, setPickedDeckId] = useState<string | null>(null);
 
   // ── Animations ────────────────────────────────────────────────────────────
-  const starScale = useRef(new Animated.Value(1)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const starScale   = useRef(new Animated.Value(1)).current;
+  const pulseAnim   = useRef(new Animated.Value(1)).current;
+  const kenBurns    = useRef(new Animated.Value(0)).current;
+  const kenBurnsRef = useRef<{ stop: () => void } | null>(null);
   const nd = Platform.OS !== "web"; // useNativeDriver: true only on native
 
   // Pulse the empty-state search icon forever
@@ -536,8 +538,31 @@ export default function CardSearchScreen() {
     return () => loop.stop();
   }, []);
 
+  // Ken Burns: continuous slow zoom in/out on the card image
+  useEffect(() => {
+    kenBurnsRef.current?.stop();
+    if (!card) { kenBurns.setValue(0); return; }
+    kenBurns.setValue(0);
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(kenBurns, { toValue: 1, duration: 6000, useNativeDriver: nd }),
+        Animated.timing(kenBurns, { toValue: 0, duration: 6000, useNativeDriver: nd }),
+      ])
+    );
+    kenBurnsRef.current = loop;
+    loop.start();
+    return () => loop.stop();
+  }, [card?.id]);
+
+  const kenBurnsStyle = {
+    transform: [
+      { scale: kenBurns.interpolate({ inputRange: [0, 1], outputRange: [1.0, 1.07] }) },
+      { translateX: kenBurns.interpolate({ inputRange: [0, 1], outputRange: [0, 6] }) },
+      { translateY: kenBurns.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) },
+    ],
+  };
+
   // LayoutAnimation: animates the appearance of card content in the layout
-  // Safe: works by animating layout geometry, never hides content via opacity
   function triggerCardAppearance() {
     LayoutAnimation.configureNext({
       duration: 320,
@@ -862,47 +887,45 @@ export default function CardSearchScreen() {
         {card && !loadingCard && (
           <View style={styles.content}>
 
-            {/* ── Arena-style Hero Image ── */}
-            {cardArtUri && (
-              <TouchableOpacity onPress={() => setShowImageZoom(true)} activeOpacity={0.9} style={styles.heroSection}>
-                <Image
-                  source={{ uri: cardArtUri }}
-                  style={styles.heroImage}
-                  resizeMode="cover"
-                />
-                <LinearGradient
-                  colors={["transparent", "rgba(5,5,16,0.75)", "rgba(5,5,16,0.97)"]}
-                  style={styles.heroGradient}
-                >
-                  <View style={styles.heroBottom}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.heroCardName} numberOfLines={2}>{displayName}</Text>
-                      {card.printed_name && card.name !== card.printed_name && (
-                        <Text style={styles.heroCardEnName}>{card.name}</Text>
-                      )}
-                    </View>
-                    <View style={{ alignItems: "flex-end", gap: 6 }}>
-                      <TouchableOpacity onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-                        bounceStarAnim();
-                        toggleFavorite({
-                          id: card.id, name: card.name, printed_name: card.printed_name,
-                          type_line: card.type_line, printed_type_line: card.printed_type_line,
-                          mana_cost: card.mana_cost, set_name: card.set_name, imageUri: cardImageUri,
-                        });
-                      }}>
-                        <Animated.View style={{ transform: [{ scale: starScale }] }}>
-                          <Ionicons name={isFavorite(card.id) ? "star" : "star-outline"} size={24}
-                            color={isFavorite(card.id) ? "#f59e0b" : "#ffffff99"} />
-                        </Animated.View>
-                      </TouchableOpacity>
-                      <View style={{ backgroundColor: "#00000055", borderRadius: 6, padding: 3 }}>
-                        <Ionicons name="expand-outline" size={12} color="#ffffff99" />
-                      </View>
-                    </View>
+            {/* ── Full Card Hero with Ken Burns Loop ── */}
+            {cardImageUri && (
+              <View style={styles.heroWrapper}>
+                <TouchableOpacity onPress={() => setShowImageZoom(true)} activeOpacity={0.9} style={styles.heroSection}>
+                  <Animated.Image
+                    source={{ uri: cardImageUri }}
+                    style={[styles.heroImage, kenBurnsStyle]}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+                {/* Controls row below the card */}
+                <View style={styles.heroControls}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.heroCardName} numberOfLines={1}>{displayName}</Text>
+                    {card.printed_name && card.name !== card.printed_name && (
+                      <Text style={styles.heroCardEnName}>{card.name}</Text>
+                    )}
                   </View>
-                </LinearGradient>
-              </TouchableOpacity>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                    <TouchableOpacity onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                      bounceStarAnim();
+                      toggleFavorite({
+                        id: card.id, name: card.name, printed_name: card.printed_name,
+                        type_line: card.type_line, printed_type_line: card.printed_type_line,
+                        mana_cost: card.mana_cost, set_name: card.set_name, imageUri: cardImageUri,
+                      });
+                    }}>
+                      <Animated.View style={{ transform: [{ scale: starScale }] }}>
+                        <Ionicons name={isFavorite(card.id) ? "star" : "star-outline"} size={26}
+                          color={isFavorite(card.id) ? "#f59e0b" : colors.muted} />
+                      </Animated.View>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setShowImageZoom(true)}>
+                      <Ionicons name="expand-outline" size={22} color={colors.muted} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
             )}
 
             {/* ── Card info box ── */}
@@ -1635,12 +1658,12 @@ const styles = StyleSheet.create({
   errorBox: { borderRadius: 14, borderWidth: 1, padding: 20, alignItems: "center", gap: 8, marginTop: 20 },
   errorText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
   content: { gap: 14 },
-  heroSection: { borderRadius: 16, overflow: "hidden", height: 180 },
-  heroImage: { width: "100%", height: "100%", position: "absolute" },
-  heroGradient: { flex: 1, justifyContent: "flex-end", padding: 16 },
-  heroBottom: { flexDirection: "row", alignItems: "flex-end", gap: 12 },
-  heroCardName: { fontSize: 26, fontFamily: "Inter_700Bold", color: "#ffffff", ...Platform.select({ web: { textShadow: "0px 2px 8px rgba(0,0,0,0.8)" } as any, default: { textShadowColor: "rgba(0,0,0,0.8)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 } }) },
-  heroCardEnName: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#ffffffcc", marginTop: 2 },
+  heroWrapper: { gap: 10 },
+  heroSection: { borderRadius: 18, overflow: "hidden", aspectRatio: 63 / 88, backgroundColor: "#0d0d1f" },
+  heroImage: { width: "100%", height: "100%" },
+  heroControls: { flexDirection: "row", alignItems: "center", gap: 10 },
+  heroCardName: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#ffffff" },
+  heroCardEnName: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#ffffffaa", marginTop: 2 },
   cardInfoBox: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
   cardInfoTop: { flexDirection: "column", padding: 14, gap: 8 },
   cardInfoLeft: { flex: 1, gap: 4 },
