@@ -513,8 +513,9 @@ export default function CardSearchScreen() {
   const [pickedDeckId, setPickedDeckId] = useState<string | null>(null);
 
   // ── Animations ────────────────────────────────────────────────────────────
-  const cardAnim    = useRef(new Animated.Value(0)).current;
-  const heroOpacity = useRef(new Animated.Value(0)).current;
+  // NOTE: never use opacity:0 as starting value — if animation fails the card stays invisible.
+  // We only animate translateY (slide) so cards are always visible.
+  const slideAnim   = useRef(new Animated.Value(0)).current;
   const starScale   = useRef(new Animated.Value(1)).current;
   const pulseAnim   = useRef(new Animated.Value(1)).current;
 
@@ -532,21 +533,16 @@ export default function CardSearchScreen() {
     return () => loop.stop();
   }, []);
 
-  // Slide-up + fade-in whenever a new card arrives
+  // Slide-up whenever a new card arrives (no opacity — always visible)
   useEffect(() => {
     if (card) {
-      heroOpacity.setValue(0);
-      cardAnim.setValue(0);
-      Animated.parallel([
-        Animated.timing(cardAnim, { toValue: 1, duration: 340, useNativeDriver: nativeDrv }),
-        Animated.timing(heroOpacity, { toValue: 1, duration: 500, useNativeDriver: nativeDrv }),
-      ]).start();
+      slideAnim.setValue(24);
+      Animated.spring(slideAnim, { toValue: 0, tension: 120, friction: 9, useNativeDriver: nativeDrv }).start();
     }
   }, [card?.id]);
 
   const cardAnimStyle = {
-    opacity:   cardAnim,
-    transform: [{ translateY: cardAnim.interpolate({ inputRange: [0, 1], outputRange: [28, 0] }) }],
+    transform: [{ translateY: slideAnim }],
   };
 
   function bounceStarAnim() {
@@ -866,11 +862,10 @@ export default function CardSearchScreen() {
             {/* ── Arena-style Hero Image ── */}
             {cardImageUri && (
               <TouchableOpacity onPress={() => setShowImageZoom(true)} activeOpacity={0.9} style={styles.heroSection}>
-                <Animated.Image
+                <Image
                   source={{ uri: cardImageUri }}
-                  style={[styles.heroImage, { opacity: heroOpacity }]}
+                  style={styles.heroImage}
                   resizeMode="cover"
-                  onLoad={() => Animated.timing(heroOpacity, { toValue: 1, duration: 500, useNativeDriver: nativeDrv }).start()}
                 />
                 <LinearGradient
                   colors={["transparent", "rgba(5,5,16,0.75)", "rgba(5,5,16,0.97)"]}
