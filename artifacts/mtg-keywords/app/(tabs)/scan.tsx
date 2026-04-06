@@ -298,10 +298,15 @@ async function overlayGermanData(card: CardData): Promise<CardData> {
     if (!de) return card;
     return {
       ...card,
-      printed_name: de.printed_name ?? card.printed_name,
-      printed_text: de.printed_text ?? card.printed_text,
+      printed_name:      de.printed_name      ?? card.printed_name,
+      printed_text:      de.printed_text      ?? card.printed_text,
       printed_type_line: de.printed_type_line ?? card.printed_type_line,
-      // Keep English oracle_text for keyword matching; German goes in printed_text
+      // Use German print image so the card shown has German text in its text box
+      image_uris:        de.image_uris        ?? card.image_uris,
+      card_faces:        card.card_faces?.map((face, idx) => ({
+        ...face,
+        image_uris: de.card_faces?.[idx]?.image_uris ?? face.image_uris,
+      })),
     };
   } catch { return card; }
 }
@@ -872,8 +877,15 @@ export default function CardSearchScreen() {
                     style={styles.heroImage}
                     resizeMode="contain"
                   />
-                  {/* Cinemagraph: thematic particles rise from the artwork */}
-                  <CinemagraphParticles cardColors={cardColors} cardId={card.id} />
+                  {/* Cinemagraph: per-card thematic effect based on oracle text + type */}
+                  <CinemagraphParticles
+                    cardId={card.id}
+                    cardColors={cardColors}
+                    cardName={card.name}
+                    oracleText={card.oracle_text}
+                    typeLine={card.type_line}
+                    keywords={card.keywords}
+                  />
                 </TouchableOpacity>
                 {/* Controls row below the card */}
                 <View style={styles.heroControls}>
