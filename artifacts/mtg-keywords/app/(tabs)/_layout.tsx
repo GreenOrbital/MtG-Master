@@ -54,6 +54,13 @@ function WebSidebar() {
       labelEn: "Decks",
     },
     {
+      route: "/deckideas",
+      iconDefault: "bulb-outline" as const,
+      iconActive: "bulb" as const,
+      labelDe: "Deck-Ideen",
+      labelEn: "Deck Ideas",
+    },
+    {
       route: "/settings",
       iconDefault: "settings-outline" as const,
       iconActive: "settings" as const,
@@ -135,6 +142,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "rectangle.stack", selected: "rectangle.stack.fill" }} />
         <Label>Decks</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="deckideas">
+        <Icon sf={{ default: "lightbulb", selected: "lightbulb.fill" }} />
+        <Label>Ideen</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
         <Icon sf={{ default: "gear", selected: "gear" }} />
         <Label>Einstellungen</Label>
@@ -214,6 +225,18 @@ function ClassicTabLayout() {
               <SymbolView name="rectangle.stack" tintColor={color} size={24} />
             ) : (
               <MaterialCommunityIcons name="cards-outline" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="deckideas"
+        options={{
+          title: "Deck-Ideen",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="lightbulb" tintColor={color} size={24} />
+            ) : (
+              <Ionicons name="bulb-outline" size={22} color={color} />
             ),
         }}
       />

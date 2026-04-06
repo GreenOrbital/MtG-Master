@@ -556,6 +556,50 @@ function getDeckPrice(cards: DeckCard[]): { totalEur: number | null; totalUsd: n
   };
 }
 
+// ─── Synergy Rich Descriptions ───────────────────────────────────────────────
+
+const SYNERGY_DETAIL_DE: Record<string, string> = {
+  graveyard:
+    "Friedhof-Decks nutzen den Friedhof als zweite Hand. 'Quellen' füllen ihn: Kreaturen die sterben, Karten die mühlen lassen oder Karten die du ablegen musst. 'Nutzer' greifen darauf zu: sie beschwören Karten aus dem Friedhof neu, kehren Kreaturen zurück oder lösen Effekte aus wenn Karten abgelegt werden. Das Schlüsselkonzept: Was für andere Decks ein Verlust ist, ist für dieses Deck Vorbereitung. Je mehr im Friedhof, desto stärker das Deck.",
+  sacrifice:
+    "Opfer-Decks verwandeln den Tod eigener Kreaturen in Vorteile. 'Outlets' sind Fähigkeiten die 'Opfere eine Kreatur' verlangen — dafür bekommen sie Mana, Schaden oder andere Effekte. 'Sterbe-Trigger' sind Kreaturen die etwas tun wenn sie (oder andere) sterben: Leben gewinnen, Schaden verursachen, Karten ziehen. Die Stärke liegt im Recycling: Eine Kreatur stirbt und löst dabei 2-3 Effekte aus. Mit günstigen Kreaturen die immer wiederkommen entsteht eine unendliche Schleife.",
+  counters:
+    "+1/+1-Zähler-Decks nutzen exponentielles Wachstum. 'Verteiler' legen Zähler ab: ETB-Fähigkeiten, Tapping-Effekte, Sprüche. 'Proliferate' ist die Schlüsselmechanik: sie verdoppelt alle Zähler auf allen Permanenten. Wenn 3 Kreaturen je 3 Zähler haben und Proliferate auslöst, haben sie je 4 Zähler. 'Nutzer' profitieren: Kreaturen werden zu Monstern, Artefakte laden sich auf. Der Trick ist Synergie: jeder Zähler-Platzierungseffekt löst mehrere andere aus.",
+  tokens:
+    "Token-Decks gewinnen durch Masse statt Qualität. 'Generatoren' erschaffen Token-Kreaturen: Sprüche, Planeswalker, ETB-Fähigkeiten. 'Nutzer' profitieren von der Masse: Karten die +X/+X für jede Kreatur geben, Karten die Mana pro Kreatur erzeugen, Karten die von vielen Kreaturen beim Angriff profitieren. Das Deck ist resilient: einzelne Entfernung hilft dem Gegner nicht, nur Massenentfernung kann die Horde stoppen.",
+  etb:
+    "ETB-Trigger (Enters The Battlefield) sind Fähigkeiten die beim Betreten des Schlachtfelds ausgelöst werden. 'Quellen' sind Kreaturen mit wertvollen ETB-Fähigkeiten: Karten ziehen, Permanente entfernen, Token erschaffen. 'Blinker und Kopierer' lösen diese Trigger mehrfach aus: sie exilieren und zurückbringen eine Kreatur oder kopieren den ETB-Effekt. Der Schlüssel: eine Kreatur die 1 Karte zieht wird mit Blinker zu einer die 2, 4, 8 Karten zieht.",
+  lifegain:
+    "Lebensgewinn-Decks nutzen Lebenspunkte als Ressource und Auslöser. 'Quellen' gewinnen Lebenspunkte: Lifelink-Kreaturen, Heilungszauber, ETB-Heilung. 'Trigger' sind Karten die reagieren wenn du Leben gewinnst: Kreaturen bekommen Zähler, Token werden erschaffen, Karten werden gezogen. Das Deck ist sehr resilient gegen Aggression: Angreifer schenken dem Deck Lebenspunkte. Mit genug Triggers macht jeder Lebensgewinn-Effekt das Deck stärker.",
+  landfall:
+    "Landfall-Trigger lösen aus wenn du ein Land spielst. 'Trigger' sind Karten mit Landfall: sie erzeugen Token, fügen Zähler hinzu oder verursachen Schaden. 'Rampe' ist genauso wichtig: Karten die dir erlauben mehrere Länder pro Runde zu spielen, doppeln die Landfall-Trigger. Das Deck ist sehr konsistent: Länder sind unverzichtbar also löst man fast jede Runde die Trigger aus. Mit genug Rampe kann man 3-4 Landfall-Trigger pro Runde auslösen.",
+  spells:
+    "Spruch-Synergien (Prowess/Magecraft) funktionieren durch schiere Anzahl von Zaubern. 'Prowess und Magecraft' sind Karten die bei jedem Spruch einen Bonus bekommen: temporäre Stärkung, Zähler, Karten ziehen. 'Spruch-Quellen' sind Blitzzauber und Hexerei-Karten die schnell und günstig sind. Das Deck kann in einer Runde 4-6 Sprüche wirken, dabei wachsen die Prowess-Kreaturen zu riesigen Drohungen und der Gegner kann nicht mehr blocken.",
+  discard:
+    "Abwurf-Synergien nutzen das Ablegen von Karten als Ressource statt als Verlust. 'Outlets' sind Karten die dich Karten ablegen lassen — gegen Mana, als Kosten oder als Effekt. 'Nutzer' sind Karten mit 'Wahnsinn' (werden beim Ablegen für weniger Mana gewirkt) oder Karten die Vorteile geben wenn du Karten ablegst: Kreaturen die stärker werden, Karten die aus dem Friedhof zurückkehren. Das Deck ist wie ein Puzzle: alle Teile passen zusammen.",
+};
+
+const SYNERGY_DETAIL_EN: Record<string, string> = {
+  graveyard:
+    "Graveyard decks use the graveyard as a second hand. 'Sources' fill it: creatures that die, cards that mill, or cards you must discard. 'Consumers' access it: recasting cards, returning creatures, or triggering effects when cards hit the graveyard. Key concept: what's a loss for other decks is preparation for this one. The more in the graveyard, the stronger the deck.",
+  sacrifice:
+    "Sacrifice decks turn their own creatures' deaths into advantages. 'Outlets' require 'sacrifice a creature' — in return they grant mana, damage, or other effects. 'Death triggers' are creatures that do something when they (or others) die: gain life, deal damage, draw cards. The power is in recycling: one creature dies and triggers 2-3 effects. With cheap creatures that return repeatedly, an infinite loop emerges.",
+  counters:
+    "+1/+1 counter decks use exponential growth. 'Distributors' place counters: ETB abilities, tapping effects, spells. 'Proliferate' is the key mechanic: it adds one more of every counter to every permanent. If 3 creatures have 3 counters each and Proliferate triggers, each now has 4. 'Payoffs' benefit: creatures grow into monsters, artifacts charge up. The trick is synergy: each counter placement triggers several others.",
+  tokens:
+    "Token decks win through quantity over quality. 'Generators' create token creatures: spells, planeswalkers, ETB abilities. 'Payoffs' benefit from the mass: cards giving +X/+X per creature, cards generating mana per creature, cards that profit from many attackers. The deck is resilient: single removal barely helps the opponent — only mass removal can stop the horde.",
+  etb:
+    "ETB triggers (Enters The Battlefield) fire when a permanent enters the battlefield. 'Sources' are creatures with valuable ETB abilities: draw cards, remove permanents, create tokens. 'Blink and copy' effects re-trigger these: exile and return a creature or copy its ETB. Key insight: a creature that draws 1 card with blink becomes one that draws 2, 4, 8 cards.",
+  lifegain:
+    "Lifegain decks use life points as a resource and trigger. 'Sources' gain life: lifelink creatures, healing spells, ETB healing. 'Triggers' are cards that react when you gain life: creatures get counters, tokens are created, cards are drawn. The deck is very resilient against aggression: attackers actually gift the deck more life. With enough triggers, every life gain effect makes the deck stronger.",
+  landfall:
+    "Landfall triggers fire whenever you play a land. 'Triggers' are Landfall cards: they create tokens, add counters, or deal damage. 'Ramp' is equally important: cards allowing you to play multiple lands per turn double your Landfall triggers. The deck is consistent: lands are necessary so you fire triggers almost every turn. With enough ramp you can trigger Landfall 3-4 times per turn.",
+  spells:
+    "Spell synergies (Prowess/Magecraft) work through sheer spell count. 'Prowess and Magecraft' cards get a bonus for each spell: temporary boost, counters, card draw. 'Spell sources' are instants and sorceries that are fast and cheap. The deck can cast 4-6 spells in one turn, growing Prowess creatures into huge threats the opponent can't block.",
+  discard:
+    "Discard synergies use discarding cards as a resource rather than a loss. 'Outlets' let you discard — for mana, as a cost, or as an effect. 'Payoffs' are cards with Madness (cast when discarded for less mana) or cards that benefit when you discard: creatures that grow, cards that return from the graveyard. The deck is like a puzzle: all pieces fit together.",
+};
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function ManapoolScreen() {
@@ -577,6 +621,7 @@ export default function ManapoolScreen() {
   const [showDeckCombosModal, setShowDeckCombosModal] = useState(false);
   const [expandedDeckComboId, setExpandedDeckComboId] = useState<string | null>(null);
   const [expandedSynergyKey, setExpandedSynergyKey] = useState<string | null>(null);
+  const [selectedSynergy, setSelectedSynergy] = useState<SynergyGroup | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importJson, setImportJson] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
@@ -1702,9 +1747,19 @@ export default function ManapoolScreen() {
                           </TouchableOpacity>
                           {isExp && (
                             <View style={[styles.synergyBody, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
-                              <Text style={[styles.analysisDetail, { color: colors.mutedForeground, marginBottom: 12 }]}>
+                              <Text style={[styles.analysisDetail, { color: colors.mutedForeground, marginBottom: 8 }]}>
                                 {showEnglish ? group.descEn : group.descDe}
                               </Text>
+                              <TouchableOpacity
+                                style={[styles.synergyDetailBtn, { backgroundColor: group.color + "18", borderColor: group.color + "55" }]}
+                                onPress={() => setSelectedSynergy(group)}
+                              >
+                                <Ionicons name="information-circle-outline" size={15} color={group.color} />
+                                <Text style={[styles.synergyDetailBtnText, { color: group.color }]}>
+                                  {showEnglish ? "Full explanation & card details" : "Vollständige Erklärung & Kartendetails"}
+                                </Text>
+                                <Ionicons name="chevron-forward" size={13} color={group.color} />
+                              </TouchableOpacity>
                               {/* ─ Card images with arrow ─ */}
                               <View style={styles.synergyImgRow}>
                                 {/* Left group: core cards */}
@@ -2022,6 +2077,118 @@ export default function ManapoolScreen() {
         </TouchableOpacity>
       </Modal>
 
+      {/* ── Synergy Detail Modal ── */}
+      <Modal visible={!!selectedSynergy} transparent animationType="slide" presentationStyle="overFullScreen">
+        <View style={[styles.modalOverlay, { backgroundColor: "#00000088", justifyContent: "flex-end" }]}>
+          <View style={[styles.synergyDetailModal, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {/* Header */}
+            {selectedSynergy && (
+              <>
+                <View style={[styles.synergyDetailModalHeader, { borderBottomColor: colors.border }]}>
+                  <View style={[styles.synergyDetailIconWrap, { backgroundColor: selectedSynergy.color + "22" }]}>
+                    <Ionicons name={selectedSynergy.icon as any} size={22} color={selectedSynergy.color} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.synergyDetailModalTitle, { color: colors.foreground }]}>
+                      {showEnglish ? selectedSynergy.labelEn : selectedSynergy.labelDe}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                      {selectedSynergy.cards.length} {showEnglish ? "cards in this deck" : "Karten in diesem Deck"}
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setSelectedSynergy(null)}>
+                    <Ionicons name="close" size={22} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                </View>
+                <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 16 }} showsVerticalScrollIndicator={false}>
+                  {/* Rich description */}
+                  <View style={[styles.synergyDetailSection, { backgroundColor: selectedSynergy.color + "12", borderColor: selectedSynergy.color + "44" }]}>
+                    <View style={styles.synergyDetailSectionHeader}>
+                      <Ionicons name="bulb-outline" size={15} color={selectedSynergy.color} />
+                      <Text style={[styles.synergyDetailSectionTitle, { color: selectedSynergy.color }]}>
+                        {showEnglish ? "How this synergy works" : "Wie diese Synergie funktioniert"}
+                      </Text>
+                    </View>
+                    <Text style={[styles.synergyDetailRichText, { color: colors.foreground }]}>
+                      {showEnglish
+                        ? (SYNERGY_DETAIL_EN[selectedSynergy.key] ?? selectedSynergy.descEn)
+                        : (SYNERGY_DETAIL_DE[selectedSynergy.key] ?? selectedSynergy.descDe)}
+                    </Text>
+                  </View>
+
+                  {/* Core cards */}
+                  {selectedSynergy.coreCards.length > 0 && (
+                    <View style={[styles.synergyDetailSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                      <View style={styles.synergyDetailSectionHeader}>
+                        <Ionicons name="star-outline" size={15} color={selectedSynergy.color} />
+                        <Text style={[styles.synergyDetailSectionTitle, { color: selectedSynergy.color }]}>
+                          {showEnglish ? selectedSynergy.roleLabelEn : selectedSynergy.roleLabelDe}
+                        </Text>
+                      </View>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                        {selectedSynergy.coreCards.map((card) => (
+                          <View key={card.name} style={[styles.synergyDetailCardCol, { marginRight: 10 }]}>
+                            {card.imageUri ? (
+                              <Image source={{ uri: card.imageUri }} style={styles.synergyDetailCardImg} resizeMode="cover" />
+                            ) : (
+                              <View style={[styles.synergyDetailCardImgEmpty, { backgroundColor: selectedSynergy.color + "33" }]}>
+                                <Ionicons name="card-outline" size={20} color={selectedSynergy.color} />
+                              </View>
+                            )}
+                            <Text style={[styles.synergyDetailCardName, { color: colors.foreground }]} numberOfLines={2}>
+                              {card.name}
+                            </Text>
+                            {card.oracle_text ? (
+                              <Text style={[styles.synergyDetailCardOracle, { color: colors.mutedForeground }]} numberOfLines={3}>
+                                {card.oracle_text}
+                              </Text>
+                            ) : null}
+                          </View>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+
+                  {/* Synergy cards */}
+                  {selectedSynergy.synergyCards.length > 0 && (
+                    <View style={[styles.synergyDetailSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                      <View style={styles.synergyDetailSectionHeader}>
+                        <Ionicons name="arrow-forward-circle-outline" size={15} color={selectedSynergy.color} />
+                        <Text style={[styles.synergyDetailSectionTitle, { color: selectedSynergy.color }]}>
+                          {showEnglish ? selectedSynergy.synLabelEn : selectedSynergy.synLabelDe}
+                        </Text>
+                      </View>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                        {selectedSynergy.synergyCards.map((card) => (
+                          <View key={card.name} style={[styles.synergyDetailCardCol, { marginRight: 10 }]}>
+                            {card.imageUri ? (
+                              <Image source={{ uri: card.imageUri }} style={styles.synergyDetailCardImg} resizeMode="cover" />
+                            ) : (
+                              <View style={[styles.synergyDetailCardImgEmpty, { backgroundColor: selectedSynergy.color + "33" }]}>
+                                <Ionicons name="card-outline" size={20} color={selectedSynergy.color} />
+                              </View>
+                            )}
+                            <Text style={[styles.synergyDetailCardName, { color: colors.foreground }]} numberOfLines={2}>
+                              {card.name}
+                            </Text>
+                            {card.oracle_text ? (
+                              <Text style={[styles.synergyDetailCardOracle, { color: colors.mutedForeground }]} numberOfLines={3}>
+                                {card.oracle_text}
+                              </Text>
+                            ) : null}
+                          </View>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                  <View style={{ height: 20 }} />
+                </ScrollView>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
       {/* ── Import Modal ── */}
       <Modal visible={showImportModal} transparent animationType="fade">
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowImportModal(false)}>
@@ -2250,4 +2417,31 @@ const styles = StyleSheet.create({
   deckComboDesc: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 10, gap: 6 },
   deckComboCardNames: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
   deckComboDescText: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  // Synergy detail button
+  synergyDetailBtn: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    borderRadius: 8, borderWidth: 1,
+    paddingHorizontal: 10, paddingVertical: 7, marginBottom: 10, alignSelf: "flex-start",
+  },
+  synergyDetailBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", flex: 1 },
+  // Synergy detail modal
+  synergyDetailModal: {
+    height: "85%", borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    borderWidth: 1, borderBottomWidth: 0,
+  },
+  synergyDetailModalHeader: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    padding: 16, borderBottomWidth: 1,
+  },
+  synergyDetailIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  synergyDetailModalTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  synergyDetailSection: { borderRadius: 12, borderWidth: 1, padding: 12, gap: 8 },
+  synergyDetailSectionHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
+  synergyDetailSectionTitle: { fontSize: 13, fontFamily: "Inter_700Bold" },
+  synergyDetailRichText: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 22 },
+  synergyDetailCardCol: { width: 90, alignItems: "center" },
+  synergyDetailCardImg: { width: 90, height: 125, borderRadius: 6, backgroundColor: "#1a1a2e" },
+  synergyDetailCardImgEmpty: { width: 90, height: 125, borderRadius: 6, alignItems: "center", justifyContent: "center" },
+  synergyDetailCardName: { fontSize: 10, fontFamily: "Inter_600SemiBold", textAlign: "center", marginTop: 5, lineHeight: 14 },
+  synergyDetailCardOracle: { fontSize: 9, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 13, marginTop: 3 },
 });
