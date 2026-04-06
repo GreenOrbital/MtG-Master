@@ -178,12 +178,69 @@ const RARITY_LABEL: Record<string, { de: string; en: string; color: string }> = 
   special:  { de: "Speziell", en: "Special",    color: "#c084fc" },
 };
 
-const FORMAT_INFO: Array<{ key: string; labelDe: string; labelEn: string; descDe: string; descEn: string }> = [
-  { key: "standard",  labelDe: "Standard",  labelEn: "Standard",  descDe: "Nur Karten der letzten ~2 Jahre", descEn: "Cards from the last ~2 years" },
-  { key: "pioneer",   labelDe: "Pioneer",   labelEn: "Pioneer",   descDe: "Karten ab 2012 (kein Vintage/Legacy)", descEn: "Cards from 2012 onwards" },
-  { key: "modern",    labelDe: "Modern",    labelEn: "Modern",    descDe: "Karten ab 8. Edition (2003)", descEn: "Cards from 8th Edition (2003)" },
-  { key: "legacy",    labelDe: "Legacy",    labelEn: "Legacy",    descDe: "Fast alle Karten, einige verboten", descEn: "Almost all cards, some banned" },
-  { key: "commander", labelDe: "Commander", labelEn: "Commander", descDe: "100-Karten-Format mit einem legendären Anführer", descEn: "100-card format with a legendary commander" },
+interface FormatInfo {
+  key: string; labelDe: string; labelEn: string;
+  descDe: string; descEn: string;
+  rangeDe: string; rangeEn: string;
+  detailDe: string; detailEn: string;
+}
+const FORMAT_INFO: FormatInfo[] = [
+  {
+    key: "standard", labelDe: "Standard", labelEn: "Standard",
+    descDe: "Nur die neuesten Editionen (~2 Jahre)", descEn: "Only the newest sets (~2 years)",
+    rangeDe: "Rotiert jedes Jahr im Herbst – ältere Sets fallen raus", rangeEn: "Rotates every autumn – older sets rotate out",
+    detailDe: "Das Einstiegsformat. Nur Karten aus den letzten ca. 2 Jahren sind spielbar. Jedes Herbst rotieren die ältesten Sets heraus und neue kommen hinzu. Ideal für Turnierspieler, die immer mit den neuesten Karten spielen wollen.",
+    detailEn: "The entry-level competitive format. Only cards from roughly the last 2 years are legal. Every autumn the oldest sets rotate out and new ones are added. Ideal for tournament players who want to play with the latest cards.",
+  },
+  {
+    key: "pioneer", labelDe: "Pioneer", labelEn: "Pioneer",
+    descDe: "Karten ab Return to Ravnica (2012)", descEn: "Cards from Return to Ravnica (2012) onwards",
+    rangeDe: "Alle Karten ab Oktober 2012 – kein Power 9, kein Fetches", rangeEn: "All cards from October 2012 – no Power 9, no fetchlands",
+    detailDe: "Pioneer umfasst alle Karten seit Return to Ravnica (Oktober 2012). Weder Fetchländer noch die mächtigsten Legacy-Karten sind erlaubt. Ein guter Mittelweg zwischen der Zugänglichkeit von Standard und der Tiefe von Modern.",
+    detailEn: "Pioneer includes all cards since Return to Ravnica (October 2012). Neither fetchlands nor the most powerful Legacy cards are legal. A good middle ground between Standard's accessibility and Modern's depth.",
+  },
+  {
+    key: "modern", labelDe: "Modern", labelEn: "Modern",
+    descDe: "Karten ab 8. Edition / Mirrodin (2003)", descEn: "Cards from 8th Edition / Mirrodin (2003)",
+    rangeDe: "Alle Sets ab Juli 2003 mit modernem schwarzem Kartenrand", rangeEn: "All sets from July 2003 with the modern card frame",
+    detailDe: "Modern beginnt mit dem modernen Kartendesign (schwarzer Rand, neues Layout) ab 8. Edition und Mirrodin. Ein sehr breites und schnelles Format mit vielen mächtigen Karten. Beliebt im FNM-Wettbewerb und Turnieren.",
+    detailEn: "Modern starts with the modern card frame (black border, new layout) from 8th Edition and Mirrodin. A very wide and fast format with many powerful cards. Popular at Friday Night Magic and tournaments.",
+  },
+  {
+    key: "legacy", labelDe: "Legacy", labelEn: "Legacy",
+    descDe: "Fast alle Karten – manche verboten", descEn: "Almost all cards – some banned",
+    rangeDe: "Alle Sets aller Zeiten, kurze Verbotsliste für die mächtigsten Karten", rangeEn: "All sets of all time, short banned list for the most broken cards",
+    detailDe: "Legacy erlaubt fast alle Karten aus der gesamten Geschichte von Magic. Nur die absolut spielbrechenden Karten (z.B. Moxe, Ancestral Recall) sind verboten. Ein sehr erfahrenes, teures Format mit sehr schnellen Spielen.",
+    detailEn: "Legacy allows almost all cards from the entire history of Magic. Only the absolutely game-breaking cards (e.g. Moxen, Ancestral Recall) are banned. A very experienced, expensive format with very fast games.",
+  },
+  {
+    key: "vintage", labelDe: "Vintage", labelEn: "Vintage",
+    descDe: "Alle Karten – mächtigste auf 1 Kopie begrenzt", descEn: "All cards – most powerful restricted to 1 copy",
+    rangeDe: "Alle Sets aller Zeiten – Power 9 und weitere eingeschränkt (max. 1x)", rangeEn: "All sets of all time – Power 9 and more restricted to max. 1 copy",
+    detailDe: "Vintage ist das Format ohne Einschränkungen. Alle Karten sind legal, aber die mächtigsten (Black Lotus, Moxe, Ancestral Recall etc.) sind auf genau 1 Kopie pro Deck begrenzt (Restricted). Spiele dauern oft nur 1–3 Züge.",
+    detailEn: "Vintage is the format without restrictions. All cards are legal, but the most powerful ones (Black Lotus, Moxen, Ancestral Recall etc.) are restricted to exactly 1 copy per deck. Games often last only 1–3 turns.",
+  },
+  {
+    key: "commander", labelDe: "Commander", labelEn: "Commander",
+    descDe: "100 Karten, 1 legendärer Anführer, 4 Spieler", descEn: "100 cards, 1 legendary commander, 4 players",
+    rangeDe: "Alle Sets – Farbidentität des Anführers bestimmt erlaubte Karten", rangeEn: "All sets – commander's color identity determines legal cards",
+    detailDe: "Commander (auch EDH) ist das beliebteste Mehrspieler-Format (meist 4 Spieler). Du wählst eine legendäre Kreatur als Anführer – nur Karten in dessen Farbidentität sind erlaubt. 100 Karten, davon 99 Unikate (außer Basisländer). Sehr soziales Format.",
+    detailEn: "Commander (also EDH) is the most popular multiplayer format (usually 4 players). You choose a legendary creature as your commander – only cards within its color identity are legal. 100 cards, 99 of them unique (except basic lands). A very social format.",
+  },
+  {
+    key: "pauper", labelDe: "Pauper", labelEn: "Pauper",
+    descDe: "Nur Commons (gewöhnliche Karten)", descEn: "Commons only",
+    rangeDe: "Alle Sets – nur Karten die jemals als Common gedruckt wurden", rangeEn: "All sets – only cards ever printed at common rarity",
+    detailDe: "Pauper erlaubt ausschließlich Karten, die jemals als Common gedruckt wurden. Sehr günstig zu spielen, trotzdem strategisch tiefgründig. Beliebtes Budget-Format.",
+    detailEn: "Pauper allows only cards that have ever been printed at common rarity. Very affordable to play, yet strategically deep. A popular budget format.",
+  },
+  {
+    key: "brawl", labelDe: "Brawl", labelEn: "Brawl",
+    descDe: "Commander-Stil, nur Standard-Karten", descEn: "Commander-style, Standard cards only",
+    rangeDe: "Nur Karten aus dem aktuellen Standard + dein Anführer", rangeEn: "Only cards from the current Standard rotation + your commander",
+    detailDe: "Brawl kombiniert den Commander-Stil (1 Anführer, Singleton-Deck) mit den aktuellen Standard-Karten. Günstigere Einstiegsmöglichkeit ins Commander-Spielgefühl.",
+    detailEn: "Brawl combines the Commander-style (1 commander, singleton deck) with the current Standard card pool. A cheaper entry point into the Commander experience.",
+  },
 ];
 
 function legalityColor(value: string): string {
@@ -520,6 +577,11 @@ export default function CardSearchScreen() {
   const [errorMsg, setErrorMsg] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showFormatInfo, setShowFormatInfo] = useState(false);
+  const [expandedFormatKey, setExpandedFormatKey] = useState<string | null>(null);
+  const [showKeywordsSection, setShowKeywordsSection] = useState(false);
+  const [showCombosSection, setShowCombosSection] = useState(false);
+  const [showSimilarSection, setShowSimilarSection] = useState(false);
+  const [showBoosterSection, setShowBoosterSection] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
   const [showDeckPicker, setShowDeckPicker] = useState(false);
   const [addedToDeck, setAddedToDeck] = useState<string | null>(null);
@@ -743,6 +805,9 @@ export default function CardSearchScreen() {
     setCombos([]); setLoadingCombos(false); setExpandedComboId(null);
     setBoosterPacks([]); setLoadingBooster(false);
     setPrints([]); setLoadingPrints(false); setSelectedPrint(null);
+    setShowFormatInfo(false); setExpandedFormatKey(null);
+    setShowKeywordsSection(false); setShowCombosSection(false);
+    setShowSimilarSection(false); setShowBoosterSection(false);
   }
 
   async function recognizeCard() {
@@ -1241,81 +1306,157 @@ export default function CardSearchScreen() {
             {card.legalities && (
               <View style={[styles.formatBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <TouchableOpacity style={styles.formatHeader} onPress={() => setShowFormatInfo((v) => !v)}>
-                  <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                    {showEnglish ? "Format Legality" : "Format-Zulässigkeit"}
-                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                      {showEnglish ? "Format Legality" : "Format-Zulässigkeit"}
+                    </Text>
+                    {!showFormatInfo && (
+                      <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>
+                        {(() => {
+                          const legalCount = FORMAT_INFO.filter(f => card.legalities?.[f.key] === "legal").length;
+                          return showEnglish
+                            ? `Legal in ${legalCount} of ${FORMAT_INFO.length} formats`
+                            : `Erlaubt in ${legalCount} von ${FORMAT_INFO.length} Formaten`;
+                        })()}
+                      </Text>
+                    )}
+                  </View>
                   <Ionicons name={showFormatInfo ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} />
                 </TouchableOpacity>
-                <View style={styles.legalityGrid}>
-                  {FORMAT_INFO.map((f) => {
-                    const val = card.legalities?.[f.key] ?? "not_legal";
-                    const col = legalityColor(val);
-                    const isLegal = val === "legal";
-                    return (
-                      <View key={f.key} style={[styles.legalCard, { borderColor: col, backgroundColor: isLegal ? col + "18" : colors.background }]}>
-                        <Text style={[styles.legalFormat, { color: isLegal ? col : colors.mutedForeground }]}>
-                          {showEnglish ? f.labelEn : f.labelDe}
-                        </Text>
-                        <Text style={[styles.legalStatus, { color: col }]}>
-                          {legalityLabel(val, !showEnglish)}
-                        </Text>
-                        {showFormatInfo && (
-                          <Text style={[styles.legalDesc, { color: colors.mutedForeground }]}>
-                            {showEnglish ? f.descEn : f.descDe}
-                          </Text>
-                        )}
+
+                {showFormatInfo && (
+                  <>
+                    {/* Legality Legend */}
+                    <View style={[styles.legalityLegend, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
+                      <Text style={[styles.legalityLegendTitle, { color: colors.mutedForeground }]}>
+                        {showEnglish ? "What do the colors mean?" : "Was bedeuten die Farben?"}
+                      </Text>
+                      <View style={styles.legalityLegendRow}>
+                        {[
+                          { color: "#16a34a", de: "Erlaubt", en: "Legal" },
+                          { color: "#dc2626", de: "Verboten", en: "Banned" },
+                          { color: "#d97706", de: "Eingeschränkt (max. 1x)", en: "Restricted (max. 1 copy)" },
+                          { color: "#6b7280", de: "Nicht erlaubt", en: "Not legal" },
+                        ].map((l) => (
+                          <View key={l.de} style={styles.legalityLegendItem}>
+                            <View style={[styles.legalityLegendDot, { backgroundColor: l.color }]} />
+                            <Text style={[styles.legalityLegendLabel, { color: colors.mutedForeground }]}>
+                              {showEnglish ? l.en : l.de}
+                            </Text>
+                          </View>
+                        ))}
                       </View>
-                    );
-                  })}
-                </View>
+                    </View>
+
+                    {/* Format cards grid */}
+                    <View style={styles.legalityGrid}>
+                      {FORMAT_INFO.map((f) => {
+                        const val = card.legalities?.[f.key] ?? "not_legal";
+                        const col = legalityColor(val);
+                        const isLegal = val === "legal";
+                        const isExpanded = expandedFormatKey === f.key;
+                        return (
+                          <TouchableOpacity
+                            key={f.key}
+                            style={[styles.legalCard, {
+                              borderColor: col,
+                              backgroundColor: isLegal ? col + "18" : colors.background,
+                            }]}
+                            activeOpacity={0.75}
+                            onPress={() => setExpandedFormatKey(p => p === f.key ? null : f.key)}
+                          >
+                            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+                              <View style={{ flex: 1 }}>
+                                <Text style={[styles.legalFormat, { color: isLegal ? col : colors.mutedForeground }]}>
+                                  {showEnglish ? f.labelEn : f.labelDe}
+                                </Text>
+                                <Text style={[styles.legalStatus, { color: col }]}>
+                                  {legalityLabel(val, !showEnglish)}
+                                </Text>
+                                <Text style={[styles.legalDesc, { color: colors.mutedForeground }]} numberOfLines={isExpanded ? undefined : 2}>
+                                  {showEnglish ? f.descEn : f.descDe}
+                                </Text>
+                              </View>
+                              <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={12} color={colors.mutedForeground} style={{ marginLeft: 4, marginTop: 2 }} />
+                            </View>
+                            {isExpanded && (
+                              <View style={[styles.legalExpanded, { borderTopColor: col + "44" }]}>
+                                <Text style={[styles.legalRangeText, { color: col }]}>
+                                  {showEnglish ? f.rangeEn : f.rangeDe}
+                                </Text>
+                                <Text style={[styles.legalDetailText, { color: colors.cardForeground }]}>
+                                  {showEnglish ? f.detailEn : f.detailDe}
+                                </Text>
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </>
+                )}
               </View>
             )}
 
             {/* ── Keywords ── */}
-            {matchedKeywords.length > 0 ? (
-              <View style={styles.kwSection}>
-                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                  {showEnglish ? `${matchedKeywords.length} keyword(s) explained` : `${matchedKeywords.length} Schlüsselwort/e erklärt`}
-                </Text>
-                {matchedKeywords.map((kw) => (
-                  <KeywordCard key={kw.id} keyword={kw} showEnglish={showEnglish}
-                    expanded={expandedId === kw.id}
-                    onPress={() => setExpandedId((p) => (p === kw.id ? null : kw.id))} />
-                ))}
-              </View>
-            ) : (
-              <View style={[styles.noKwBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Ionicons name="information-circle-outline" size={26} color={colors.mutedForeground} />
-                <Text style={[styles.noKwText, { color: colors.mutedForeground }]}>
-                  {showEnglish ? "No keywords from our database on this card." : "Keine Schlüsselwörter aus unserer Datenbank auf dieser Karte."}
-                </Text>
-              </View>
-            )}
+            <View style={[styles.collapsibleSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <TouchableOpacity style={styles.collapsibleHeader} onPress={() => setShowKeywordsSection(v => !v)}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                    {showEnglish ? "Keywords" : "Schlüsselwörter"}
+                  </Text>
+                  <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>
+                    {matchedKeywords.length > 0
+                      ? (showEnglish ? `${matchedKeywords.length} keyword(s) explained` : `${matchedKeywords.length} Schlüsselwort/e erklärt`)
+                      : (showEnglish ? "No keywords on this card" : "Keine Schlüsselwörter auf dieser Karte")}
+                  </Text>
+                </View>
+                <Ionicons name={showKeywordsSection ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} />
+              </TouchableOpacity>
+              {showKeywordsSection && (
+                <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
+                  {matchedKeywords.length > 0 ? matchedKeywords.map((kw) => (
+                    <KeywordCard key={kw.id} keyword={kw} showEnglish={showEnglish}
+                      expanded={expandedId === kw.id}
+                      onPress={() => setExpandedId((p) => (p === kw.id ? null : kw.id))} />
+                  )) : (
+                    <View style={styles.noKwInner}>
+                      <Ionicons name="information-circle-outline" size={22} color={colors.mutedForeground} />
+                      <Text style={[styles.noKwText, { color: colors.mutedForeground }]}>
+                        {showEnglish ? "No keywords from our database on this card." : "Keine Schlüsselwörter aus unserer Datenbank auf dieser Karte."}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
 
             {/* ── Commander Spellbook Combos ── */}
             {(loadingCombos || combos.length > 0) && (
-              <View style={styles.comboSection}>
-                <View style={styles.comboHeader}>
-                  <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                    {showEnglish ? "Combos" : "Combos"}
-                  </Text>
-                  {!loadingCombos && combos.length > 0 && (
-                    <View style={[styles.comboBadge, { backgroundColor: colors.primary }]}>
-                      <Text style={styles.comboBadgeText}>{combos.length}</Text>
+              <View style={[styles.collapsibleSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <TouchableOpacity style={styles.collapsibleHeader} onPress={() => setShowCombosSection(v => !v)}>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Combos</Text>
+                      {loadingCombos ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : combos.length > 0 ? (
+                        <View style={[styles.comboBadge, { backgroundColor: colors.primary }]}>
+                          <Text style={styles.comboBadgeText}>{combos.length}</Text>
+                        </View>
+                      ) : null}
                     </View>
-                  )}
-                  <Text style={[styles.comboSource, { color: colors.mutedForeground }]}>
-                    via Commander Spellbook
-                  </Text>
-                </View>
-                {loadingCombos ? (
-                  <View style={styles.comboLoading}>
-                    <ActivityIndicator size="small" color={colors.primary} />
-                    <Text style={[styles.comboLoadingText, { color: colors.mutedForeground }]}>
-                      {showEnglish ? "Searching combos…" : "Suche Combos…"}
+                    <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>
+                      {loadingCombos
+                        ? (showEnglish ? "Searching…" : "Suche…")
+                        : combos.length > 0
+                          ? (showEnglish ? `${combos.length} combo(s) via Commander Spellbook` : `${combos.length} Combo(s) via Commander Spellbook`)
+                          : (showEnglish ? "No combos found" : "Keine Combos gefunden")}
                     </Text>
                   </View>
-                ) : (
+                  <Ionicons name={showCombosSection ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+                {showCombosSection && !loadingCombos && (
                   <View style={styles.comboList}>
                     {combos.map((combo) => {
                       const isExpanded = expandedComboId === combo.id;
@@ -1397,23 +1538,24 @@ export default function CardSearchScreen() {
 
             {/* ── Ähnliche Karten (EDHREC-Ranking via Scryfall) ── */}
             {(loadingSimilar || similarCards.length > 0) && (
-              <View style={styles.similarSection}>
-                <View style={styles.similarHeader}>
-                  <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                    {showEnglish ? "Similar Cards" : "Ähnliche Karten"}
-                  </Text>
-                  <Text style={[styles.similarSource, { color: colors.mutedForeground }]}>
-                    via EDHREC
-                  </Text>
-                </View>
-                {loadingSimilar ? (
-                  <View style={styles.similarLoading}>
-                    <ActivityIndicator size="small" color={colors.primary} />
-                    <Text style={[styles.similarLoadingText, { color: colors.mutedForeground }]}>
-                      {showEnglish ? "Loading…" : "Lädt…"}
+              <View style={[styles.collapsibleSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <TouchableOpacity style={styles.collapsibleHeader} onPress={() => setShowSimilarSection(v => !v)}>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                        {showEnglish ? "Similar Cards" : "Ähnliche Karten"}
+                      </Text>
+                      {loadingSimilar && <ActivityIndicator size="small" color={colors.primary} />}
+                    </View>
+                    <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>
+                      {loadingSimilar
+                        ? (showEnglish ? "Loading via EDHREC…" : "Lädt via EDHREC…")
+                        : (showEnglish ? `${similarCards.length} similar card(s) via EDHREC` : `${similarCards.length} ähnliche Karte(n) via EDHREC`)}
                     </Text>
                   </View>
-                ) : (
+                  <Ionicons name={showSimilarSection ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+                {showSimilarSection && !loadingSimilar && (
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}
                     style={styles.similarScroll} contentContainerStyle={styles.similarScrollContent}>
                     {similarCards.map((sc) => {
@@ -1456,26 +1598,33 @@ export default function CardSearchScreen() {
 
             {/* ── Booster Packs ── */}
             {(loadingBooster || boosterPacks.length > 0) && (
-              <View style={styles.boosterSection}>
-                <View style={styles.boosterHeader}>
-                  <Ionicons name="gift-outline" size={15} color={colors.primary} />
-                  <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                    {showEnglish ? "Available in Boosters" : "In Booster Packs"}
-                  </Text>
-                  {!loadingBooster && boosterPacks.length > 0 && (
-                    <View style={[styles.boosterCount, { backgroundColor: colors.primary }]}>
-                      <Text style={styles.boosterCountText}>{boosterPacks.length}</Text>
+              <View style={[styles.collapsibleSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <TouchableOpacity style={styles.collapsibleHeader} onPress={() => setShowBoosterSection(v => !v)}>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <Ionicons name="gift-outline" size={15} color={colors.primary} />
+                      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                        {showEnglish ? "Available in Boosters" : "In Booster Packs"}
+                      </Text>
+                      {loadingBooster ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : boosterPacks.length > 0 ? (
+                        <View style={[styles.boosterCount, { backgroundColor: colors.primary }]}>
+                          <Text style={styles.boosterCountText}>{boosterPacks.length}</Text>
+                        </View>
+                      ) : null}
                     </View>
-                  )}
-                </View>
-                {loadingBooster ? (
-                  <View style={styles.boosterLoading}>
-                    <ActivityIndicator size="small" color={colors.primary} />
-                    <Text style={[styles.boosterLoadingText, { color: colors.mutedForeground }]}>
-                      {showEnglish ? "Searching sets…" : "Suche Sets…"}
+                    <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>
+                      {loadingBooster
+                        ? (showEnglish ? "Searching sets…" : "Suche Sets…")
+                        : boosterPacks.length > 0
+                          ? (showEnglish ? `In ${boosterPacks.length} set(s)` : `In ${boosterPacks.length} Set(s) verfügbar`)
+                          : (showEnglish ? "Not in any booster" : "In keinem Booster verfügbar")}
                     </Text>
                   </View>
-                ) : (
+                  <Ionicons name={showBoosterSection ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+                {showBoosterSection && !loadingBooster && (
                   <View style={styles.boosterList}>
                     {boosterPacks.map((bp, i) => {
                       const typeLabel = bp.setType === "core" ? (showEnglish ? "Core" : "Basis")
@@ -1792,15 +1941,28 @@ const styles = StyleSheet.create({
   printCheckmark: { position: "absolute", top: -6, right: -6, width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center" },
   formatBox: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10 },
   formatHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  legalityGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  legalCard: { borderRadius: 16, borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 8, minWidth: "30%", flex: 1 },
+  legalityGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, padding: 12, paddingTop: 6 },
+  legalCard: { borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 10, minWidth: "45%", flex: 1 },
   legalFormat: { fontSize: 12, fontFamily: "Inter_700Bold" },
   legalStatus: { fontSize: 11, fontFamily: "Inter_600SemiBold", marginTop: 2 },
   legalDesc: { fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 4, lineHeight: 14 },
+  legalExpanded: { borderTopWidth: 1, marginTop: 8, paddingTop: 8, gap: 4 },
+  legalRangeText: { fontSize: 10, fontFamily: "Inter_600SemiBold", lineHeight: 14 },
+  legalDetailText: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16, marginTop: 4 },
+  legalityLegend: { borderTopWidth: 1, paddingHorizontal: 12, paddingVertical: 10 },
+  legalityLegendTitle: { fontSize: 10, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 },
+  legalityLegendRow: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  legalityLegendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
+  legalityLegendDot: { width: 8, height: 8, borderRadius: 4 },
+  legalityLegendLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  collapsibleSection: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
+  collapsibleHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 14 },
+  sectionSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
   sectionTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
   kwSection: { gap: 4 },
   noKwBox: { borderRadius: 14, borderWidth: 1, padding: 20, alignItems: "center", gap: 8 },
-  noKwText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
+  noKwInner: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 4 },
+  noKwText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", flex: 1 },
   comboSection: { gap: 8 },
   comboHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
   comboBadge: { borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2, minWidth: 22, alignItems: "center" },
@@ -1808,7 +1970,7 @@ const styles = StyleSheet.create({
   comboSource: { fontSize: 11, fontFamily: "Inter_400Regular" },
   comboLoading: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10 },
   comboLoadingText: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  comboList: { gap: 8 },
+  comboList: { gap: 8, padding: 12, paddingTop: 4 },
   comboCard: { borderRadius: 12, borderWidth: 1, padding: 12, gap: 8 },
   comboCardImages: { flexDirection: "row", alignItems: "center" },
   comboCardImageWrap: { borderRadius: 6, overflow: "hidden", borderWidth: 1.5, borderColor: "#ffffff30" },
@@ -1828,7 +1990,7 @@ const styles = StyleSheet.create({
   boosterCountText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#fff" },
   boosterLoading: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10 },
   boosterLoadingText: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  boosterList: { gap: 6 },
+  boosterList: { gap: 6, padding: 12, paddingTop: 4 },
   boosterRow: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 10, borderWidth: 1, padding: 10 },
   boosterSetCode: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 4, minWidth: 42, alignItems: "center" },
   boosterSetCodeText: { fontSize: 11, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
