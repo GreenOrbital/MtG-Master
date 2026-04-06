@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
@@ -772,14 +773,14 @@ export default function ManapoolScreen() {
                         }]}>
                           <TouchableOpacity
                             style={[styles.stepBtnSm, { backgroundColor: colors.secondary, borderColor: colors.border, width: 36, height: 36 }]}
-                            onPress={() => adjustCardCount(activeDeck.id, c.id, -1)}
+                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); adjustCardCount(activeDeck.id, c.id, -1); }}
                           >
                             <Ionicons name="remove" size={16} color={colors.foreground} />
                           </TouchableOpacity>
                           <Text style={[styles.stepValSm, { color: colors.foreground, fontSize: 17, width: 40 }]}>{c.count}×</Text>
                           <TouchableOpacity
                             style={[styles.stepBtnSm, { backgroundColor: colors.secondary, borderColor: colors.border, width: 36, height: 36 }]}
-                            onPress={() => adjustCardCount(activeDeck.id, c.id, 1)}
+                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); adjustCardCount(activeDeck.id, c.id, 1); }}
                           >
                             <Ionicons name="add" size={16} color={colors.foreground} />
                           </TouchableOpacity>
@@ -787,6 +788,7 @@ export default function ManapoolScreen() {
                           <TouchableOpacity
                             style={[styles.cardDeleteBtn, { borderColor: colors.destructive + "99" }]}
                             onPress={() => {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
                               removeCardFromDeck(activeDeck.id, c.id);
                               setExpandedCardId(null);
                             }}

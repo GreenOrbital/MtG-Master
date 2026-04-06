@@ -1,18 +1,19 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import * as Haptics from "expo-haptics";
+import React from "react";
 import {
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-  LayoutAnimation,
-  Platform,
   UIManager,
+  View,
 } from "react-native";
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
+  useSharedValue,
   withSpring,
+  withTiming,
 } from "react-native-reanimated";
 
 import { CATEGORIES, CATEGORIES_EN, type MtgKeyword } from "@/data/keywords";
@@ -41,13 +42,28 @@ const COLOR_MAP: Record<string, string> = {
   all: "#D4A017",
 };
 
+function getAccentColor(colors: string[]): string {
+  if (!colors.length) return "#7c3aed";
+  const first = colors[0];
+  return COLOR_MAP[first] ?? "#7c3aed";
+}
+
 export function KeywordCard({ keyword, showEnglish, expanded, onPress }: Props) {
   const colors = useColors();
 
-  const scale = useSharedValue(1);
+  const scale     = useSharedValue(1);
+  const chevronRot = useSharedValue(expanded ? 1 : 0);
 
-  const animStyle = useAnimatedStyle(() => ({
+  React.useEffect(() => {
+    chevronRot.value = withSpring(expanded ? 1 : 0, { damping: 14, stiffness: 160 });
+  }, [expanded]);
+
+  const cardStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
+  }));
+
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${chevronRot.value * 180}deg` }],
   }));
 
   function handlePressIn() {
@@ -58,19 +74,26 @@ export function KeywordCard({ keyword, showEnglish, expanded, onPress }: Props) 
     scale.value = withSpring(1, { damping: 15 });
   }
 
+  function handlePress() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    onPress?.();
+  }
+
   const categoryLabel = showEnglish
     ? CATEGORIES_EN[keyword.category]
     : CATEGORIES[keyword.category];
 
+  const accentColor = getAccentColor(keyword.colors);
+
   return (
-    <Animated.View style={animStyle}>
+    <Animated.View style={cardStyle}>
       <TouchableOpacity
-        onPress={onPress}
+        onPress={handlePress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         activeOpacity={1}
       >
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, borderLeftColor: accentColor, borderLeftWidth: 3 }]}>
           <View style={styles.header}>
             <View style={styles.titleRow}>
               <Text style={[styles.name, { color: colors.foreground }]}>
@@ -83,7 +106,7 @@ export function KeywordCard({ keyword, showEnglish, expanded, onPress }: Props) 
               )}
             </View>
             <View style={styles.row}>
-              {keyword.colors.slice(0, 3).map((color) => (
+              {keyword.colors.slice(0, 4).map((color) => (
                 <View
                   key={color}
                   style={[styles.colorDot, { backgroundColor: COLOR_MAP[color] ?? "#888" }]}
@@ -107,8 +130,8 @@ export function KeywordCard({ keyword, showEnglish, expanded, onPress }: Props) 
                 {showEnglish ? keyword.fullEn : keyword.fullDe}
               </Text>
               {(keyword.example || keyword.exampleEn) && (
-                <View style={[styles.exampleBox, { backgroundColor: colors.secondary, borderLeftColor: colors.primary }]}>
-                  <Text style={[styles.exampleLabel, { color: colors.primary }]}>
+                <View style={[styles.exampleBox, { backgroundColor: colors.secondary, borderLeftColor: accentColor }]}>
+                  <Text style={[styles.exampleLabel, { color: accentColor }]}>
                     {showEnglish ? "Example" : "Beispiel"}
                   </Text>
                   <Text style={[styles.exampleText, { color: colors.secondaryForeground }]}>
@@ -120,11 +143,13 @@ export function KeywordCard({ keyword, showEnglish, expanded, onPress }: Props) 
           )}
 
           <View style={styles.expandRow}>
-            <Ionicons
-              name={expanded ? "chevron-up" : "chevron-down"}
-              size={18}
-              color={colors.mutedForeground}
-            />
+            <Animated.View style={chevronStyle}>
+              <Ionicons
+                name="chevron-down"
+                size={18}
+                color={expanded ? accentColor : colors.mutedForeground}
+              />
+            </Animated.View>
           </View>
         </View>
       </TouchableOpacity>
@@ -162,9 +187,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   colorDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
   },
   category: {
     fontSize: 11,

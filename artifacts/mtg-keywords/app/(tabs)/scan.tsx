@@ -2,9 +2,11 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams } from "expo-router";
+import * as Haptics from "expo-haptics";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  Animated,
   ActivityIndicator,
   Image,
   Linking,
@@ -510,6 +512,49 @@ export default function CardSearchScreen() {
   const [addedToDeck, setAddedToDeck] = useState<string | null>(null);
   const [pickedDeckId, setPickedDeckId] = useState<string | null>(null);
 
+  // ── Animations ────────────────────────────────────────────────────────────
+  const cardAnim    = useRef(new Animated.Value(0)).current;
+  const heroOpacity = useRef(new Animated.Value(0)).current;
+  const starScale   = useRef(new Animated.Value(1)).current;
+  const pulseAnim   = useRef(new Animated.Value(1)).current;
+
+  // Pulse the empty-state search icon forever
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 0.45, duration: 1400, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1,    duration: 1400, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  // Slide-up + fade-in whenever a new card arrives
+  useEffect(() => {
+    if (card) {
+      heroOpacity.setValue(0);
+      cardAnim.setValue(0);
+      Animated.parallel([
+        Animated.timing(cardAnim, { toValue: 1, duration: 340, useNativeDriver: true }),
+        Animated.timing(heroOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [card?.id]);
+
+  const cardAnimStyle = {
+    opacity:   cardAnim,
+    transform: [{ translateY: cardAnim.interpolate({ inputRange: [0, 1], outputRange: [28, 0] }) }],
+  };
+
+  function bounceStarAnim() {
+    starScale.setValue(1);
+    Animated.sequence([
+      Animated.spring(starScale, { toValue: 1.55, tension: 320, friction: 4, useNativeDriver: true }),
+      Animated.spring(starScale, { toValue: 1,    tension: 320, friction: 4, useNativeDriver: true }),
+    ]).start();
+  }
+
   const cardInDecks = useMemo(() => {
     if (!card) return [];
     return decks.filter((d) => d.cards.some((c) => c.id === card.id));
@@ -579,6 +624,7 @@ export default function CardSearchScreen() {
   }, [incomingCard]);
 
   function applyCard(data: CardData) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     const oracleText = data.oracle_text ?? data.card_faces?.map((f) => f.oracle_text).join(" ") ?? "";
     setCard(data);
     setSelectedPrint(null);
@@ -813,12 +859,17 @@ export default function CardSearchScreen() {
         )}
 
         {card && !loadingCard && (
-          <View style={styles.content}>
+          <Animated.View style={[styles.content, cardAnimStyle]}>
 
             {/* ── Arena-style Hero Image ── */}
             {cardImageUri && (
               <TouchableOpacity onPress={() => setShowImageZoom(true)} activeOpacity={0.9} style={styles.heroSection}>
-                <Image source={{ uri: cardImageUri }} style={styles.heroImage} resizeMode="cover" />
+                <Animated.Image
+                  source={{ uri: cardImageUri }}
+                  style={[styles.heroImage, { opacity: heroOpacity }]}
+                  resizeMode="cover"
+                  onLoad={() => Animated.timing(heroOpacity, { toValue: 1, duration: 500, useNativeDriver: true }).start()}
+                />
                 <LinearGradient
                   colors={["transparent", "rgba(5,5,16,0.75)", "rgba(5,5,16,0.97)"]}
                   style={styles.heroGradient}
@@ -831,13 +882,19 @@ export default function CardSearchScreen() {
                       )}
                     </View>
                     <View style={{ alignItems: "flex-end", gap: 6 }}>
-                      <TouchableOpacity onPress={() => toggleFavorite({
-                        id: card.id, name: card.name, printed_name: card.printed_name,
-                        type_line: card.type_line, printed_type_line: card.printed_type_line,
-                        mana_cost: card.mana_cost, set_name: card.set_name, imageUri: cardImageUri,
-                      })}>
-                        <Ionicons name={isFavorite(card.id) ? "star" : "star-outline"} size={24}
-                          color={isFavorite(card.id) ? "#f59e0b" : "#ffffff99"} />
+                      <TouchableOpacity onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                        bounceStarAnim();
+                        toggleFavorite({
+                          id: card.id, name: card.name, printed_name: card.printed_name,
+                          type_line: card.type_line, printed_type_line: card.printed_type_line,
+                          mana_cost: card.mana_cost, set_name: card.set_name, imageUri: cardImageUri,
+                        });
+                      }}>
+                        <Animated.View style={{ transform: [{ scale: starScale }] }}>
+                          <Ionicons name={isFavorite(card.id) ? "star" : "star-outline"} size={24}
+                            color={isFavorite(card.id) ? "#f59e0b" : "#ffffff99"} />
+                        </Animated.View>
                       </TouchableOpacity>
                       <View style={{ backgroundColor: "#00000055", borderRadius: 6, padding: 3 }}>
                         <Ionicons name="expand-outline" size={12} color="#ffffff99" />
@@ -1341,7 +1398,7 @@ export default function CardSearchScreen() {
               </View>
             )}
 
-          </View>
+          </Animated.View>
         )}
 
         {/* ── Image Zoom Modal ── */}
@@ -1450,6 +1507,7 @@ export default function CardSearchScreen() {
                       onPress={() => {
                         if (!card || !pickedDeckId) return;
                         const src = selectedPrint ?? card;
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
                         addCardToDeck(pickedDeckId, {
                           id: src.id,
                           name: card.name,
@@ -1531,7 +1589,9 @@ export default function CardSearchScreen() {
 
             {favorites.length === 0 && recentCards.length === 0 && (
               <View style={styles.emptyState}>
-                <Ionicons name="search-outline" size={48} color={colors.mutedForeground} />
+                <Animated.View style={{ opacity: pulseAnim, transform: [{ scale: pulseAnim.interpolate({ inputRange: [0.45, 1], outputRange: [0.88, 1.05] }) }] }}>
+                  <Ionicons name="search-outline" size={54} color={colors.primary} />
+                </Animated.View>
                 <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
                   {showEnglish ? "Search for a card" : "Karte suchen"}
                 </Text>
