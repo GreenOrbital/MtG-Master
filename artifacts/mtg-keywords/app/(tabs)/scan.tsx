@@ -544,46 +544,6 @@ async function fetchBoosterPacks(cardName: string): Promise<BoosterPrint[]> {
   } catch { return []; }
 }
 
-// ─── Commander Precon Decks ───────────────────────────────────────────────────
-
-const COMMANDER_PRECONS: { name: string; set: string; year: string }[] = [
-  // Commander Masters 2023
-  { name: "Enduring Enchantments",  set: "Commander Masters", year: "2023" },
-  { name: "Planeswalker Party",     set: "Commander Masters", year: "2023" },
-  { name: "Sliver Swarm",           set: "Commander Masters", year: "2023" },
-  { name: "Eldrazi Unbound",        set: "Commander Masters", year: "2023" },
-  // The Lost Caverns of Ixalan
-  { name: "Blood Rites",            set: "The Lost Caverns of Ixalan", year: "2023" },
-  { name: "Explorers of the Deep",  set: "The Lost Caverns of Ixalan", year: "2023" },
-  { name: "Ahoy Mateys",            set: "The Lost Caverns of Ixalan", year: "2023" },
-  { name: "Veloci-Ramp-Tor",        set: "The Lost Caverns of Ixalan", year: "2023" },
-  // Murders at Karlov Manor
-  { name: "Blame Game",             set: "Murders at Karlov Manor", year: "2024" },
-  { name: "Deep Clue Sea",          set: "Murders at Karlov Manor", year: "2024" },
-  { name: "Revenant Recon",         set: "Murders at Karlov Manor", year: "2024" },
-  { name: "Deadly Disguise",        set: "Murders at Karlov Manor", year: "2024" },
-  // Outlaws of Thunder Junction
-  { name: "Most Wanted",            set: "Outlaws of Thunder Junction", year: "2024" },
-  { name: "Desert Bloom",           set: "Outlaws of Thunder Junction", year: "2024" },
-  { name: "Quick Draw",             set: "Outlaws of Thunder Junction", year: "2024" },
-  { name: "Grand Larceny",          set: "Outlaws of Thunder Junction", year: "2024" },
-  // Bloomburrow
-  { name: "Peace Offering",         set: "Bloomburrow", year: "2024" },
-  { name: "Squirreled Away",        set: "Bloomburrow", year: "2024" },
-  { name: "Family Matters",         set: "Bloomburrow", year: "2024" },
-  { name: "Animated Army",          set: "Bloomburrow", year: "2024" },
-  // Duskmourn: House of Horror
-  { name: "Fear More Fears",        set: "Duskmourn: House of Horror", year: "2024" },
-  { name: "Jump Scare",             set: "Duskmourn: House of Horror", year: "2024" },
-  { name: "Enduring Victory",       set: "Duskmourn: House of Horror", year: "2024" },
-  { name: "Coven Counters",         set: "Duskmourn: House of Horror", year: "2024" },
-  // Aetherdrift
-  { name: "Cult Mechanix",          set: "Aetherdrift", year: "2025" },
-  { name: "Full Speed Ahead",       set: "Aetherdrift", year: "2025" },
-  { name: "Glory Days",             set: "Aetherdrift", year: "2025" },
-  { name: "Sprint to the Finish",   set: "Aetherdrift", year: "2025" },
-];
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function CardSearchScreen() {
@@ -610,7 +570,6 @@ export default function CardSearchScreen() {
   const [showCombosSection, setShowCombosSection] = useState(false);
   const [showSimilarSection, setShowSimilarSection] = useState(false);
   const [showBoosterSection, setShowBoosterSection] = useState(false);
-  const [showCommanderSection, setShowCommanderSection] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
   const [showDeckPicker, setShowDeckPicker] = useState(false);
   const [addedToDeck, setAddedToDeck] = useState<string | null>(null);
@@ -1634,50 +1593,6 @@ export default function CardSearchScreen() {
               </View>
             )}
 
-          </View>
-        )}
-
-        {/* ── Commander Precon Decks ── */}
-        {card && (
-          <View style={[styles.collapsibleSection, { backgroundColor: colors.card, borderColor: colors.border, marginHorizontal: 16, marginTop: 0, marginBottom: 4 }]}>
-            <TouchableOpacity style={styles.collapsibleHeader} onPress={() => setShowCommanderSection(v => !v)}>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <Ionicons name="shield-half-outline" size={15} color="#16a34a" />
-                  <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                    {showEnglish ? "Commander Precon Decks" : "Commander Fertigdecks"}
-                  </Text>
-                  <View style={[styles.boosterCount, { backgroundColor: "#16a34a" }]}>
-                    <Text style={styles.boosterCountText}>{COMMANDER_PRECONS.length}</Text>
-                  </View>
-                </View>
-                <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>
-                  {showEnglish ? "Buy official precon decks on Amazon" : "Offizielle Fertigdecks bei Amazon kaufen"}
-                </Text>
-              </View>
-              <Ionicons name={showCommanderSection ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} />
-            </TouchableOpacity>
-            {showCommanderSection && (
-              <View style={styles.boosterList}>
-                {COMMANDER_PRECONS.map((deck, i) => (
-                  <TouchableOpacity
-                    key={i}
-                    style={[styles.boosterRow, { backgroundColor: colors.card, borderColor: colors.border }]}
-                    onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent("Magic the Gathering " + deck.name + " Commander Deck")}&tag=masterofmtg-21`)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[styles.boosterSetCode, { backgroundColor: "#16a34a22" }]}>
-                      <Text style={[styles.boosterSetCodeText, { color: "#16a34a" }]}>CMD</Text>
-                    </View>
-                    <View style={styles.boosterMeta}>
-                      <Text style={[styles.boosterSetName, { color: colors.foreground }]} numberOfLines={1}>{deck.name}</Text>
-                      <Text style={[styles.boosterSetType, { color: colors.mutedForeground }]}>{deck.set} · {deck.year}</Text>
-                    </View>
-                    <Ionicons name="cart-outline" size={16} color="#ff9900" />
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
           </View>
         )}
 

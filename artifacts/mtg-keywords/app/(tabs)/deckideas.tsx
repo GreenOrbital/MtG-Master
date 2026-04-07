@@ -22,6 +22,46 @@ import { useSettings } from "@/context/SettingsContext";
 import { useColors } from "@/hooks/useColors";
 import { getArchetypeList, getDeckSuggestion, type ArchetypeMeta, type DeckSuggestion, type SuggestedCard } from "@/lib/deckSuggestionService";
 
+// ─── Commander Precon Decks ───────────────────────────────────────────────────
+
+const COMMANDER_PRECONS: { name: string; set: string; year: string }[] = [
+  // Commander Masters 2023
+  { name: "Enduring Enchantments",  set: "Commander Masters", year: "2023" },
+  { name: "Planeswalker Party",     set: "Commander Masters", year: "2023" },
+  { name: "Sliver Swarm",           set: "Commander Masters", year: "2023" },
+  { name: "Eldrazi Unbound",        set: "Commander Masters", year: "2023" },
+  // The Lost Caverns of Ixalan
+  { name: "Blood Rites",            set: "The Lost Caverns of Ixalan", year: "2023" },
+  { name: "Explorers of the Deep",  set: "The Lost Caverns of Ixalan", year: "2023" },
+  { name: "Ahoy Mateys",            set: "The Lost Caverns of Ixalan", year: "2023" },
+  { name: "Veloci-Ramp-Tor",        set: "The Lost Caverns of Ixalan", year: "2023" },
+  // Murders at Karlov Manor
+  { name: "Blame Game",             set: "Murders at Karlov Manor", year: "2024" },
+  { name: "Deep Clue Sea",          set: "Murders at Karlov Manor", year: "2024" },
+  { name: "Revenant Recon",         set: "Murders at Karlov Manor", year: "2024" },
+  { name: "Deadly Disguise",        set: "Murders at Karlov Manor", year: "2024" },
+  // Outlaws of Thunder Junction
+  { name: "Most Wanted",            set: "Outlaws of Thunder Junction", year: "2024" },
+  { name: "Desert Bloom",           set: "Outlaws of Thunder Junction", year: "2024" },
+  { name: "Quick Draw",             set: "Outlaws of Thunder Junction", year: "2024" },
+  { name: "Grand Larceny",          set: "Outlaws of Thunder Junction", year: "2024" },
+  // Bloomburrow
+  { name: "Peace Offering",         set: "Bloomburrow", year: "2024" },
+  { name: "Squirreled Away",        set: "Bloomburrow", year: "2024" },
+  { name: "Family Matters",         set: "Bloomburrow", year: "2024" },
+  { name: "Animated Army",          set: "Bloomburrow", year: "2024" },
+  // Duskmourn: House of Horror
+  { name: "Fear More Fears",        set: "Duskmourn: House of Horror", year: "2024" },
+  { name: "Jump Scare",             set: "Duskmourn: House of Horror", year: "2024" },
+  { name: "Enduring Victory",       set: "Duskmourn: House of Horror", year: "2024" },
+  { name: "Coven Counters",         set: "Duskmourn: House of Horror", year: "2024" },
+  // Aetherdrift
+  { name: "Cult Mechanix",          set: "Aetherdrift", year: "2025" },
+  { name: "Full Speed Ahead",       set: "Aetherdrift", year: "2025" },
+  { name: "Glory Days",             set: "Aetherdrift", year: "2025" },
+  { name: "Sprint to the Finish",   set: "Aetherdrift", year: "2025" },
+];
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type GameFormat = {
@@ -238,6 +278,7 @@ export default function DeckIdeasScreen() {
 
   const [importFeedback, setImportFeedback] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [showPreconSection, setShowPreconSection] = useState(false);
 
   // Load archetype list when format changes (synchronous — no network needed)
   useEffect(() => {
@@ -414,6 +455,53 @@ export default function DeckIdeasScreen() {
               </View>
             </TouchableOpacity>
           ))}
+
+          {/* ── Commander Fertigdecks kaufen ── */}
+          <TouchableOpacity
+            style={[styles.preconHeader, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => setShowPreconSection(v => !v)}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.preconIconWrap, { backgroundColor: "#16a34a22" }]}>
+              <Ionicons name="shield-half-outline" size={22} color="#16a34a" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.preconTitle, { color: colors.foreground }]}>
+                {showEnglish ? "Commander Precon Decks" : "Commander Fertigdecks"}
+              </Text>
+              <Text style={[styles.preconSubtitle, { color: colors.mutedForeground }]}>
+                {showEnglish
+                  ? `${COMMANDER_PRECONS.length} official decks · buy on Amazon`
+                  : `${COMMANDER_PRECONS.length} offizielle Decks · bei Amazon kaufen`}
+              </Text>
+            </View>
+            <Ionicons name={showPreconSection ? "chevron-up" : "chevron-down"} size={18} color={colors.mutedForeground} />
+          </TouchableOpacity>
+
+          {showPreconSection && (
+            <View style={[styles.preconList, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {COMMANDER_PRECONS.map((deck, i) => {
+                const isLast = i === COMMANDER_PRECONS.length - 1;
+                return (
+                  <TouchableOpacity
+                    key={i}
+                    style={[styles.preconRow, { borderBottomColor: colors.border, borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth }]}
+                    onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent("Magic the Gathering " + deck.name + " Commander Deck")}&tag=masterofmtg-21`)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.preconBadge, { backgroundColor: "#16a34a22" }]}>
+                      <Text style={[styles.preconBadgeText, { color: "#16a34a" }]}>CMD</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.preconName, { color: colors.foreground }]} numberOfLines={1}>{deck.name}</Text>
+                      <Text style={[styles.preconSet, { color: colors.mutedForeground }]}>{deck.set} · {deck.year}</Text>
+                    </View>
+                    <Ionicons name="cart-outline" size={16} color="#ff9900" />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
 
           <View style={{ height: insets.bottom + 100 }} />
         </ScrollView>
@@ -747,6 +835,23 @@ const styles = StyleSheet.create({
   tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, paddingHorizontal: 14, paddingBottom: 12 },
   tag: { borderRadius: 99, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2 },
   tagText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+
+  preconHeader: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    borderRadius: 16, borderWidth: 1, padding: 14,
+  },
+  preconIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  preconTitle: { fontSize: 16, fontFamily: "Inter_700Bold", marginBottom: 2 },
+  preconSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  preconList: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
+  preconRow: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    paddingHorizontal: 12, paddingVertical: 10,
+  },
+  preconBadge: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, minWidth: 44, alignItems: "center" },
+  preconBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold" },
+  preconName: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  preconSet: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 },
 
   detailNavRow: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
