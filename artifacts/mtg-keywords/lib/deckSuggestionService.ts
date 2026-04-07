@@ -5,10 +5,12 @@ import { getArchetypesByFormat, findArchetype, type Archetype, type CardSlot } f
 export type ScryfallCard = {
   id: string;
   name: string;
+  nameDe: string;
   mana_cost: string;
   cmc: number;
   type_line: string;
   oracle_text: string;
+  oracle_text_de: string;
   keywords: string[];
   imageUri: string | null;
   priceEur: number | null;
@@ -61,17 +63,37 @@ export type ArchetypeMeta = {
 
 async function fetchCard(name: string): Promise<ScryfallCard | null> {
   try {
-    const url = `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-    if (!res.ok) return null;
-    const data = await res.json() as any;
+    // Try German print first — provides printed_name + printed_text
+    const deUrl = `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}&lang=de`;
+    const deRes = await fetch(deUrl, { signal: AbortSignal.timeout(6000) });
+
+    let data: any = null;
+    let nameDe: string | null = null;
+    let oracleTextDe: string | null = null;
+
+    if (deRes.ok) {
+      data = await deRes.json() as any;
+      nameDe = data.printed_name ?? null;
+      oracleTextDe = data.printed_text ?? null;
+    }
+
+    // Fallback to English if German print unavailable
+    if (!data) {
+      const url = `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      if (!res.ok) return null;
+      data = await res.json() as any;
+    }
+
     return {
       id: data.id,
       name: data.name,
+      nameDe: nameDe ?? data.name,
       mana_cost: data.mana_cost ?? "",
       cmc: data.cmc ?? 0,
       type_line: data.type_line ?? "",
-      oracle_text: data.oracle_text ?? "",
+      oracle_text: data.oracle_text ?? data.printed_text ?? "",
+      oracle_text_de: oracleTextDe ?? data.oracle_text ?? "",
       keywords: data.keywords ?? [],
       imageUri: data.image_uris?.normal ?? data.card_faces?.[0]?.image_uris?.normal ?? null,
       priceEur: data.prices?.eur ? parseFloat(data.prices.eur) : null,
@@ -123,6 +145,7 @@ export async function getDeckSuggestion(key: string, format: string): Promise<De
     const card = cardDataMap.get(slot.name);
     return {
       name: slot.name,
+      nameDe: card?.nameDe ?? slot.name,
       count: slot.count,
       roleDe: slot.roleDe ?? (isLand ? "Land: Mana-Basis" : ""),
       roleEn: slot.roleEn ?? (isLand ? "Land: Mana base" : ""),
@@ -132,6 +155,7 @@ export async function getDeckSuggestion(key: string, format: string): Promise<De
       cmc: card?.cmc ?? 0,
       type_line: card?.type_line ?? (isLand ? "Land" : ""),
       oracle_text: card?.oracle_text ?? "",
+      oracle_text_de: card?.oracle_text_de ?? "",
       keywords: card?.keywords ?? [],
       priceEur: card?.priceEur ?? null,
       priceUsd: card?.priceUsd ?? null,

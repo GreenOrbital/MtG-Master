@@ -559,6 +559,7 @@ export default function CardSearchScreen() {
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [card, setCard] = useState<CardData | null>(null);
   const [loadingCard, setLoadingCard] = useState(false);
+  const [lastCardUpdated, setLastCardUpdated] = useState<Date | null>(null);
   const [matchedKeywords, setMatchedKeywords] = useState<MtgKeyword[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
@@ -710,8 +711,17 @@ export default function CardSearchScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incomingCard]);
 
+  async function refreshCurrentCard() {
+    if (!card || loadingCard) return;
+    setLoadingCard(true);
+    const data = await fetchCardById(card.id);
+    setLoadingCard(false);
+    if (data) applyCard(data);
+  }
+
   function applyCard(data: CardData) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setLastCardUpdated(new Date());
     triggerCardAppearance(); // animate layout before state change
     const oracleText = data.oracle_text ?? data.card_faces?.map((f) => f.oracle_text).join(" ") ?? "";
     setCard(data);
@@ -817,11 +827,35 @@ export default function CardSearchScreen() {
           <Text style={[styles.title, { color: colors.foreground }]}>
             {showEnglish ? "Card Search" : "Karte suchen"}
           </Text>
-          <LanguageToggle showEnglish={showEnglish} onToggle={() => setShowEnglish(!showEnglish)} />
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            {card && !loadingCard && (
+              <TouchableOpacity
+                style={[styles.refreshCardBtn, { borderColor: colors.border }]}
+                onPress={refreshCurrentCard}
+                activeOpacity={0.75}
+              >
+                <Ionicons name="refresh-outline" size={16} color={colors.accent} />
+              </TouchableOpacity>
+            )}
+            {card && loadingCard && (
+              <View style={[styles.refreshCardBtn, { borderColor: colors.border }]}>
+                <ActivityIndicator size="small" color={colors.accent} />
+              </View>
+            )}
+            <LanguageToggle showEnglish={showEnglish} onToggle={() => setShowEnglish(!showEnglish)} />
+          </View>
         </View>
-        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          {showEnglish ? "Search by English or German card name" : "Deutschen oder englischen Kartennamen eingeben"}
-        </Text>
+        {card && lastCardUpdated && !loadingCard ? (
+          <Text style={[styles.scanLastUpdated, { color: colors.mutedForeground }]}>
+            {showEnglish
+              ? `Updated ${lastCardUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+              : `Aktualisiert um ${lastCardUpdated.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr`}
+          </Text>
+        ) : (
+          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+            {showEnglish ? "Search by English or German card name" : "Deutschen oder englischen Kartennamen eingeben"}
+          </Text>
+        )}
         <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.primary + "80" },
           Platform.OS === "ios" ? { shadowColor: colors.primary, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.35, shadowRadius: 10 } : {}
         ]}>
@@ -1775,6 +1809,8 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   title: { fontSize: 26, fontFamily: "Inter_700Bold" },
   subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", marginBottom: 10, lineHeight: 18 },
+  refreshCardBtn: { borderRadius: 8, borderWidth: 1, padding: 6, alignItems: "center", justifyContent: "center" },
+  scanLastUpdated: { fontSize: 11, fontFamily: "Inter_400Regular", marginBottom: 10 },
   inputRow: { flexDirection: "row", alignItems: "center", borderRadius: 24, borderWidth: 1.5, paddingHorizontal: 14, paddingVertical: 11, gap: 8 },
   input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", padding: 0 },
   dropdown: {

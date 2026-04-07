@@ -2,7 +2,7 @@
  * Post-build script: patches dist/index.html for iOS Safari viewport stability.
  * Tested against iPhone 17 Pro (iOS 18+) dynamic toolbar behavior.
  */
-import { readFileSync, writeFileSync } from "fs";
+import { readFileSync, writeFileSync, copyFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -62,3 +62,9 @@ html = html.replace("</head>", `${inject}\n</head>`);
 
 writeFileSync(htmlPath, html, "utf8");
 console.log("✓ dist/index.html patched (iOS Safari viewport fix)");
+
+// SPA routing fix: copy index.html as 404.html so static servers
+// fall back to the SPA entry point for all unmatched routes.
+const notFoundPath = resolve(__dirname, "dist/404.html");
+copyFileSync(htmlPath, notFoundPath);
+console.log("✓ dist/404.html created (SPA routing fallback)");

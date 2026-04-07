@@ -90,7 +90,7 @@ function SuggestedCardRow({
             <Text style={[styles.countBadgeText, { color: colors.primary }]}>{card.count}×</Text>
           </View>
           <Text style={[styles.cardName, { color: colors.foreground }]} numberOfLines={1}>
-            {card.name}
+            {showEnglish ? card.name : (card.nameDe ?? card.name)}
           </Text>
         </View>
         <Text style={[styles.roleText, { color: colors.accent }]} numberOfLines={2}>
@@ -120,7 +120,7 @@ function CardDetailModal({
         <View style={[styles.cardDetailModal, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={[styles.cardDetailHeader, { borderBottomColor: colors.border }]}>
             <Text style={[styles.cardDetailName, { color: colors.foreground }]} numberOfLines={1}>
-              {card.name}
+              {showEnglish ? card.name : (card.nameDe ?? card.name)}
             </Text>
             <TouchableOpacity onPress={onClose}>
               <Ionicons name="close" size={22} color={colors.mutedForeground} />
@@ -160,9 +160,9 @@ function CardDetailModal({
               ) : null}
             </View>
             {/* Oracle text */}
-            {card.oracle_text ? (
+            {(card.oracle_text || card.oracle_text_de) ? (
               <Text style={[styles.cardDetailOracle, { color: colors.foreground }]}>
-                {card.oracle_text}
+                {showEnglish ? card.oracle_text : (card.oracle_text_de || card.oracle_text)}
               </Text>
             ) : null}
             {/* Price + Cardmarket */}
@@ -552,7 +552,7 @@ export default function DeckIdeasScreen() {
                   )}
                   <View style={{ flex: 1, gap: 6 }}>
                     <Text style={[styles.commanderName, { color: colors.foreground }]}>
-                      {suggestion.commanderCard.name}
+                      {showEnglish ? suggestion.commanderCard.name : (suggestion.commanderCard.nameDe ?? suggestion.commanderCard.name)}
                     </Text>
                     <Text style={[styles.commanderType, { color: colors.mutedForeground }]} numberOfLines={1}>
                       {suggestion.commanderCard.type_line}
