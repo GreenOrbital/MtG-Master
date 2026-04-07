@@ -559,6 +559,16 @@ function getDeckPrice(cards: DeckCard[]): { totalEur: number | null; totalUsd: n
 // ─── Synergy Rich Descriptions ───────────────────────────────────────────────
 
 const SYNERGY_DETAIL_DE: Record<string, string> = {
+  zombie:
+    "Zombie-Stammes-Decks funktionieren durch die einzigartige Eigenschaft von Zombies: viele kehren aus dem Friedhof zurück oder bringen andere zurück. 'Anführer' wie Herr der Untoten geben allen Zombies +1/+1. 'Fabrikanten' erschaffen stetig neue Zombie-Token wenn Kreaturen sterben. Das Kernprinzip: Je mehr Zombies im Friedhof, desto einfacher ist es sie zurückzuholen. Massenentfernung des Gegners füttert nur den eigenen Friedhof für die nächste Welle. Mit Phyrexianische Arena und anderen Kartenzieheffekten bleibt die Hand immer voll.",
+  vampire:
+    "Vampir-Stammes-Decks kombinieren Aggression mit Lebensentzug. 'Anführer' wie Herr der Nosferatu geben Vampiren Lifelink und Erstschlag. Fast jeder Vampir verfügt über Lifelink, was Aggression überlebensfähig macht: Angreifen heilt das Deck. 'Blutdiener-Synergien' belohnen dich wenn Vampire Schaden verursachen: Karten ziehen, Token erschaffen, Zähler legen. Das Deck gewinnt oft durch schieren Zermürbungsangriff — der Gegner verliert Leben während man selbst immer mehr gewinnt.",
+  dragon:
+    "Drachen-Stammes-Decks setzen auf wenige extrem starke Kreaturen statt viele kleine. Drachen sind teuer aber haben fliegenden Angriff und vernichtende Fähigkeiten. 'Rampe' ist entscheidend: Karteneffekte die Mana erzeugen bringen Drachen 2-3 Runden früher. 'Verstärker' wie Schrein des Sturmdrachen oder Gestalt des Drachen geben allen Drachen Boni. Sobald die ersten 1-2 Drachen im Spiel sind, kontrolliert man den Himmel vollständig. Ein typischer Zug: Drachen wirken seinen Atem-Angriff, tötet Blocker, greift direkt an.",
+  elf:
+    "Elfen-Stammes-Decks sind das schnellste Stammes-Deck — sie können in Runde 4-5 gewinnen. 'Mana-Elfen' wie Llanowar-Elfen und Grüner Sonnenaufgang produzieren extra Mana und ermöglichen riesige Züge früh. 'Zieher' wie Wirkstoffe des Hains ziehen Karten für jede gespielte Kreatur. Das Combo-Potential: Mit genug Mana-Elfen kann man das gesamte Deck in einer Runde auspielen. 'Anführer' verdoppeln Mana aller Elfen oder geben allen Trampeln. Elfendecks wachsen exponentiell: Jede neue Elfe produziert Mana für die nächste.",
+  goblin:
+    "Goblin-Stammes-Decks gewinnen durch Geschwindigkeit und Synergie. Goblins kosten 1-2 Mana, greifen in Runde 1-2 an. 'Anführer' wie Goblin-Anführer geben Hastigkeit und +1/+1 an alle Goblins. 'Massenangriff' ist das Ziel: 5-8 Goblins angreifen bevor der Gegner eine Verteidigung aufbauen kann. 'Combo-Goblins' wie Goblin-Leihhammer oder Goblin-Häuptling erzeugen unendliche Kämpfer oder Schaden. Das Deck ist aggressiv aber fragil — starke Massenentfernung stoppt es, weshalb schnelle Spiele gewonnen werden müssen.",
   graveyard:
     "Friedhof-Decks nutzen den Friedhof als zweite Hand. 'Quellen' füllen ihn: Kreaturen die sterben, Karten die mühlen lassen oder Karten die du ablegen musst. 'Nutzer' greifen darauf zu: sie beschwören Karten aus dem Friedhof neu, kehren Kreaturen zurück oder lösen Effekte aus wenn Karten abgelegt werden. Das Schlüsselkonzept: Was für andere Decks ein Verlust ist, ist für dieses Deck Vorbereitung. Je mehr im Friedhof, desto stärker das Deck.",
   sacrifice:
@@ -580,6 +590,16 @@ const SYNERGY_DETAIL_DE: Record<string, string> = {
 };
 
 const SYNERGY_DETAIL_EN: Record<string, string> = {
+  zombie:
+    "Zombie tribal decks exploit zombies' unique ability to return from the graveyard or bring others back. 'Lords' like Lord of the Undead give all zombies +1/+1. 'Factories' constantly create new zombie tokens as creatures die. Core principle: the more zombies in the graveyard, the easier it is to retrieve them. The opponent's board wipes only feed your graveyard for the next wave. With Phyrexian Arena and other draw effects, the hand stays full for relentless pressure.",
+  vampire:
+    "Vampire tribal decks combine aggression with life drain. 'Lords' like Lord of the Vampires grant lifelink and first strike to all vampires. Nearly every vampire has lifelink, making aggression self-sustaining: attacking heals the deck. 'Blood servant synergies' reward you when vampires deal damage: draw cards, create tokens, place counters. The deck wins through sheer attrition — the opponent loses life while you continuously gain more.",
+  dragon:
+    "Dragon tribal decks rely on a few extremely powerful creatures rather than many small ones. Dragons are expensive but have flying attacks and devastating abilities. 'Ramp' is crucial: mana-producing effects bring dragons 2-3 turns earlier. 'Amplifiers' like Dragon Shrine or Dragon Form give all dragons bonuses. Once 1-2 dragons hit the field, you completely control the skies. A typical turn: dragon uses its breath attack, kills blockers, attacks directly.",
+  elf:
+    "Elf tribal decks are the fastest tribal deck — capable of winning by turn 4-5. 'Mana elves' like Llanowar Elves and Elvish Archdruid produce extra mana and enable huge plays early. 'Drawers' like Glimpse of Nature draw cards for each creature played. The combo potential: with enough mana elves, you can play your entire deck in one turn. 'Lords' double all elves' mana output or give everyone trample. Elf decks grow exponentially: every new elf produces mana for the next one.",
+  goblin:
+    "Goblin tribal decks win through speed and synergy. Goblins cost 1-2 mana and attack in turns 1-2. 'Lords' like Goblin Chieftain grant haste and +1/+1 to all goblins. 'Mass attack' is the goal: 5-8 goblins attacking before the opponent can build defenses. 'Combo goblins' like Goblin Recruiter or Goblin Ringleader create infinite fighters or damage. The deck is aggressive but fragile — strong board wipes stop it, so games must be won quickly.",
   graveyard:
     "Graveyard decks use the graveyard as a second hand. 'Sources' fill it: creatures that die, cards that mill, or cards you must discard. 'Consumers' access it: recasting cards, returning creatures, or triggering effects when cards hit the graveyard. Key concept: what's a loss for other decks is preparation for this one. The more in the graveyard, the stronger the deck.",
   sacrifice:
@@ -2078,7 +2098,7 @@ export default function ManapoolScreen() {
       </Modal>
 
       {/* ── Synergy Detail Modal ── */}
-      <Modal visible={!!selectedSynergy} transparent animationType="slide" presentationStyle="overFullScreen">
+      <Modal visible={!!selectedSynergy} transparent animationType="slide">
         <View style={[styles.modalOverlay, { backgroundColor: "#00000088", justifyContent: "flex-end" }]}>
           <View style={[styles.synergyDetailModal, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {/* Header */}

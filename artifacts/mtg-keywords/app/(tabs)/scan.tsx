@@ -1559,7 +1559,12 @@ export default function CardSearchScreen() {
                         : "Expansion";
                       const year = bp.releasedAt ? bp.releasedAt.slice(0, 4) : "";
                       return (
-                        <View key={i} style={[styles.boosterRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                        <TouchableOpacity
+                          key={i}
+                          style={[styles.boosterRow, { backgroundColor: colors.card, borderColor: colors.border }]}
+                          onPress={() => Linking.openURL(`https://www.cardmarket.com/de/Magic/Sealed-Products/Search?searchString=${encodeURIComponent(bp.setName)}`)}
+                          activeOpacity={0.7}
+                        >
                           <View style={[styles.boosterSetCode, { backgroundColor: colors.primary + "22" }]}>
                             <Text style={[styles.boosterSetCodeText, { color: colors.primary }]}>{bp.setCode}</Text>
                           </View>
@@ -1567,8 +1572,8 @@ export default function CardSearchScreen() {
                             <Text style={[styles.boosterSetName, { color: colors.foreground }]} numberOfLines={1}>{bp.setName}</Text>
                             <Text style={[styles.boosterSetType, { color: colors.mutedForeground }]}>{typeLabel}{year ? ` · ${year}` : ""}</Text>
                           </View>
-                          <Ionicons name="bag-handle-outline" size={16} color={colors.mutedForeground} />
-                        </View>
+                          <Ionicons name="open-outline" size={16} color="#1da462" />
+                        </TouchableOpacity>
                       );
                     })}
                   </View>

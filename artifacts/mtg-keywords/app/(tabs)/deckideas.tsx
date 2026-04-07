@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -139,7 +140,7 @@ function CardDetailModal({
 }) {
   if (!card) return null;
   return (
-    <Modal visible={visible} animationType="slide" transparent presentationStyle="overFullScreen">
+    <Modal visible={visible} animationType="slide" transparent>
       <View style={[styles.modalOverlay, { backgroundColor: "#00000088" }]}>
         <View style={[styles.cardDetailModal, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={[styles.cardDetailHeader, { borderBottomColor: colors.border }]}>
@@ -189,7 +190,7 @@ function CardDetailModal({
                 {card.oracle_text}
               </Text>
             ) : null}
-            {/* Price */}
+            {/* Price + Cardmarket */}
             {(card.priceEur != null || card.priceUsd != null) && (
               <View style={styles.priceRow}>
                 {card.priceEur != null && (
@@ -208,6 +209,17 @@ function CardDetailModal({
                 )}
               </View>
             )}
+            <TouchableOpacity
+              style={[styles.cardmarketBtn, { backgroundColor: "#1da46218", borderColor: "#1da46244" }]}
+              onPress={() => Linking.openURL(`https://www.cardmarket.com/de/Magic/Products/Search?searchString=${encodeURIComponent(card.name)}`)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="cart-outline" size={16} color="#1da462" />
+              <Text style={[styles.cardmarketBtnText, { color: "#1da462" }]}>
+                {showEnglish ? "Buy on Cardmarket" : "Bei Cardmarket kaufen"}
+              </Text>
+              <Ionicons name="open-outline" size={14} color="#1da462" />
+            </TouchableOpacity>
           </ScrollView>
         </View>
       </View>
@@ -576,6 +588,21 @@ export default function DeckIdeasScreen() {
                       ? "Prices from Scryfall/Cardmarket. May vary."
                       : "Preise von Scryfall/Cardmarket. Können variieren."}
                   </Text>
+                  <TouchableOpacity
+                    style={[styles.cardmarketDeckBtn, { backgroundColor: "#1da46218", borderColor: "#1da46244" }]}
+                    onPress={() => {
+                      const allCards = [...suggestion.deckCards, ...suggestion.landCards];
+                      const names = allCards.map((c) => `${c.count}x ${c.name}`).join(" ");
+                      Linking.openURL(`https://www.cardmarket.com/de/Magic/Products/Search?searchString=${encodeURIComponent(names.slice(0, 200))}`);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="cart-outline" size={16} color="#1da462" />
+                    <Text style={[styles.cardmarketBtnText, { color: "#1da462" }]}>
+                      {showEnglish ? "Buy whole deck on Cardmarket" : "Ganzes Deck bei Cardmarket kaufen"}
+                    </Text>
+                    <Ionicons name="open-outline" size={14} color="#1da462" />
+                  </TouchableOpacity>
                 </View>
               );
             })()}
@@ -706,4 +733,19 @@ const styles = StyleSheet.create({
   },
   roleCardLabel: { fontSize: 11, fontFamily: "Inter_700Bold", marginBottom: 3 },
   roleCardText: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
+
+  // Cardmarket buttons
+  cardmarketBtn: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    borderRadius: 10, borderWidth: 1,
+    paddingHorizontal: 14, paddingVertical: 10,
+    marginHorizontal: 12, marginTop: 4, marginBottom: 12,
+  },
+  cardmarketDeckBtn: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    borderRadius: 10, borderWidth: 1,
+    paddingHorizontal: 14, paddingVertical: 10,
+    marginHorizontal: 12, marginTop: 4, marginBottom: 12,
+  },
+  cardmarketBtnText: { flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold" },
 });
