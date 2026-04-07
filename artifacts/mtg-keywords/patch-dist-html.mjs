@@ -37,26 +37,26 @@ const inject = `
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <style id="viewport-fix">
     /*
-     * -webkit-fill-available fills the visible viewport (excluding Safari toolbars)
-     * on iOS without causing reflows when the toolbar shows/hides.
+     * position:fixed + inset:0 locks the shell to the screen regardless
+     * of browser chrome (address bar / bottom bar) showing or hiding.
+     * This prevents the iOS Safari toolbar-slide reflow entirely.
      */
-    html {
-      height: 100%;
-      height: -webkit-fill-available;
-    }
-    body {
+    html, body {
       margin: 0;
+      padding: 0;
+      width: 100%;
       height: 100%;
-      height: -webkit-fill-available;
       overflow: hidden;
       overscroll-behavior: none;
-      -webkit-overflow-scrolling: auto;
+    }
+    body {
+      position: fixed;
+      inset: 0;
     }
     #root {
+      position: fixed;
+      inset: 0;
       display: flex;
-      flex: 1;
-      height: 100%;
-      height: -webkit-fill-available;
       overflow: hidden;
     }
   </style>`;

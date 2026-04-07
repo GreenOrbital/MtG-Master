@@ -143,7 +143,7 @@ function PreconRow({ deck, isLast, colors, langEn }: {
       {productImgUri ? (
         <Image
           source={{ uri: productImgUri }}
-          style={{ width: 60, height: 84, borderRadius: 6, marginRight: 10, backgroundColor: colors.border, flexShrink: 0 }}
+          style={{ width: 60, height: 84, marginRight: 10, flexShrink: 0 }}
           resizeMode="contain"
           onError={() => setImgFailed(true)}
         />
@@ -372,7 +372,7 @@ export default function DeckIdeasScreen() {
   const [importFeedback, setImportFeedback] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showPreconSection, setShowPreconSection] = useState(false);
-  const [preconLangEn, setPreconLangEn] = useState(false);
+  const preconLangEn = showEnglish;
 
   // Load archetype list when format changes (synchronous — no network needed)
   useEffect(() => {
@@ -537,23 +537,6 @@ export default function DeckIdeasScreen() {
 
           {showPreconSection && (
             <View style={[styles.preconList, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              {/* Language toggle for this section */}
-              <View style={{ flexDirection: "row", justifyContent: "flex-end", padding: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }}>
-                <View style={{ flexDirection: "row", backgroundColor: colors.background, borderRadius: 8, borderWidth: 1, borderColor: colors.border, overflow: "hidden" }}>
-                  <TouchableOpacity
-                    onPress={() => setPreconLangEn(false)}
-                    style={{ paddingHorizontal: 12, paddingVertical: 5, backgroundColor: !preconLangEn ? "#16a34a" : "transparent" }}
-                  >
-                    <Text style={{ color: !preconLangEn ? "#fff" : colors.mutedForeground, fontWeight: "600", fontSize: 12 }}>DE</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setPreconLangEn(true)}
-                    style={{ paddingHorizontal: 12, paddingVertical: 5, backgroundColor: preconLangEn ? "#16a34a" : "transparent" }}
-                  >
-                    <Text style={{ color: preconLangEn ? "#fff" : colors.mutedForeground, fontWeight: "600", fontSize: 12 }}>EN</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
               {COMMANDER_PRECONS.map((deck, i) => (
                 <PreconRow
                   key={i}
