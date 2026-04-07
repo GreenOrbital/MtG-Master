@@ -129,6 +129,8 @@ function PreconRow({ deck, isLast, colors, langEn }: {
     : null;
   const setLabel = langEn ? deck.set : deck.setDe;
   const amazonSearch = encodeURIComponent("Magic the Gathering " + deck.name + " Commander Deck");
+  const cardmarketLang = langEn ? "en" : "de";
+  const cardmarketSearch = encodeURIComponent(deck.name);
 
   return (
     <View style={[styles.preconRow, { borderBottomColor: colors.border, borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth }]}>
@@ -155,8 +157,8 @@ function PreconRow({ deck, isLast, colors, langEn }: {
         {deck.commander && (
           <Text style={{ color: "#16a34a", fontSize: 10, fontStyle: "italic" }} numberOfLines={1}>{deck.commander}</Text>
         )}
-        {/* Amazon buttons */}
-        <View style={{ flexDirection: "row", gap: 5, marginTop: 4 }}>
+        {/* Buy buttons: Amazon + Cardmarket */}
+        <View style={{ flexDirection: "row", gap: 5, marginTop: 4, flexWrap: "wrap" }}>
           <TouchableOpacity style={[styles.amazonSmallBtn, { borderColor: "#ff990066", backgroundColor: "#ff990022" }]}
             onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${amazonSearch}&tag=masterofmtg-21`)}>
             <Text style={[styles.amazonSmallBtnText, { color: "#ff9900" }]}>Amazon.de</Text>
@@ -164,6 +166,10 @@ function PreconRow({ deck, isLast, colors, langEn }: {
           <TouchableOpacity style={[styles.amazonSmallBtn, { borderColor: "#3b82f666", backgroundColor: "#3b82f622" }]}
             onPress={() => Linking.openURL(`https://www.amazon.com/s?k=${amazonSearch}&tag=mtg08d-20`)}>
             <Text style={[styles.amazonSmallBtnText, { color: "#3b82f6" }]}>Amazon.com</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.amazonSmallBtn, { borderColor: "#2563eb66", backgroundColor: "#2563eb22" }]}
+            onPress={() => Linking.openURL(`https://www.cardmarket.com/${cardmarketLang}/Magic/Products/Search?searchString=${cardmarketSearch}`)}>
+            <Text style={[styles.amazonSmallBtnText, { color: "#60a5fa" }]}>Cardmarket</Text>
           </TouchableOpacity>
         </View>
       </View>
