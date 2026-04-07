@@ -242,9 +242,20 @@ function CardDetailModal({
             >
               <Ionicons name="cart-outline" size={16} color="#ff9900" />
               <Text style={[styles.cardmarketBtnText, { color: "#ff9900" }]}>
-                {showEnglish ? "Buy on Amazon" : "Bei Amazon kaufen"}
+                {showEnglish ? "Buy card on Amazon" : "Karte bei Amazon kaufen"}
               </Text>
               <Ionicons name="open-outline" size={14} color="#ff9900" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.cardmarketBtn, { backgroundColor: "#f59e0b18", borderColor: "#f59e0b44" }]}
+              onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent("Magic the Gathering " + card.name + " Booster Pack")}&tag=masterofmtg-21`)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="gift-outline" size={16} color="#f59e0b" />
+              <Text style={[styles.cardmarketBtnText, { color: "#f59e0b" }]}>
+                {showEnglish ? "Find booster packs on Amazon" : "Booster Packs bei Amazon suchen"}
+              </Text>
+              <Ionicons name="open-outline" size={14} color="#f59e0b" />
             </TouchableOpacity>
           </ScrollView>
         </View>
