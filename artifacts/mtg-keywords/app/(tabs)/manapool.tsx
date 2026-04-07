@@ -2017,24 +2017,29 @@ export default function ManapoolScreen() {
               )}
             </View>
 
-            {/* Buttons row 1: Save + Import */}
-            <View style={{ flexDirection: "row", gap: 10 }}>
+            {/* Buttons row 1: Save TXT + Save JSON + Import */}
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <TouchableOpacity
+                style={[styles.deckActionBtn, { backgroundColor: colors.primary, flex: 1 }]}
+                onPress={() => handleExportManabox(activeDeck)}
+              >
+                <Ionicons name="document-text-outline" size={17} color="#fff" />
+                <Text style={[styles.deckActionBtnText, { color: "#fff" }]}>TXT</Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.deckActionBtn, { backgroundColor: colors.primary, flex: 1 }]}
                 onPress={() => handleExportDeck(activeDeck)}
               >
                 <Ionicons name="save-outline" size={17} color="#fff" />
-                <Text style={[styles.deckActionBtnText, { color: "#fff" }]}>
-                  {showEnglish ? "Save as file" : "Als Datei speichern"}
-                </Text>
+                <Text style={[styles.deckActionBtnText, { color: "#fff" }]}>JSON</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.deckActionBtn, { backgroundColor: colors.card, borderColor: colors.primary, borderWidth: 1.5 }]}
+                style={[styles.deckActionBtn, { backgroundColor: colors.card, borderColor: colors.primary, borderWidth: 1.5, flex: 1 }]}
                 onPress={handleOpenImport}
               >
                 <Ionicons name="download-outline" size={17} color={colors.primary} />
                 <Text style={[styles.deckActionBtnText, { color: colors.primary }]}>
-                  {showEnglish ? "Import" : "Importieren"}
+                  {showEnglish ? "Import" : "Import"}
                 </Text>
               </TouchableOpacity>
             </View>

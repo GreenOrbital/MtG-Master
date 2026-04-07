@@ -1,8 +1,13 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "Q04g1o_mc6RKlt4EFQZS9"
 uri = "file://artifacts/mtg-keywords/assets/images/icon.png"
 type = "image"
 title = "mtg app icon"
+
+[[outputs]]
+id = "iY5w2VYOyzUd6AW1o8_VB"
+uri = "file://netlify-deploy.tar.gz"
+type = "unspecified"
+title = "Master of MtG — Netlify Deploy Paket"
