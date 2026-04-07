@@ -421,21 +421,21 @@ export default function DeckIdeasScreen() {
 
           {/* ── Commander Fertigdecks kaufen ── */}
           <TouchableOpacity
-            style={[styles.preconHeader, { backgroundColor: "#16a34a18", borderColor: "#16a34a55" }]}
+            style={[styles.preconHeader, { backgroundColor: colors.card, borderColor: "#16a34a", borderWidth: 2 }]}
             onPress={() => setShowPreconSection(v => !v)}
             activeOpacity={0.8}
           >
-            <View style={[styles.preconIconWrap, { backgroundColor: "#16a34a33" }]}>
-              <Ionicons name="cart-outline" size={22} color="#16a34a" />
+            <View style={[styles.preconIconWrap, { backgroundColor: "#16a34a" }]}>
+              <Ionicons name="cart-outline" size={22} color="#fff" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.preconTitle, { color: colors.foreground }]}>
+              <Text style={[styles.preconTitle, { color: "#16a34a" }]}>
                 {showEnglish ? "Commander Precon Decks" : "Commander Fertigdecks"}
               </Text>
               <Text style={[styles.preconSubtitle, { color: colors.mutedForeground }]}>
                 {showEnglish
-                  ? `${COMMANDER_PRECONS.length} official decks · buy on Amazon`
-                  : `${COMMANDER_PRECONS.length} offizielle Decks · bei Amazon kaufen`}
+                  ? `${COMMANDER_PRECONS.length} official decks — buy on Amazon`
+                  : `${COMMANDER_PRECONS.length} offizielle Decks — bei Amazon kaufen`}
               </Text>
             </View>
             <Ionicons name={showPreconSection ? "chevron-up" : "chevron-down"} size={18} color="#16a34a" />
