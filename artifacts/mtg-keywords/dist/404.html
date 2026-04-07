@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <title>Master of MtG</title>
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">/* replaced by viewport-fix */</style>
+  <meta name="theme-color" content="#8b2fc9">
+<meta name="description" content="Magic: The Gathering Kartensuche, Keywords & Deck-Builder">
+<link rel="preload" href="/_expo/static/css/native-tabs.module-e97e6efa38d687d16fccdea10327e255.css" as="style"><link rel="stylesheet" href="/_expo/static/css/native-tabs.module-e97e6efa38d687d16fccdea10327e255.css"><link rel="icon" href="/favicon.ico" />
+  <!-- iOS PWA: hide browser chrome when added to home screen -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <style id="viewport-fix">
+    /*
+     * -webkit-fill-available fills the visible viewport (excluding Safari toolbars)
+     * on iOS without causing reflows when the toolbar shows/hides.
+     * Using 100% (inherited) is the safest fallback; dvh would shift on toolbar animation.
+     */
+    html {
+      height: 100%;
+      /* iOS 15+ small viewport — never taller than visible area with toolbar shown */
+      height: -webkit-fill-available;
+    }
+    body {
+      margin: 0;
+      height: 100%;
+      height: -webkit-fill-available;
+      overflow: hidden;
+      /* Prevent iOS rubber-band bounce from shifting the layout */
+      overscroll-behavior: none;
+      -webkit-overflow-scrolling: auto;
+    }
+    #root {
+      display: flex;
+      flex: 1;
+      height: 100%;
+      height: -webkit-fill-available;
+      overflow: hidden;
+    }
+  </style>
+</head>
+
+  <body>
+    <!-- Use static rendering with Expo Router to support running without JavaScript. -->
+    <noscript>
+      You need to enable JavaScript to run this app.
+    </noscript>
+    <!-- The root element for your Expo app. -->
+    <div id="root"></div>
+  <script src="/_expo/static/js/web/entry-3f4f72e9edc7891dda6463af8c2c25bd.js" defer></script>
+</body>
+</html>
