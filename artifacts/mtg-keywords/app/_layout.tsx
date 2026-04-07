@@ -5,8 +5,6 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
-import { ClerkLoaded, ClerkProvider } from "@clerk/expo";
-import { tokenCache } from "@clerk/expo/token-cache";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -25,14 +23,10 @@ SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
-const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
-const proxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
-
 function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
     </Stack>
   );
 }
@@ -70,17 +64,13 @@ export default function RootLayout() {
       <ErrorBoundary>
         <OfflineGuard>
           <QueryClientProvider client={queryClient}>
-            <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache} proxyUrl={proxyUrl}>
-              <ClerkLoaded>
-                <GestureHandlerRootView style={{ flex: 1 }}>
-                  <KeyboardProvider style={{ flex: 1 }}>
-                    <AppProviders>
-                      <RootLayoutNav />
-                    </AppProviders>
-                  </KeyboardProvider>
-                </GestureHandlerRootView>
-              </ClerkLoaded>
-            </ClerkProvider>
+            <GestureHandlerRootView style={{ flex: 1 }}>
+              <KeyboardProvider style={{ flex: 1 }}>
+                <AppProviders>
+                  <RootLayoutNav />
+                </AppProviders>
+              </KeyboardProvider>
+            </GestureHandlerRootView>
           </QueryClientProvider>
         </OfflineGuard>
       </ErrorBoundary>
