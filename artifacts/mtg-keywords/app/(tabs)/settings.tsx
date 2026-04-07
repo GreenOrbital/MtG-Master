@@ -43,45 +43,43 @@ function AboutSection({ showEnglish, colors }: { showEnglish: boolean; colors: R
   const features = showEnglish
     ? [
         { icon: "search-outline" as const, title: "Card Search (DE + EN)", text: "Search by German or English card name — full card view with image, type, rarity, mana cost and format legality (Standard, Pioneer, Modern, Legacy, Commander)." },
-        { icon: "camera-outline" as const, title: "Photo Recognition (AI)", text: "Point the camera at any physical MtG card and the app automatically identifies it using GPT-4o. Best results with good lighting and a clearly readable card name." },
-        { icon: "book-outline" as const, title: "95 Keywords Offline", text: "All important keywords explained — from classics like Flying and Trample to newer ones like Freerunning or Spree. Always available offline, no internet needed." },
+        { icon: "book-outline" as const, title: "95+ Keywords Offline", text: "All important keywords explained — from classics like Flying and Trample to newer ones like Freerunning or Spree. Always available offline, no internet needed." },
         { icon: "heart-outline" as const, title: "Favorites & History", text: "Save favorite cards for quick access. Recently searched cards are automatically remembered — accessible without re-searching." },
-        { icon: "layers-outline" as const, title: "Deck Builder", text: "Create your own decks, add cards and view the mana analysis: average CMC, color distribution, recommended land sources and mana curve." },
+        { icon: "layers-outline" as const, title: "Deck Builder + Import", text: "Create decks, add cards and view the mana analysis: average CMC, color distribution and mana curve. Import decks from TXT files (MTGA / Moxfield format: '4 Lightning Bolt' per line) or JSON." },
+        { icon: "bulb-outline" as const, title: "Deck Ideas (31+ Archetypes)", text: "Ready-made decklists for Commander, Standard, Pioneer, Modern and Draft — including 5 fully built 100-card Commander decks. Tap any card to search it directly." },
         { icon: "git-merge-outline" as const, title: "Commander Combos", text: "Shows known combo interactions for each card via Commander Spellbook — great for finding synergies in Commander decks." },
         { icon: "albums-outline" as const, title: "Similar Cards (EDHREC)", text: "Displays cards with similar abilities or synergies based on EDHREC data — helpful for deckbuilding and finding replacements." },
-        { icon: "gift-outline" as const, title: "Booster Pack Availability", text: "Shows which booster sets each card appears in — useful when you want to open packs to collect specific cards." },
-        { icon: "cart-outline" as const, title: "Cardmarket Link", text: "Direct link to the card on Cardmarket for quick price comparison and purchase." },
+        { icon: "gift-outline" as const, title: "Booster Pack Availability", text: "Shows which booster sets each card appears in — tapping opens an Amazon search so you can order the pack directly." },
         { icon: "desktop-outline" as const, title: "PC / Desktop Support", text: "The app is fully usable in the PC browser too — with a sidebar navigation instead of bottom tabs." },
       ]
     : [
         { icon: "search-outline" as const, title: "Kartensuche (DE + EN)", text: "Suche mit deutschem oder englischem Kartennamen — vollständige Kartenansicht mit Bild, Typ, Seltenheit, Manakosten und Formatlegality (Standard, Pioneer, Modern, Legacy, Commander)." },
-        { icon: "camera-outline" as const, title: "Foto-Erkennung (KI)", text: "Halte die Kamera auf eine physische MtG-Karte und die App erkennt sie automatisch per GPT-4o. Am besten bei guter Beleuchtung und klar lesbarem Kartenname." },
-        { icon: "book-outline" as const, title: "95 Schlüsselwörter Offline", text: "Alle wichtigen Keywords erklärt — von Klassikern wie Fliegen und Trampeln bis zu neueren wie Freies Laufen oder Streunen. Jederzeit offline verfügbar." },
+        { icon: "book-outline" as const, title: "95+ Schlüsselwörter Offline", text: "Alle wichtigen Keywords erklärt — von Klassikern wie Fliegen und Trampeln bis zu neueren wie Freies Laufen oder Streunen. Jederzeit offline verfügbar, ohne Internet." },
         { icon: "heart-outline" as const, title: "Favoriten & Verlauf", text: "Lieblingskarten speichern für schnellen Zugriff. Zuletzt gesuchte Karten werden automatisch gemerkt — kein erneutes Suchen nötig." },
-        { icon: "layers-outline" as const, title: "Deck-Builder", text: "Eigene Decks erstellen, Karten hinzufügen und die Mana-Analyse einsehen: Ø Manakosten, Farbverteilung, empfohlene Mana-Quellen und Manakurve." },
+        { icon: "layers-outline" as const, title: "Deck-Builder + Import", text: "Decks erstellen, Karten hinzufügen und die Mana-Analyse einsehen: Ø Manakosten, Farbverteilung und Manakurve. Decks importieren aus TXT-Dateien (MTGA/Moxfield-Format: '4 Blitz' pro Zeile) oder JSON." },
+        { icon: "bulb-outline" as const, title: "Deck-Ideen (31+ Archetypen)", text: "Fertige Decklisten für Commander, Standard, Pioneer, Modern und Draft — darunter 5 vollständige 100-Karten-Commander-Decks. Tippe auf eine Karte um sie direkt zu suchen." },
         { icon: "git-merge-outline" as const, title: "Commander-Kombos", text: "Zeigt bekannte Kombo-Interaktionen für jede Karte via Commander Spellbook — ideal zum Finden von Synergien im Commander-Format." },
         { icon: "albums-outline" as const, title: "Ähnliche Karten (EDHREC)", text: "Zeigt Karten mit ähnlichen Fähigkeiten oder Synergien basierend auf EDHREC-Daten — hilfreich beim Deck-Bau und für Ersatzoptionen." },
-        { icon: "gift-outline" as const, title: "Booster-Pack-Verfügbarkeit", text: "Zeigt, in welchen Booster-Sets eine Karte enthalten ist — nützlich, wenn du gezielt Packs öffnen möchtest." },
-        { icon: "cart-outline" as const, title: "Cardmarket-Link", text: "Direkter Link zur Karte auf Cardmarket für schnellen Preisvergleich und Kauf." },
+        { icon: "gift-outline" as const, title: "Booster-Pack-Verfügbarkeit", text: "Zeigt, in welchen Booster-Sets eine Karte enthalten ist — Tippen öffnet eine Amazon-Suche damit du das Pack direkt bestellen kannst." },
         { icon: "desktop-outline" as const, title: "PC / Desktop-Unterstützung", text: "Die App ist auch vollständig im PC-Browser nutzbar — mit Seitenleiste statt Bottom-Navigation." },
       ];
 
   const tips = showEnglish
     ? [
-        "Photo recognition works best with good lighting — the card name at the top must be clearly readable.",
-        "Foil cards or heavily worn cards can be harder to recognize.",
-        "Card search and photo recognition require an internet connection.",
-        "All keywords are available offline at any time.",
-        "The app supports both German and English card names in the search.",
+        "Card search requires an internet connection. All keywords work offline at any time.",
+        "The app supports both German and English card names — just type and search.",
+        "Decks can be imported from TXT files (MTGA / Moxfield format) or from app-exported JSON.",
+        "Deck ideas show complete ready-to-play decklists — tap any card to look it up immediately.",
         "Combo and similar card data come from external sources and may not always be complete or up to date.",
+        "Booster pack links open Amazon — search results may vary depending on availability.",
       ]
     : [
-        "Die Foto-Erkennung braucht gute Beleuchtung — der Kartenname oben muss klar lesbar sein.",
-        "Foil-Karten oder stark abgenutzte Karten können schwerer erkannt werden.",
-        "Kartensuche und Foto-Erkennung benötigen eine Internetverbindung.",
-        "Alle Schlüsselwörter sind jederzeit offline verfügbar.",
-        "Die App unterstützt bei der Suche sowohl deutsche als auch englische Kartennamen.",
+        "Die Kartensuche benötigt eine Internetverbindung. Alle Schlüsselwörter funktionieren jederzeit offline.",
+        "Die App unterstützt sowohl deutsche als auch englische Kartennamen — einfach eingeben und suchen.",
+        "Decks können aus TXT-Dateien importiert werden (MTGA/Moxfield-Format) oder als App-JSON.",
+        "Deck-Ideen zeigen fertige, spielfertige Decklisten — tippe auf eine Karte um sie sofort nachzuschlagen.",
         "Kombo- und ähnliche Kartendaten stammen von externen Quellen und sind möglicherweise nicht vollständig oder aktuell.",
+        "Booster-Pack-Links öffnen Amazon — Suchergebnisse können je nach Verfügbarkeit variieren.",
       ];
 
   const introText = showEnglish
