@@ -1567,7 +1567,7 @@ export default function CardSearchScreen() {
                         <TouchableOpacity
                           key={i}
                           style={[styles.boosterRow, { backgroundColor: colors.card, borderColor: colors.border }]}
-                          onPress={() => Linking.openURL(`https://www.cardmarket.com/de/Magic/Sealed-Products/Search?searchString=${encodeURIComponent(bp.setName)}`)}
+                          onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent("Magic the Gathering " + bp.setName + " Booster")}`)}
                           activeOpacity={0.7}
                         >
                           <View style={[styles.boosterSetCode, { backgroundColor: colors.primary + "22" }]}>
@@ -1577,7 +1577,7 @@ export default function CardSearchScreen() {
                             <Text style={[styles.boosterSetName, { color: colors.foreground }]} numberOfLines={1}>{bp.setName}</Text>
                             <Text style={[styles.boosterSetType, { color: colors.mutedForeground }]}>{typeLabel}{year ? ` · ${year}` : ""}</Text>
                           </View>
-                          <Ionicons name="open-outline" size={16} color="#1da462" />
+                          <Ionicons name="cart-outline" size={16} color="#ff9900" />
                         </TouchableOpacity>
                       );
                     })}
@@ -1823,9 +1823,9 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
   content: { gap: 14 },
   heroWrapper: { gap: 10, alignItems: "center" },
-  heroSection: { borderRadius: 18, overflow: "hidden", aspectRatio: 63 / 88, width: "82%", backgroundColor: "#0d0d1f" },
+  heroSection: { borderRadius: 18, overflow: "hidden", aspectRatio: 63 / 88, width: "82%", ...Platform.select({ web: { maxWidth: 260 }, default: {} }), backgroundColor: "#0d0d1f" },
   heroImage: { width: "100%", height: "100%" },
-  heroControls: { flexDirection: "row", alignItems: "center", gap: 10, width: "82%" },
+  heroControls: { flexDirection: "row", alignItems: "center", gap: 10, width: "82%", ...Platform.select({ web: { maxWidth: 260 }, default: {} }) },
   // Artwork window positioned over the painting area of a standard MtG card
   artworkWindow: {
     position: "absolute",
