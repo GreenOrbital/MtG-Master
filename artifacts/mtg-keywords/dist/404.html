@@ -9,7 +9,7 @@
     <style id="expo-reset">/* replaced by viewport-fix */</style>
   <meta name="theme-color" content="#8b2fc9">
 <meta name="description" content="Magic: The Gathering Kartensuche, Keywords & Deck-Builder">
-<link rel="preload" href="/_expo/static/css/native-tabs.module-e97e6efa38d687d16fccdea10327e255.css" as="style"><link rel="stylesheet" href="/_expo/static/css/native-tabs.module-e97e6efa38d687d16fccdea10327e255.css"><link rel="icon" href="/favicon.ico" />
+<link rel="preload" href="_expo/static/css/native-tabs.module-e97e6efa38d687d16fccdea10327e255.css" as="style"><link rel="stylesheet" href="_expo/static/css/native-tabs.module-e97e6efa38d687d16fccdea10327e255.css"><link rel="icon" href="favicon.ico" />
   <!-- iOS PWA: hide browser chrome when added to home screen -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -17,11 +17,9 @@
     /*
      * -webkit-fill-available fills the visible viewport (excluding Safari toolbars)
      * on iOS without causing reflows when the toolbar shows/hides.
-     * Using 100% (inherited) is the safest fallback; dvh would shift on toolbar animation.
      */
     html {
       height: 100%;
-      /* iOS 15+ small viewport — never taller than visible area with toolbar shown */
       height: -webkit-fill-available;
     }
     body {
@@ -29,7 +27,6 @@
       height: 100%;
       height: -webkit-fill-available;
       overflow: hidden;
-      /* Prevent iOS rubber-band bounce from shifting the layout */
       overscroll-behavior: none;
       -webkit-overflow-scrolling: auto;
     }
@@ -50,6 +47,6 @@
     </noscript>
     <!-- The root element for your Expo app. -->
     <div id="root"></div>
-  <script src="/_expo/static/js/web/entry-3f4f72e9edc7891dda6463af8c2c25bd.js" defer></script>
+  <script src="_expo/static/js/web/entry-07591b42f5a20c3f1d3abb947aff117d.js" defer></script>
 </body>
 </html>

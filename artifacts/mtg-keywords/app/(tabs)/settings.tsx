@@ -225,6 +225,36 @@ export default function SettingsScreen() {
           />
         </View>
 
+        {/* Feedback */}
+        <TouchableOpacity
+          style={[styles.feedbackBtn, { backgroundColor: colors.card, borderColor: colors.primary }]}
+          activeOpacity={0.75}
+          onPress={() =>
+            Linking.openURL(
+              `mailto:info@greenorbital.de?subject=${encodeURIComponent(
+                showEnglish ? "Master of MtG — Feedback" : "Master of MtG — Feedback"
+              )}&body=${encodeURIComponent(
+                showEnglish
+                  ? "Hello,\n\nI have the following feedback for Master of MtG:\n\n"
+                  : "Hallo,\n\nIch habe folgendes Feedback zu Master of MtG:\n\n"
+              )}`
+            )
+          }
+        >
+          <View style={[styles.feedbackIconWrap, { backgroundColor: colors.primary + "22" }]}>
+            <Ionicons name="mail-outline" size={22} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.feedbackTitle, { color: colors.foreground }]}>
+              {showEnglish ? "Send Feedback" : "Feedback senden"}
+            </Text>
+            <Text style={[styles.feedbackSub, { color: colors.mutedForeground }]}>
+              info@greenorbital.de
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
+        </TouchableOpacity>
+
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <AboutSection showEnglish={showEnglish} colors={colors} />
         </View>
@@ -367,5 +397,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     lineHeight: 18,
+  },
+  feedbackBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  feedbackIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  feedbackTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+  },
+  feedbackSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
   },
 });

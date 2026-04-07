@@ -1,6 +1,6 @@
 /**
- * Post-build script: patches dist/index.html for iOS Safari viewport stability.
- * Tested against iPhone 17 Pro (iOS 18+) dynamic toolbar behavior.
+ * Post-build script: patches dist/index.html for iOS Safari viewport stability
+ * and Replit static deployment compatibility (relative asset paths).
  */
 import { readFileSync, writeFileSync, copyFileSync } from "fs";
 import { resolve, dirname } from "path";
@@ -24,7 +24,13 @@ html = html.replace(
   `<style id="expo-reset">/* replaced by viewport-fix */</style>`
 );
 
-// 3. Inject iOS PWA meta + stable-height CSS just before </head>
+// 3. Convert absolute asset paths to relative so the app works when served
+//    from any subdirectory (Replit static deployment, GitHub Pages, etc.)
+html = html.replace(/href="\/_expo\//g, 'href="_expo/');
+html = html.replace(/src="\/_expo\//g, 'src="_expo/');
+html = html.replace(/href="\/favicon\.ico"/g, 'href="favicon.ico"');
+
+// 4. Inject iOS PWA meta + stable-height CSS just before </head>
 const inject = `
   <!-- iOS PWA: hide browser chrome when added to home screen -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -33,11 +39,9 @@ const inject = `
     /*
      * -webkit-fill-available fills the visible viewport (excluding Safari toolbars)
      * on iOS without causing reflows when the toolbar shows/hides.
-     * Using 100% (inherited) is the safest fallback; dvh would shift on toolbar animation.
      */
     html {
       height: 100%;
-      /* iOS 15+ small viewport — never taller than visible area with toolbar shown */
       height: -webkit-fill-available;
     }
     body {
@@ -45,7 +49,6 @@ const inject = `
       height: 100%;
       height: -webkit-fill-available;
       overflow: hidden;
-      /* Prevent iOS rubber-band bounce from shifting the layout */
       overscroll-behavior: none;
       -webkit-overflow-scrolling: auto;
     }
@@ -61,7 +64,7 @@ const inject = `
 html = html.replace("</head>", `${inject}\n</head>`);
 
 writeFileSync(htmlPath, html, "utf8");
-console.log("✓ dist/index.html patched (iOS Safari viewport fix)");
+console.log("✓ dist/index.html patched (iOS Safari viewport fix + relative paths)");
 
 // SPA routing fix: copy index.html as 404.html so static servers
 // fall back to the SPA entry point for all unmatched routes.
