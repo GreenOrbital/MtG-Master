@@ -31,59 +31,56 @@ type PreconDeck = {
   year: string;
   commander?: string;
   preconSetCode?: string;
+  asin?: string;
 };
 
 const COMMANDER_PRECONS: PreconDeck[] = [
   // Commander Masters 2023
-  { name: "Enduring Enchantments",  set: "Commander Masters",           setDe: "Commander Masters",                  year: "2023", commander: "Anikthea, Hand of Erebos",         preconSetCode: "cmm" },
-  { name: "Planeswalker Party",     set: "Commander Masters",           setDe: "Commander Masters",                  year: "2023", commander: "Commodore Guff",                   preconSetCode: "cmm" },
-  { name: "Sliver Swarm",           set: "Commander Masters",           setDe: "Commander Masters",                  year: "2023", commander: "Sliver Gravemother",               preconSetCode: "cmm" },
-  { name: "Eldrazi Unbound",        set: "Commander Masters",           setDe: "Commander Masters",                  year: "2023", commander: "Zhulodok, Void Gorger",            preconSetCode: "cmm" },
+  { name: "Enduring Enchantments",  set: "Commander Masters",           setDe: "Commander Masters",                  year: "2023", commander: "Anikthea, Hand of Erebos",         preconSetCode: "cmm", asin: "B0BVTM4YRX" },
+  { name: "Planeswalker Party",     set: "Commander Masters",           setDe: "Commander Masters",                  year: "2023", commander: "Commodore Guff",                   preconSetCode: "cmm", asin: "B0BVTF53SX" },
+  { name: "Sliver Swarm",           set: "Commander Masters",           setDe: "Commander Masters",                  year: "2023", commander: "Sliver Gravemother",               preconSetCode: "cmm", asin: "B0BVT8R4GF" },
+  { name: "Eldrazi Unbound",        set: "Commander Masters",           setDe: "Commander Masters",                  year: "2023", commander: "Zhulodok, Void Gorger",            preconSetCode: "cmm", asin: "B0BVT8M6FZ" },
   // The Lost Caverns of Ixalan
-  { name: "Blood Rites",            set: "The Lost Caverns of Ixalan",  setDe: "Die verlorenen Grotten von Ixalan",  year: "2023", commander: "Clavileño, First of the Blessed",  preconSetCode: "lcc" },
-  { name: "Explorers of the Deep",  set: "The Lost Caverns of Ixalan",  setDe: "Die verlorenen Grotten von Ixalan",  year: "2023", commander: "Hakbal of the Surging Soul",        preconSetCode: "lcc" },
-  { name: "Ahoy Mateys",            set: "The Lost Caverns of Ixalan",  setDe: "Die verlorenen Grotten von Ixalan",  year: "2023", commander: "Admiral Brass, Unsinkable",         preconSetCode: "lcc" },
-  { name: "Veloci-Ramp-Tor",        set: "The Lost Caverns of Ixalan",  setDe: "Die verlorenen Grotten von Ixalan",  year: "2023", commander: "Pantlaza, Sun-Favored",            preconSetCode: "lcc" },
+  { name: "Blood Rites",            set: "The Lost Caverns of Ixalan",  setDe: "Die verlorenen Grotten von Ixalan",  year: "2023", commander: "Clavileño, First of the Blessed",  preconSetCode: "lcc", asin: "B0CQ2WZRKF" },
+  { name: "Explorers of the Deep",  set: "The Lost Caverns of Ixalan",  setDe: "Die verlorenen Grotten von Ixalan",  year: "2023", commander: "Hakbal of the Surging Soul",        preconSetCode: "lcc", asin: "B0CDNQK5DM" },
+  { name: "Ahoy Mateys",            set: "The Lost Caverns of Ixalan",  setDe: "Die verlorenen Grotten von Ixalan",  year: "2023", commander: "Admiral Brass, Unsinkable",         preconSetCode: "lcc", asin: "B0CDNWJ5H3" },
+  { name: "Veloci-Ramp-Tor",        set: "The Lost Caverns of Ixalan",  setDe: "Die verlorenen Grotten von Ixalan",  year: "2023", commander: "Pantlaza, Sun-Favored",            preconSetCode: "lcc", asin: "B0CDNRSBL5" },
   // Murders at Karlov Manor
-  { name: "Blame Game",             set: "Murders at Karlov Manor",     setDe: "Morde auf Anwesen Karlov",           year: "2024", commander: "Miriam, Herd Whisperer",           preconSetCode: "mkc" },
-  { name: "Deep Clue Sea",          set: "Murders at Karlov Manor",     setDe: "Morde auf Anwesen Karlov",           year: "2024", commander: "Morska, Undersea Sleuth",          preconSetCode: "mkc" },
-  { name: "Revenant Recon",         set: "Murders at Karlov Manor",     setDe: "Morde auf Anwesen Karlov",           year: "2024", commander: "Kaya, Spirits' Justice",           preconSetCode: "mkc" },
-  { name: "Deadly Disguise",        set: "Murders at Karlov Manor",     setDe: "Morde auf Anwesen Karlov",           year: "2024", commander: "Nelly Borca, Impulsive Accuser",   preconSetCode: "mkc" },
+  { name: "Blame Game",             set: "Murders at Karlov Manor",     setDe: "Morde auf Anwesen Karlov",           year: "2024", commander: "Nelly Borca, Impulsive Accuser",   preconSetCode: "mkc", asin: "B0CMVZCKDH" },
+  { name: "Deep Clue Sea",          set: "Murders at Karlov Manor",     setDe: "Morde auf Anwesen Karlov",           year: "2024", commander: "Morska, Undersea Sleuth",          preconSetCode: "mkc", asin: "B0CMVTNF3P" },
+  { name: "Revenant Recon",         set: "Murders at Karlov Manor",     setDe: "Morde auf Anwesen Karlov",           year: "2024", commander: "Kaya, Spirits' Justice",           preconSetCode: "mkc", asin: "B0CMVR8NPP" },
+  { name: "Deadly Disguise",        set: "Murders at Karlov Manor",     setDe: "Morde auf Anwesen Karlov",           year: "2024", commander: "Miriam, Herd Whisperer",           preconSetCode: "mkc", asin: "B0CMVJL41K" },
   // Outlaws of Thunder Junction
-  { name: "Most Wanted",            set: "Outlaws of Thunder Junction", setDe: "Gesetzlose von Thunder Junction",    year: "2024", commander: "Olivia, Opulent Outlaw",           preconSetCode: "otc" },
-  { name: "Desert Bloom",           set: "Outlaws of Thunder Junction", setDe: "Gesetzlose von Thunder Junction",    year: "2024", commander: "Yuma, Proud Protector",            preconSetCode: "otc" },
-  { name: "Quick Draw",             set: "Outlaws of Thunder Junction", setDe: "Gesetzlose von Thunder Junction",    year: "2024", commander: "Stella Lee, Wild Card",            preconSetCode: "otc" },
-  { name: "Grand Larceny",          set: "Outlaws of Thunder Junction", setDe: "Gesetzlose von Thunder Junction",    year: "2024", commander: "Gonti, Canny Acquisitor",          preconSetCode: "otc" },
+  { name: "Most Wanted",            set: "Outlaws of Thunder Junction", setDe: "Gesetzlose von Thunder Junction",    year: "2024", commander: "Olivia, Opulent Outlaw",           preconSetCode: "otc", asin: "B0CT41T1RF" },
+  { name: "Desert Bloom",           set: "Outlaws of Thunder Junction", setDe: "Gesetzlose von Thunder Junction",    year: "2024", commander: "Yuma, Proud Protector",            preconSetCode: "otc", asin: "B0CT43X2L6" },
+  { name: "Quick Draw",             set: "Outlaws of Thunder Junction", setDe: "Gesetzlose von Thunder Junction",    year: "2024", commander: "Stella Lee, Wild Card",            preconSetCode: "otc", asin: "B0CT3YQ979" },
+  { name: "Grand Larceny",          set: "Outlaws of Thunder Junction", setDe: "Gesetzlose von Thunder Junction",    year: "2024", commander: "Gonti, Canny Acquisitor",          preconSetCode: "otc", asin: "B0CT42C6C5" },
   // Bloomburrow
-  { name: "Peace Offering",         set: "Bloomburrow",                 setDe: "Bloomburrow",                        year: "2024", commander: "Gylwain, Casting Director",        preconSetCode: "blc" },
-  { name: "Squirreled Away",        set: "Bloomburrow",                 setDe: "Bloomburrow",                        year: "2024", commander: "Ygra, Eater of All",               preconSetCode: "blc" },
-  { name: "Family Matters",         set: "Bloomburrow",                 setDe: "Bloomburrow",                        year: "2024", commander: "Bello, Bard of the Brambles",      preconSetCode: "blc" },
-  { name: "Animated Army",          set: "Bloomburrow",                 setDe: "Bloomburrow",                        year: "2024", commander: "Gev, Scaled Scorch",               preconSetCode: "blc" },
+  { name: "Peace Offering",         set: "Bloomburrow",                 setDe: "Bloomburrow",                        year: "2024", commander: "Gylwain, Casting Director",        preconSetCode: "blc", asin: "B0CTKLR4SN" },
+  { name: "Squirreled Away",        set: "Bloomburrow",                 setDe: "Bloomburrow",                        year: "2024", commander: "Ygra, Eater of All",               preconSetCode: "blc", asin: "B0CTKXPC3Z" },
+  { name: "Family Matters",         set: "Bloomburrow",                 setDe: "Bloomburrow",                        year: "2024", commander: "Bello, Bard of the Brambles",      preconSetCode: "blc", asin: "B0CTKWYQ6K" },
+  { name: "Animated Army",          set: "Bloomburrow",                 setDe: "Bloomburrow",                        year: "2024", commander: "Gev, Scaled Scorch",               preconSetCode: "blc", asin: "B0CTKW5NX1" },
   // Duskmourn: House of Horror
-  { name: "Fear More Fears",        set: "Duskmourn: House of Horror",  setDe: "Düstermorn: Haus des Grauens",       year: "2024", commander: "Ayara, Widow of the Realm",        preconSetCode: "dsc" },
-  { name: "Jump Scare",             set: "Duskmourn: House of Horror",  setDe: "Düstermorn: Haus des Grauens",       year: "2024", commander: "Zimone, All-Questions Answered",   preconSetCode: "dsc" },
-  { name: "Enduring Victory",       set: "Duskmourn: House of Horror",  setDe: "Düstermorn: Haus des Grauens",       year: "2024", commander: "Disa the Restless",                preconSetCode: "dsc" },
-  { name: "Coven Counters",         set: "Duskmourn: House of Horror",  setDe: "Düstermorn: Haus des Grauens",       year: "2024", commander: "Mirko, Obsessive Theorist",        preconSetCode: "dsc" },
-  // Aetherdrift — set code used as fallback image source
-  { name: "Cult Mechanix",          set: "Aetherdrift",                 setDe: "Aetherdrift",                        year: "2025", preconSetCode: "aec" },
-  { name: "Full Speed Ahead",       set: "Aetherdrift",                 setDe: "Aetherdrift",                        year: "2025", preconSetCode: "aec" },
-  { name: "Glory Days",             set: "Aetherdrift",                 setDe: "Aetherdrift",                        year: "2025", preconSetCode: "aec" },
-  { name: "Sprint to the Finish",   set: "Aetherdrift",                 setDe: "Aetherdrift",                        year: "2025", preconSetCode: "aec" },
+  { name: "Miracle Worker",         set: "Duskmourn: House of Horror",  setDe: "Düstermorn: Haus des Grauens",       year: "2024", commander: "Aminatou, Veil-Piercer",           preconSetCode: "dsc", asin: "B0D68RDPTJ" },
+  { name: "Death Toll",             set: "Duskmourn: House of Horror",  setDe: "Düstermorn: Haus des Grauens",       year: "2024", commander: "Winter, Cynical Observer",         preconSetCode: "dsc", asin: "B0D693PYJQ" },
+  { name: "Jump Scare",             set: "Duskmourn: House of Horror",  setDe: "Düstermorn: Haus des Grauens",       year: "2024", commander: "Zimone, Mystery Unraveler",        preconSetCode: "dsc", asin: "B0D692XWWB" },
+  { name: "Fear More Fears",        set: "Duskmourn: House of Horror",  setDe: "Düstermorn: Haus des Grauens",       year: "2024", commander: "Valgavoth, Harrower of Souls",     preconSetCode: "dsc", asin: "B0D5BQWN3W" },
+  // Aetherdrift — only 2 official Commander decks
+  { name: "Living Energy",          set: "Aetherdrift",                 setDe: "Aetherdrift",                        year: "2025", preconSetCode: "aec",                                            asin: "B0DNV42YWC" },
+  { name: "Eternal Might",          set: "Aetherdrift",                 setDe: "Aetherdrift",                        year: "2025", preconSetCode: "aec",                                            asin: "B0DNV55QBS" },
   // Modern Horizons 3
-  { name: "Creative Energy",        set: "Modern Horizons 3",           setDe: "Modern Horizons 3",                  year: "2024", commander: "Satya, Aetherflux Engineer",       preconSetCode: "m3c" },
-  { name: "Eldrazi Incursion",      set: "Modern Horizons 3",           setDe: "Modern Horizons 3",                  year: "2024", commander: "Ulalek, Fused Atrocity",           preconSetCode: "m3c" },
-  { name: "Graveyard Overdrive",    set: "Modern Horizons 3",           setDe: "Modern Horizons 3",                  year: "2024", commander: "Omo, Queen of Vesuva",             preconSetCode: "m3c" },
-  { name: "Tricky Terrain",         set: "Modern Horizons 3",           setDe: "Modern Horizons 3",                  year: "2024", commander: "Nadu, Winged Wisdom",              preconSetCode: "m3c" },
-  // Universes Beyond: Teenage Mutant Ninja Turtles
-  { name: "Shell Shocked",          set: "Teenage Mutant Ninja Turtles", setDe: "Teenage Mutant Ninja Turtles",      year: "2024", commander: "Michelangelo, Party Dude",         preconSetCode: "pip" },
-  { name: "Fearless",               set: "Teenage Mutant Ninja Turtles", setDe: "Teenage Mutant Ninja Turtles",      year: "2024", commander: "Raphael, Fighting Feral",          preconSetCode: "pip" },
-  { name: "Think Twice",            set: "Teenage Mutant Ninja Turtles", setDe: "Teenage Mutant Ninja Turtles",      year: "2024", commander: "Donatello, Intellectual",          preconSetCode: "pip" },
-  { name: "Party Mode",             set: "Teenage Mutant Ninja Turtles", setDe: "Teenage Mutant Ninja Turtles",      year: "2024", commander: "Leonardo, Fearless Leader",        preconSetCode: "pip" },
-  // Tarkir: Dragonstorm
-  { name: "Draconic Dominance",     set: "Tarkir: Dragonstorm",         setDe: "Tarkir: Drachensturm",               year: "2025", commander: "Sarkhan, Soul Aflame",             preconSetCode: "tdc" },
-  { name: "Ancestral Spirits",      set: "Tarkir: Dragonstorm",         setDe: "Tarkir: Drachensturm",               year: "2025", commander: "Zurgo, Khan of Mardu",             preconSetCode: "tdc" },
-  { name: "Timeless Wisdom",        set: "Tarkir: Dragonstorm",         setDe: "Tarkir: Drachensturm",               year: "2025", commander: "Narset, Enlightened Exile",        preconSetCode: "tdc" },
-  { name: "Shed No Blood",          set: "Tarkir: Dragonstorm",         setDe: "Tarkir: Drachensturm",               year: "2025", commander: "Anafenza, Kin-Tree Spirit",        preconSetCode: "tdc" },
+  { name: "Creative Energy",        set: "Modern Horizons 3",           setDe: "Modern Horizons 3",                  year: "2024", commander: "Satya, Aetherflux Engineer",       preconSetCode: "m3c", asin: "B0CSVBJDKS" },
+  { name: "Eldrazi Incursion",      set: "Modern Horizons 3",           setDe: "Modern Horizons 3",                  year: "2024", commander: "Ulalek, Fused Atrocity",           preconSetCode: "m3c", asin: "B0CSVBJFTQ" },
+  { name: "Graveyard Overdrive",    set: "Modern Horizons 3",           setDe: "Modern Horizons 3",                  year: "2024", commander: "Omo, Queen of Vesuva",             preconSetCode: "m3c", asin: "B0CTKSFVXK" },
+  { name: "Tricky Terrain",         set: "Modern Horizons 3",           setDe: "Modern Horizons 3",                  year: "2024", commander: "Nadu, Winged Wisdom",              preconSetCode: "m3c", asin: "B0CSV539P8" },
+  // Universes Beyond: Teenage Mutant Ninja Turtles — 1 Commander deck
+  { name: "Turtle Power!",          set: "Teenage Mutant Ninja Turtles", setDe: "Teenage Mutant Ninja Turtles",      year: "2026", commander: "Leonardo, the Balance",            preconSetCode: "pip", asin: "B0FR717633" },
+  // Tarkir: Dragonstorm — 5 Commander decks
+  { name: "Abzan Armor",            set: "Tarkir: Dragonstorm",         setDe: "Tarkir: Drachensturm",               year: "2025", commander: "Felothar the Steadfast",           preconSetCode: "tdc", asin: "B0DSQP4FBY" },
+  { name: "Jeskai Striker",         set: "Tarkir: Dragonstorm",         setDe: "Tarkir: Drachensturm",               year: "2025", commander: "Shiko and Narset, Unified",        preconSetCode: "tdc", asin: "B0DSR2ZHCR" },
+  { name: "Sultai Arisen",          set: "Tarkir: Dragonstorm",         setDe: "Tarkir: Drachensturm",               year: "2025", commander: "Teval, the Balanced Scale",        preconSetCode: "tdc", asin: "B0DSQX4P6M" },
+  { name: "Mardu Surge",            set: "Tarkir: Dragonstorm",         setDe: "Tarkir: Drachensturm",               year: "2025", commander: "Zurgo Stormrender",                preconSetCode: "tdc", asin: "B0DSQSGZV3" },
+  { name: "Temur Roar",             set: "Tarkir: Dragonstorm",         setDe: "Tarkir: Drachensturm",               year: "2025", commander: "Sarkhan, Soul Aflame",             preconSetCode: "tdc", asin: "B0DSR38H4H" },
 ];
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -124,37 +121,33 @@ function PreconRow({ deck, isLast, colors, langEn }: {
   colors: ReturnType<typeof useColors>;
   langEn: boolean;
 }) {
-  const primaryUri = deck.commander
-    ? `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(deck.commander)}&format=image&version=normal`
-    : null;
-  const [displayUri, setDisplayUri] = useState<string | null>(primaryUri);
   const [imgFailed, setImgFailed] = useState(false);
-
-  const handleImgError = async () => {
-    if (deck.preconSetCode) {
-      try {
-        const res = await fetch(
-          `https://api.scryfall.com/cards/search?q=set:${deck.preconSetCode}+is:commander&order=edhrec&unique=cards`,
-          { headers: { "Accept": "application/json;q=0.9,*/*;q=0.8" } }
-        );
-        if (res.ok) {
-          const data = await res.json();
-          const card = data?.data?.[0];
-          const uri = card?.image_uris?.normal ?? card?.card_faces?.[0]?.image_uris?.normal;
-          if (uri) { setDisplayUri(uri); return; }
-        }
-      } catch {}
-    }
-    setImgFailed(true);
-  };
+  const productImgUri = deck.asin && !imgFailed
+    ? `https://ws-na.amazon-adsystem.com/widgets/q?_encoding=UTF8&MarketPlace=DE&ASIN=${deck.asin}&ServiceVersion=20070822&ID=AsinImage&WS=1&Format=SL300`
+    : null;
 
   const setLabel = langEn ? deck.set : deck.setDe;
   const amazonSearch = encodeURIComponent("Magic the Gathering " + deck.name + " Commander Deck");
+  const amazonDeUrl  = deck.asin
+    ? `https://www.amazon.de/dp/${deck.asin}?tag=masterofmtg-21`
+    : `https://www.amazon.de/s?k=${amazonSearch}&tag=masterofmtg-21`;
+  const amazonComUrl = deck.asin
+    ? `https://www.amazon.com/dp/${deck.asin}?tag=mtg08d-20`
+    : `https://www.amazon.com/s?k=${amazonSearch}&tag=mtg08d-20`;
   const cardmarketLang = langEn ? "en" : "de";
   const cardmarketSearch = encodeURIComponent(deck.name);
 
   return (
     <View style={[styles.preconRow, { borderBottomColor: colors.border, borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth }]}>
+      {/* Product box image */}
+      {productImgUri ? (
+        <Image
+          source={{ uri: productImgUri }}
+          style={{ width: 60, height: 84, borderRadius: 6, marginRight: 10, backgroundColor: colors.border, flexShrink: 0 }}
+          resizeMode="contain"
+          onError={() => setImgFailed(true)}
+        />
+      ) : null}
       {/* Text info */}
       <View style={{ flex: 1, justifyContent: "center", gap: 2 }}>
         <Text style={[styles.preconName, { color: colors.foreground }]} numberOfLines={2}>{deck.name}</Text>
@@ -165,11 +158,11 @@ function PreconRow({ deck, isLast, colors, langEn }: {
         {/* Buy buttons: Amazon + Cardmarket */}
         <View style={{ flexDirection: "row", gap: 5, marginTop: 4, flexWrap: "wrap" }}>
           <TouchableOpacity style={[styles.amazonSmallBtn, { borderColor: "#ff990066", backgroundColor: "#ff990022" }]}
-            onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${amazonSearch}&tag=masterofmtg-21`)}>
+            onPress={() => Linking.openURL(amazonDeUrl)}>
             <Text style={[styles.amazonSmallBtnText, { color: "#ff9900" }]}>Amazon.de</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.amazonSmallBtn, { borderColor: "#3b82f666", backgroundColor: "#3b82f622" }]}
-            onPress={() => Linking.openURL(`https://www.amazon.com/s?k=${amazonSearch}&tag=mtg08d-20`)}>
+            onPress={() => Linking.openURL(amazonComUrl)}>
             <Text style={[styles.amazonSmallBtnText, { color: "#3b82f6" }]}>Amazon.com</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.amazonSmallBtn, { borderColor: "#2563eb66", backgroundColor: "#2563eb22" }]}
