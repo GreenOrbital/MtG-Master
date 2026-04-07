@@ -13,53 +13,57 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **API framework**: Express 5
 - **Database**: PostgreSQL + Drizzle ORM
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 
 ## Artifacts
 
 ### Master of MtG (artifacts/mtg-keywords)
-Expo mobile app for Magic: The Gathering keyword lookup.
+Expo mobile app (+ PWA) for Magic: The Gathering keyword lookup. Fully client-side — no AI/API server needed for core features.
 
 **Features:**
-- 60+ MtG keywords with full German and English explanations
-- Searchable keyword list with category filters (Fähigkeiten, Aktionen, Fähigkeitswörter)
+- 60+ MtG keywords with full German/English explanations (DE-first)
+- Searchable keyword list with category filters
 - Language toggle (DE/EN) persisted via AsyncStorage
-- Card search tab with German + English autocomplete (Scryfall API)
+- Card search tab with German + English autocomplete (Scryfall API direct)
 - Format legality badges (Standard, Pioneer, Modern, Legacy, Commander)
-- AI-generated Spieltipp (when to play) via GPT on API server
 - Similar cards suggestions (horizontal scroll, Scryfall EDHREC order)
-- Favorites (star button, persisted in AsyncStorage)
-- Recently searched cards (last 10, persisted in AsyncStorage)
-- Direct Scryfall link for prices, rulings, and all editions
-- Settings screen with language toggle and DB stats
-- Dark purple/arcane theme
+- Commander Spellbook combo lookup (called directly, no proxy)
+- Favorites + recently searched cards (AsyncStorage)
+- Scryfall link for prices, rulings, and editions
+- Cardmarket links for buying
+- Deck builder with mana/speed analysis
+- Synergy groups with card images + detail modals
+- **Deck Ideas** tab — 5 formats (Modern/Standard/Pioneer/Commander/Pauper), 40+ archetypes loaded locally (no network for list), card images fetched from Scryfall
+- Booster packs tab
+- Clerk auth for cross-device sync (uses minimal api-server for /api/user-data)
+- Dark purple/arcane theme (#050510 bg, #7c3aed primary, #06b6d4 accent)
 
 **Key files:**
-- `artifacts/mtg-keywords/data/keywords.ts` — full keyword dataset
-- `artifacts/mtg-keywords/app/(tabs)/index.tsx` — keyword browser
-- `artifacts/mtg-keywords/app/(tabs)/scan.tsx` — card search (main feature screen)
-- `artifacts/mtg-keywords/app/(tabs)/settings.tsx` — settings
-- `artifacts/mtg-keywords/context/SettingsContext.tsx` — language preference
-- `artifacts/mtg-keywords/context/CardHistoryContext.tsx` — favorites + recent cards
-- `artifacts/mtg-keywords/constants/colors.ts` — dark purple theme tokens
+- `artifacts/mtg-keywords/lib/deckArchetypes.ts` — all archetype data (12 Modern, 5 Standard, 5 Pioneer, 5 Commander, 4 Pauper)
+- `artifacts/mtg-keywords/lib/deckSuggestionService.ts` — getArchetypeList() + getDeckSuggestion() with Scryfall fetch
+- `artifacts/mtg-keywords/app/(tabs)/scan.tsx` — card search (main feature)
+- `artifacts/mtg-keywords/app/(tabs)/deckideas.tsx` — deck ideas (local data)
+- `artifacts/mtg-keywords/app/(tabs)/manapool.tsx` — deck builder
+- `artifacts/mtg-keywords/context/` — Settings, DeckContext, CardHistoryContext, AccountContext
+
+**Critical rules:**
+- NEVER use opacity:0 as animation start value
+- `useNativeDriver: Platform.OS !== "web"`
+- Parallax box is hardcoded `{x:10, y:8, w:80, h:84}` (no API call)
+- Commander Spellbook URL: `https://backend.commanderspellbook.com/variants/?q=${encodeURIComponent(`card:"${name}"`)}`
 
 ### API Server (artifacts/api-server)
-Express API powering AI features.
+Minimal Express API — kept only for Clerk-based user-data sync (`/api/user-data`).
+All other routes (deck-suggestion, card-combos, card-parallax) are now client-side.
 
-**Routes:**
-- `POST /api/card-tips` — GPT-generated German play tip for a card
-- `POST /api/scan-card` — (legacy) GPT vision card name detection
+**Active routes:**
+- `GET/PUT /api/user-data` — Clerk JWT auth, saves/loads decks + favorites + history to PostgreSQL
 - `GET /api/health` — health check
-
-**Config:** 20MB body limit for base64 images, OpenAI via Replit AI Integrations proxy
 
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `pnpm --filter @workspace/api-server run dev` — run API server locally
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.

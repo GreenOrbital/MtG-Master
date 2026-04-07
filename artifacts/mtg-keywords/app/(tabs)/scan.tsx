@@ -272,11 +272,6 @@ function matchLocalKeywords(scryfallKeywords: string[], oracleText: string): Mtg
   return Array.from(found.values());
 }
 
-function getApiBase(): string {
-  const domain = process.env["EXPO_PUBLIC_DOMAIN"];
-  return domain ? `https://${domain}` : "";
-}
-
 const HEADERS = Platform.OS === "web" ? {} : { "User-Agent": "MtGKeywordsApp/1.0" };
 
 async function fetchAutocompleteSuggestions(query: string): Promise<Suggestion[]> {
@@ -433,16 +428,9 @@ async function fetchSimilarCards(card: CardData): Promise<CardData[]> {
 async function fetchCombos(cardName: string): Promise<ComboData[]> {
   try {
     const q = `card:"${cardName}"`;
-    // On native: call Commander Spellbook directly (no CORS issue)
-    // On web: try proxy first, fall back to direct (CORS may block, but worth trying)
-    const urls: string[] = [];
-    if (Platform.OS !== "web") {
-      urls.push(`https://backend.commanderspellbook.com/variants/?q=${encodeURIComponent(q)}`);
-    } else {
-      const base = getApiBase();
-      if (base) urls.push(`${base}/api/card-combos?name=${encodeURIComponent(cardName)}`);
-      urls.push(`https://backend.commanderspellbook.com/variants/?q=${encodeURIComponent(q)}`);
-    }
+    const urls: string[] = [
+      `https://backend.commanderspellbook.com/variants/?q=${encodeURIComponent(q)}`,
+    ];
 
     for (const url of urls) {
       try {
@@ -631,22 +619,11 @@ export default function CardSearchScreen() {
   const liveY     = livePhotoAnim.interpolate({ inputRange: [0, 0.3, 0.6, 1], outputRange: [0, -5,  3,  0] });
   const liveScale = livePhotoAnim.interpolate({ inputRange: [0, 0.5, 1],       outputRange: [1.0, 1.02, 1.0] });
 
-  // Fetch AI-determined parallax bounding box for the card's main subject
+  // Static parallax bounding box (covers card art region)
   useEffect(() => {
     setParallaxBox(null);
     if (!card?.id || !cardArtUri) return;
-    const apiBase = getApiBase();
-    if (!apiBase) return;
-    fetch(
-      `${apiBase}/api/card-parallax?cardId=${encodeURIComponent(card.id)}&artUrl=${encodeURIComponent(cardArtUri)}`
-    )
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data && typeof data.x === "number") {
-          setParallaxBox({ x: data.x, y: data.y, w: data.w, h: data.h });
-        }
-      })
-      .catch(() => {});
+    setParallaxBox({ x: 10, y: 8, w: 80, h: 84 });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card?.id]);
 

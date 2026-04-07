@@ -20,14 +20,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { type Deck, type DeckCard, useDecks } from "@/context/DeckContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useColors } from "@/hooks/useColors";
-
-// ─── API base ────────────────────────────────────────────────────────────────
-
-function getApiBase(): string {
-  const domain = process.env["EXPO_PUBLIC_DOMAIN"];
-  if (!domain) return "";
-  return `https://${domain}`;
-}
+import { getArchetypeList, getDeckSuggestion, type ArchetypeMeta, type DeckSuggestion, type SuggestedCard } from "@/lib/deckSuggestionService";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -49,45 +42,6 @@ const FORMATS: GameFormat[] = [
   { key: "pauper",    labelDe: "Pauper",    labelEn: "Pauper",    icon: "cash-outline",          color: "#ef4444", descDe: "60 Karten · Nur Commons",   descEn: "60 cards · Commons only" },
 ];
 
-type ArchetypeMeta = {
-  key: string;
-  format?: string;
-  deckSize?: number;
-  labelDe: string;
-  labelEn: string;
-  colors: string[];
-  colorHex: string;
-  icon: string;
-  tagsDe: string[];
-  tagsEn: string[];
-  summaryDe: string;
-  summaryEn: string;
-};
-
-type SuggestedCard = {
-  id: string;
-  name: string;
-  count: number;
-  roleDe: string;
-  roleEn: string;
-  imageUri: string | null;
-  mana_cost: string;
-  cmc: number;
-  type_line: string;
-  oracle_text: string;
-  keywords: string[];
-  priceEur: number | null;
-  priceUsd: number | null;
-};
-
-type DeckSuggestion = ArchetypeMeta & {
-  whyDe: string;
-  whyEn: string;
-  totalCards: number;
-  commanderCard: SuggestedCard | null;
-  deckCards: SuggestedCard[];
-  landCards: SuggestedCard[];
-};
 
 // ─── Color symbols ───────────────────────────────────────────────────────────
 
@@ -273,45 +227,37 @@ export default function DeckIdeasScreen() {
 
   const [importFeedback, setImportFeedback] = useState<string | null>(null);
 
-  const apiBase = getApiBase();
-
-  // Load archetype list when format changes
+  // Load archetype list when format changes (synchronous — no network needed)
   useEffect(() => {
-    async function load() {
-      setLoadingList(true);
-      setListError(null);
-      setSelectedKey(null);
-      setSuggestion(null);
-      try {
-        const r = await fetch(`${apiBase}/api/deck-suggestion/archetypes?format=${selectedFormat}`);
-        const data = await r.json();
-        setArchetypes(data.archetypes ?? []);
-      } catch {
-        setListError(showEnglish ? "Could not load archetypes." : "Archetypen konnten nicht geladen werden.");
-      } finally {
-        setLoadingList(false);
-      }
+    setLoadingList(true);
+    setListError(null);
+    setSelectedKey(null);
+    setSuggestion(null);
+    try {
+      setArchetypes(getArchetypeList(selectedFormat));
+    } catch {
+      setListError(showEnglish ? "Could not load archetypes." : "Archetypen konnten nicht geladen werden.");
+    } finally {
+      setLoadingList(false);
     }
-    if (apiBase) load();
-  }, [apiBase, selectedFormat]);
+  }, [selectedFormat, showEnglish]);
 
-  // Load specific archetype deck
+  // Load specific archetype deck (fetches card images from Scryfall)
   const loadSuggestion = useCallback(async (key: string) => {
     setSelectedKey(key);
     setSuggestion(null);
     setSuggestionError(null);
     setLoadingSuggestion(true);
     try {
-      const r = await fetch(`${apiBase}/api/deck-suggestion/${key}?format=${selectedFormat}`);
-      if (!r.ok) throw new Error("not found");
-      const data: DeckSuggestion = await r.json();
+      const data = await getDeckSuggestion(key, selectedFormat);
+      if (!data) throw new Error("not found");
       setSuggestion(data);
     } catch {
       setSuggestionError(showEnglish ? "Deck could not be loaded." : "Deck konnte nicht geladen werden.");
     } finally {
       setLoadingSuggestion(false);
     }
-  }, [apiBase, showEnglish, selectedFormat]);
+  }, [showEnglish, selectedFormat]);
 
   function handleImportDeck() {
     if (!suggestion) return;

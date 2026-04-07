@@ -66,29 +66,39 @@ function translateComboEffect(effect: string): string {
   return effect;
 }
 
-function getApiBase(): string {
-  const domain = process.env["EXPO_PUBLIC_DOMAIN"];
-  return domain ? `https://${domain}` : "";
-}
-
 async function fetchDeckCombos(cardNames: string[]): Promise<ComboData[]> {
-  try {
-    const apiBase = getApiBase();
-    if (!apiBase) {
-      return [];
-    }
-    const res = await fetch(`${apiBase}/api/deck-combos`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cardNames }),
-      signal: AbortSignal.timeout(30_000),
-    });
-    if (!res.ok) return [];
-    const data = await res.json() as { results?: ComboData[] };
-    return Array.isArray(data.results) ? data.results : [];
-  } catch {
-    return [];
-  }
+  const results: ComboData[] = [];
+  const seen = new Set<string>();
+  await Promise.all(
+    cardNames.slice(0, 12).map(async (name) => {
+      try {
+        const q = encodeURIComponent(`card:"${name}"`);
+        const res = await fetch(
+          `https://backend.commanderspellbook.com/variants/?q=${q}`,
+          { signal: AbortSignal.timeout(8000) }
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as { results?: unknown[] };
+        const raw = Array.isArray(data.results) ? data.results : [];
+        for (const r of raw.slice(0, 3) as any[]) {
+          const id = String(r.id);
+          if (seen.has(id)) continue;
+          seen.add(id);
+          results.push({
+            id,
+            cards: (r.uses ?? []).map((u: any) => ({
+              name: u.card?.name ?? "",
+              imageSmall: u.card?.imageUriFrontSmall ?? undefined,
+            })),
+            produces: (r.produces ?? []).map((p: any) => p.feature?.name ?? "").filter(Boolean),
+            description: r.description ?? "",
+            popularity: r.popularity ?? undefined,
+          });
+        }
+      } catch { /* ignore per-card errors */ }
+    })
+  );
+  return results.slice(0, 12);
 }
 
 
