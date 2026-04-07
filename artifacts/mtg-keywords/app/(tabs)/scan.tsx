@@ -827,35 +827,11 @@ export default function CardSearchScreen() {
           <Text style={[styles.title, { color: colors.foreground }]}>
             {showEnglish ? "Card Search" : "Karte suchen"}
           </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            {card && !loadingCard && (
-              <TouchableOpacity
-                style={[styles.refreshCardBtn, { borderColor: colors.border }]}
-                onPress={refreshCurrentCard}
-                activeOpacity={0.75}
-              >
-                <Ionicons name="refresh-outline" size={16} color={colors.accent} />
-              </TouchableOpacity>
-            )}
-            {card && loadingCard && (
-              <View style={[styles.refreshCardBtn, { borderColor: colors.border }]}>
-                <ActivityIndicator size="small" color={colors.accent} />
-              </View>
-            )}
-            <LanguageToggle showEnglish={showEnglish} onToggle={() => setShowEnglish(!showEnglish)} />
-          </View>
+          <LanguageToggle showEnglish={showEnglish} onToggle={() => setShowEnglish(!showEnglish)} />
         </View>
-        {card && lastCardUpdated && !loadingCard ? (
-          <Text style={[styles.scanLastUpdated, { color: colors.mutedForeground }]}>
-            {showEnglish
-              ? `Updated ${lastCardUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-              : `Aktualisiert um ${lastCardUpdated.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr`}
-          </Text>
-        ) : (
-          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            {showEnglish ? "Search by English or German card name" : "Deutschen oder englischen Kartennamen eingeben"}
-          </Text>
-        )}
+        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+          {showEnglish ? "Search by English or German card name" : "Deutschen oder englischen Kartennamen eingeben"}
+        </Text>
         <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.primary + "80" },
           Platform.OS === "ios" ? { shadowColor: colors.primary, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.35, shadowRadius: 10 } : {}
         ]}>
@@ -1017,7 +993,7 @@ export default function CardSearchScreen() {
                   {/* Name + star — only shown if no hero image */}
                   {!cardImageUri && (
                     <View style={styles.nameRow}>
-                      <Text style={[styles.cardName, { color: colors.foreground }]} numberOfLines={2}>{displayName}</Text>
+                      <Text style={[styles.cardName, { color: colors.foreground, flex: 1 }]} numberOfLines={2}>{displayName}</Text>
                       <TouchableOpacity onPress={() => toggleFavorite({
                         id: card.id, name: card.name, printed_name: card.printed_name,
                         type_line: card.type_line, printed_type_line: card.printed_type_line,
@@ -1028,6 +1004,24 @@ export default function CardSearchScreen() {
                       </TouchableOpacity>
                     </View>
                   )}
+                  {/* Refresh button — always visible when card is loaded */}
+                  <TouchableOpacity
+                    style={[styles.refreshCardInline, { borderColor: colors.border, backgroundColor: colors.secondary }]}
+                    onPress={refreshCurrentCard}
+                    activeOpacity={0.75}
+                    disabled={loadingCard}
+                  >
+                    {loadingCard
+                      ? <ActivityIndicator size="small" color={colors.accent} />
+                      : <Ionicons name="refresh-outline" size={13} color={colors.accent} />}
+                    <Text style={[styles.refreshCardInlineText, { color: colors.accent }]}>
+                      {lastCardUpdated
+                        ? (showEnglish
+                          ? `Updated ${lastCardUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                          : `Akt. ${lastCardUpdated.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr`)
+                        : (showEnglish ? "Update card" : "Karte aktualisieren")}
+                    </Text>
+                  </TouchableOpacity>
 
                   {/* English name (if German card, when no hero) */}
                   {!cardImageUri && card.printed_name && card.name !== card.printed_name && (
@@ -1811,6 +1805,8 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", marginBottom: 10, lineHeight: 18 },
   refreshCardBtn: { borderRadius: 8, borderWidth: 1, padding: 6, alignItems: "center", justifyContent: "center" },
   scanLastUpdated: { fontSize: 11, fontFamily: "Inter_400Regular", marginBottom: 10 },
+  refreshCardInline: { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 7, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4, alignSelf: "flex-start", marginTop: 4, marginBottom: 2 },
+  refreshCardInlineText: { fontSize: 11, fontFamily: "Inter_500Medium" },
   inputRow: { flexDirection: "row", alignItems: "center", borderRadius: 24, borderWidth: 1.5, paddingHorizontal: 14, paddingVertical: 11, gap: 8 },
   input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", padding: 0 },
   dropdown: {

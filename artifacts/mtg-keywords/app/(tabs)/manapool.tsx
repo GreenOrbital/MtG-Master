@@ -20,7 +20,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LanguageToggle } from "@/components/LanguageToggle";
-import { useAccount } from "@/context/AccountContext";
 import { type Deck, type DeckCard, useDecks } from "@/context/DeckContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useColors } from "@/hooks/useColors";
@@ -637,7 +636,6 @@ export default function ManapoolScreen() {
   const insets = useSafeAreaInsets();
   const { showEnglish, setShowEnglish } = useSettings();
   const { decks, createDeck, updateDeck, deleteDeck, removeCardFromDeck, adjustCardCount, importDeck } = useDecks();
-  const { isSignedIn } = useAccount();
 
   const router = useRouter();
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
@@ -1914,9 +1912,7 @@ export default function ManapoolScreen() {
                   <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 1 }}>
                     {formatSavedAt(activeDeck.savedAt)}
                     {"  ·  "}
-                    {isSignedIn
-                      ? (showEnglish ? "Local + Cloud" : "Lokal + Cloud")
-                      : (showEnglish ? "Local (log in for cloud backup)" : "Lokal (anmelden für Cloud-Backup)")}
+                    {showEnglish ? "Saved locally" : "Lokal gespeichert"}
                   </Text>
                 </View>
               )}

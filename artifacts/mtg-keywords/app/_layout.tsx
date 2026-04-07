@@ -17,7 +17,6 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import OfflineGuard from "@/components/OfflineGuard";
-import { AccountProvider } from "@/context/AccountContext";
 import { CardHistoryProvider } from "@/context/CardHistoryContext";
 import { DeckProvider } from "@/context/DeckContext";
 import { SettingsProvider } from "@/context/SettingsContext";
@@ -43,9 +42,7 @@ function AppProviders({ children }: { children: React.ReactNode }) {
     <SettingsProvider>
       <DeckProvider>
         <CardHistoryProvider>
-          <AccountProvider>
-            {children}
-          </AccountProvider>
+          {children}
         </CardHistoryProvider>
       </DeckProvider>
     </SettingsProvider>

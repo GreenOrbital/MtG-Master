@@ -1,9 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "@clerk/expo";
-import { useRouter } from "expo-router";
 import React from "react";
 import {
-  ActivityIndicator,
   Linking,
   Platform,
   ScrollView,
@@ -15,7 +12,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useAccount } from "@/context/AccountContext";
 import { useSettings } from "@/context/SettingsContext";
 import { MTG_KEYWORDS } from "@/data/keywords";
 import { useColors } from "@/hooks/useColors";
@@ -143,9 +139,6 @@ export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { showEnglish, setShowEnglish } = useSettings();
-  const { isSignedIn, userEmail, isSyncing, lastSyncedAt, syncError, syncToCloud, loadFromCloud } = useAccount();
-  const { signOut } = useAuth();
-  const router = useRouter();
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 84 + 34 : insets.bottom + 84;
@@ -153,11 +146,6 @@ export default function SettingsScreen() {
   const abilityCount = MTG_KEYWORDS.filter((k) => k.category === "keyword_ability").length;
   const actionCount = MTG_KEYWORDS.filter((k) => k.category === "keyword_action").length;
   const wordCount = MTG_KEYWORDS.filter((k) => k.category === "ability_word").length;
-
-  function formatSyncTime(date: Date | null): string {
-    if (!date) return "";
-    return date.toLocaleTimeString(showEnglish ? "en-US" : "de-DE", { hour: "2-digit", minute: "2-digit" });
-  }
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -172,84 +160,6 @@ export default function SettingsScreen() {
         contentContainerStyle={{ paddingBottom: bottomPad }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Konto-Sektion ── */}
-        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
-            {showEnglish ? "ACCOUNT" : "KONTO"}
-          </Text>
-          {isSignedIn ? (
-            <>
-              <SettingRow
-                label={showEnglish ? "Signed in as" : "Angemeldet als"}
-                subtitle={userEmail ?? ""}
-                right={<Ionicons name="checkmark-circle" size={20} color="#22c55e" />}
-              />
-              <SettingRow
-                label={showEnglish ? "Last Sync" : "Letzter Sync"}
-                subtitle={
-                  syncError
-                    ? syncError
-                    : lastSyncedAt
-                    ? formatSyncTime(lastSyncedAt)
-                    : showEnglish ? "Not yet synced" : "Noch nicht synchronisiert"
-                }
-                right={
-                  isSyncing ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : (
-                    <TouchableOpacity onPress={syncToCloud} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      <Ionicons name="cloud-upload-outline" size={18} color={colors.primary} />
-                    </TouchableOpacity>
-                  )
-                }
-              />
-              <SettingRow
-                label={showEnglish ? "Load from Cloud" : "Aus Cloud laden"}
-                subtitle={showEnglish ? "Overwrite local data with cloud data" : "Lokale Daten mit Cloud-Daten überschreiben"}
-                right={
-                  <TouchableOpacity onPress={loadFromCloud} disabled={isSyncing}>
-                    <Ionicons name="cloud-download-outline" size={18} color={colors.mutedForeground} />
-                  </TouchableOpacity>
-                }
-              />
-              <View style={[styles.row, { borderBottomColor: colors.border }]}>
-                <TouchableOpacity
-                  style={[styles.signOutBtn, { borderColor: "#ef444440" }]}
-                  onPress={() => signOut()}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="log-out-outline" size={16} color="#ef4444" />
-                  <Text style={[styles.signOutText, { color: "#ef4444" }]}>
-                    {showEnglish ? "Sign Out" : "Abmelden"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : (
-            <View style={[styles.row, { borderBottomColor: colors.border }]}>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={[styles.rowLabel, { color: colors.foreground }]}>
-                  {showEnglish ? "Sync across devices" : "Geräteübergreifend synchronisieren"}
-                </Text>
-                <Text style={[styles.rowSub, { color: colors.mutedForeground }]}>
-                  {showEnglish
-                    ? "Sign in to access your decks and favorites everywhere"
-                    : "Anmelden, um überall auf Decks und Favoriten zuzugreifen"}
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.signInBtn, { backgroundColor: colors.primary }]}
-                onPress={() => router.push("/(auth)/sign-in")}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.signInBtnText}>
-                  {showEnglish ? "Sign In" : "Anmelden"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
             {showEnglish ? "LANGUAGE" : "SPRACHE"}
@@ -459,30 +369,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     lineHeight: 18,
-  },
-  signInBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 10,
-    flexShrink: 0,
-  },
-  signInBtnText: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-    color: "#fff",
-  },
-  signOutBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignSelf: "flex-start",
-  },
-  signOutText: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
   },
 });
