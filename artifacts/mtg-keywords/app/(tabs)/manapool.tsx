@@ -776,9 +776,10 @@ export default function ManapoolScreen() {
 
   // ── Shared simulation controls (format + mulligans) ─────────────────────────
   const [simFormat, setSimFormat]         = useState<GameFormat>("standard");
-  const [simMulligans, setSimMulligans]   = useState<0 | 1 | 2>(0);
-  // derived: hand size = 7 − mulligans
-  const simHandSize = (7 - simMulligans) as 5 | 6 | 7;
+  const [simMulligans, setSimMulligans]   = useState<0 | 1 | 2 | 3>(0);
+  // London Mulligan: first mulligan is free (no card loss), each further costs 1
+  // 0→7, 1→7, 2→6, 3→5
+  const simHandSize = (simMulligans === 0 ? 7 : 8 - simMulligans) as 5 | 6 | 7;
 
   // ── Draw-Simulation state ───────────────────────────────────────────────────
   const [simCardName, setSimCardName]     = useState<string | null>(null);
@@ -826,6 +827,27 @@ export default function ManapoolScreen() {
   const bottomPad = Platform.OS === "web" ? 84 + 34 : insets.bottom + 84;
 
   const activeDeck = decks.find((d) => d.id === activeDeckId) ?? null;
+
+  // Computed from activeDeck — used in both simulation sections
+  const actualDeckSize = activeDeck?.cards.reduce((a, c) => a + c.count, 0) ?? 0;
+  const isAutoFormat   = !!activeDeck?.format && activeDeck.format === simFormat;
+
+  // Auto-detect format + reset card selection when deck changes
+  useEffect(() => {
+    if (!activeDeck) return;
+    if (activeDeck.format) {
+      setSimFormat(activeDeck.format);
+    } else {
+      // Infer from total card count
+      const total = activeDeck.cards.reduce((a, c) => a + c.count, 0);
+      if (total >= 90) setSimFormat("commander");
+      else if (total <= 45) setSimFormat("limited");
+      else setSimFormat("standard");
+    }
+    setSimCardName(null);
+    setSimBuckets(null);
+    setMcResult(null);
+  }, [activeDeckId]);
 
   const CARD_CATEGORIES = [
     { key: "creature",     labelDe: "Kreaturen",    labelEn: "Creatures",     color: "#d3202a", match: "creature" },
@@ -2088,8 +2110,8 @@ export default function ManapoolScreen() {
               const selectedCard = simNonLandCards.find((c) => c.name === simCardName) ?? null;
 
               const mullLabels = showEnglish
-                ? ["No mulligan\n7 cards", "1 mulligan\n6 cards", "2 mulligans\n5 cards"]
-                : ["Kein Mulligan\n7 Karten", "1 Mulligan\n6 Karten", "2 Mulligans\n5 Karten"];
+                ? ["No mulligan\n7 cards", "1 mulligan\n7 cards", "2 mulligans\n6 cards", "3 mulligans\n5 cards"]
+                : ["Kein Mulligan\n7 Karten", "1 Mulligan\n7 Karten", "2 Mulligans\n6 Karten", "3 Mulligans\n5 Karten"];
 
               return (
                 <>
@@ -2098,11 +2120,23 @@ export default function ManapoolScreen() {
                   </Text>
                   <View style={[styles.analysisBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
 
-                    {/* 1. Game mode */}
+                    {/* 1. Game mode — auto-detected from deck, overridable */}
                     <View style={{ gap: 6 }}>
-                      <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
-                        {showEnglish ? "Game Mode" : "Spielmodus"}
-                      </Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
+                          {showEnglish ? "Game Mode" : "Spielmodus"}
+                        </Text>
+                        {isAutoFormat && (
+                          <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5, backgroundColor: "#06b6d4" + "22", borderWidth: 1, borderColor: "#06b6d4" + "55" }}>
+                            <Text style={{ fontSize: 9, color: "#06b6d4", fontFamily: "Inter_600SemiBold" }}>
+                              {showEnglish ? "auto" : "auto"}
+                            </Text>
+                          </View>
+                        )}
+                        <Text style={{ fontSize: 10, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                          {actualDeckSize} {showEnglish ? "cards in deck" : "Ktn. im Deck"}
+                        </Text>
+                      </View>
                       <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
                         {FORMAT_KEYS.map((fk) => {
                           const fi = GAME_FORMATS[fk];
@@ -2119,7 +2153,7 @@ export default function ManapoolScreen() {
                               activeOpacity={0.75}
                             >
                               <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: sel ? "#fff" : colors.mutedForeground }}>{showEnglish ? fi.labelEn : fi.labelDe}</Text>
-                              <Text style={{ fontSize: 9, color: sel ? "#ffffffaa" : colors.mutedForeground, fontFamily: "Inter_400Regular" }}>{fi.deckSize} {showEnglish ? "cards" : "Ktn."}</Text>
+                              <Text style={{ fontSize: 9, color: sel ? "#ffffffaa" : colors.mutedForeground, fontFamily: "Inter_400Regular" }}>max. {fi.maxCopies}×</Text>
                             </TouchableOpacity>
                           );
                         })}
@@ -2131,18 +2165,18 @@ export default function ManapoolScreen() {
                       <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
                         {showEnglish ? "Starting Hand" : "Starthand"}
                       </Text>
-                      <View style={{ flexDirection: "row", gap: 6 }}>
-                        {([0, 1, 2] as const).map((m, i) => {
+                      <View style={{ flexDirection: "row", gap: 5 }}>
+                        {([0, 1, 2, 3] as const).map((m, i) => {
                           const sel = simMulligans === m;
                           const lines = mullLabels[i].split("\n");
                           return (
                             <TouchableOpacity
                               key={m}
-                              style={{ flex: 1, paddingVertical: 9, paddingHorizontal: 4, borderRadius: 8, alignItems: "center", backgroundColor: sel ? colors.primary : colors.background, borderWidth: 1, borderColor: sel ? colors.primary : colors.border }}
+                              style={{ flex: 1, paddingVertical: 9, paddingHorizontal: 2, borderRadius: 8, alignItems: "center", backgroundColor: sel ? colors.primary : colors.background, borderWidth: 1, borderColor: sel ? colors.primary : colors.border }}
                               onPress={() => { setSimMulligans(m); setSimBuckets(null); }}
                               activeOpacity={0.75}
                             >
-                              <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: sel ? "#fff" : colors.foreground, textAlign: "center" }}>{lines[0]}</Text>
+                              <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: sel ? "#fff" : colors.foreground, textAlign: "center" }}>{lines[0]}</Text>
                               <Text style={{ fontSize: 9, color: sel ? "#ffffffcc" : colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center" }}>{lines[1]}</Text>
                             </TouchableOpacity>
                           );
@@ -2258,7 +2292,7 @@ export default function ManapoolScreen() {
                     {simCardName && !simRunning && (
                       <TouchableOpacity
                         style={{ backgroundColor: colors.primary, borderRadius: 10, padding: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
-                        onPress={() => runSimulation(fmtInfo.deckSize, cappedCopies, simHandSize)}
+                        onPress={() => runSimulation(actualDeckSize, cappedCopies, simHandSize)}
                         activeOpacity={0.8}
                       >
                         <Ionicons name="analytics-outline" size={16} color="#fff" />
@@ -2389,9 +2423,19 @@ export default function ManapoolScreen() {
 
                     {/* Shared controls (same game mode + mulligans as Draw Probability above) */}
                     <View style={{ gap: 6 }}>
-                      <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
-                        {showEnglish ? "Game Mode" : "Spielmodus"}
-                      </Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
+                          {showEnglish ? "Game Mode" : "Spielmodus"}
+                        </Text>
+                        {isAutoFormat && (
+                          <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5, backgroundColor: "#06b6d4" + "22", borderWidth: 1, borderColor: "#06b6d4" + "55" }}>
+                            <Text style={{ fontSize: 9, color: "#06b6d4", fontFamily: "Inter_600SemiBold" }}>auto</Text>
+                          </View>
+                        )}
+                        <Text style={{ fontSize: 10, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                          {actualDeckSize} {showEnglish ? "cards in deck" : "Ktn. im Deck"}
+                        </Text>
+                      </View>
                       <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
                         {FORMAT_KEYS.map((fk) => {
                           const fi = GAME_FORMATS[fk];
@@ -2404,7 +2448,7 @@ export default function ManapoolScreen() {
                               activeOpacity={0.75}
                             >
                               <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: sel ? "#fff" : colors.mutedForeground }}>{showEnglish ? fi.labelEn : fi.labelDe}</Text>
-                              <Text style={{ fontSize: 9, color: sel ? "#ffffffaa" : colors.mutedForeground, fontFamily: "Inter_400Regular" }}>{fi.deckSize} {showEnglish ? "cards" : "Ktn."}</Text>
+                              <Text style={{ fontSize: 9, color: sel ? "#ffffffaa" : colors.mutedForeground, fontFamily: "Inter_400Regular" }}>max. {fi.maxCopies}×</Text>
                             </TouchableOpacity>
                           );
                         })}
@@ -2415,21 +2459,21 @@ export default function ManapoolScreen() {
                       <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
                         {showEnglish ? "Starting Hand" : "Starthand"}
                       </Text>
-                      <View style={{ flexDirection: "row", gap: 6 }}>
-                        {([0, 1, 2] as const).map((m, i) => {
+                      <View style={{ flexDirection: "row", gap: 5 }}>
+                        {([0, 1, 2, 3] as const).map((m, i) => {
                           const sel = simMulligans === m;
                           const mcMullLabels = showEnglish
-                            ? ["No mulligan\n7 cards", "1 mulligan\n6 cards", "2 mulligans\n5 cards"]
-                            : ["Kein Mulligan\n7 Karten", "1 Mulligan\n6 Karten", "2 Mulligans\n5 Karten"];
+                            ? ["No mulligan\n7 cards", "1 mulligan\n7 cards", "2 mulligans\n6 cards", "3 mulligans\n5 cards"]
+                            : ["Kein Mulligan\n7 Karten", "1 Mulligan\n7 Karten", "2 Mulligans\n6 Karten", "3 Mulligans\n5 Karten"];
                           const lines = mcMullLabels[i].split("\n");
                           return (
                             <TouchableOpacity
                               key={m}
-                              style={{ flex: 1, paddingVertical: 9, paddingHorizontal: 4, borderRadius: 8, alignItems: "center", backgroundColor: sel ? colors.primary : colors.background, borderWidth: 1, borderColor: sel ? colors.primary : colors.border }}
+                              style={{ flex: 1, paddingVertical: 9, paddingHorizontal: 2, borderRadius: 8, alignItems: "center", backgroundColor: sel ? colors.primary : colors.background, borderWidth: 1, borderColor: sel ? colors.primary : colors.border }}
                               onPress={() => { setSimMulligans(m); setMcResult(null); }}
                               activeOpacity={0.75}
                             >
-                              <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: sel ? "#fff" : colors.foreground, textAlign: "center" }}>{lines[0]}</Text>
+                              <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: sel ? "#fff" : colors.foreground, textAlign: "center" }}>{lines[0]}</Text>
                               <Text style={{ fontSize: 9, color: sel ? "#ffffffcc" : colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center" }}>{lines[1]}</Text>
                             </TouchableOpacity>
                           );
