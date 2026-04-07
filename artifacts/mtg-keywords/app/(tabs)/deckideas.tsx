@@ -155,22 +155,6 @@ function PreconRow({ deck, isLast, colors, langEn }: {
 
   return (
     <View style={[styles.preconRow, { borderBottomColor: colors.border, borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth }]}>
-      {/* Full card image — portrait, like a deck box */}
-      <View style={{ width: 62, height: 87, borderRadius: 7, overflow: "hidden", marginRight: 10, backgroundColor: "#16a34a22", flexShrink: 0, borderWidth: 1, borderColor: "#16a34a33" }}>
-        {displayUri && !imgFailed ? (
-          <Image
-            source={{ uri: displayUri }}
-            style={{ width: 62, height: 87 }}
-            resizeMode="cover"
-            onError={handleImgError}
-          />
-        ) : (
-          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-            <Ionicons name="shield-half-outline" size={28} color="#16a34a66" />
-          </View>
-        )}
-      </View>
-
       {/* Text info */}
       <View style={{ flex: 1, justifyContent: "center", gap: 2 }}>
         <Text style={[styles.preconName, { color: colors.foreground }]} numberOfLines={2}>{deck.name}</Text>
