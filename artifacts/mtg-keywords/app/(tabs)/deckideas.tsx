@@ -195,6 +195,17 @@ function CardDetailModal({
               </Text>
               <Ionicons name="open-outline" size={14} color="#1da462" />
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.cardmarketBtn, { backgroundColor: "#ff990018", borderColor: "#ff990044" }]}
+              onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent(card.name + " Magic the Gathering Karte")}&tag=masterofmtg-21`)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="cart-outline" size={16} color="#ff9900" />
+              <Text style={[styles.cardmarketBtnText, { color: "#ff9900" }]}>
+                {showEnglish ? "Buy on Amazon" : "Bei Amazon kaufen"}
+              </Text>
+              <Ionicons name="open-outline" size={14} color="#ff9900" />
+            </TouchableOpacity>
           </ScrollView>
         </View>
       </View>
