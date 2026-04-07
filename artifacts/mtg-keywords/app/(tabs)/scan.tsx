@@ -1202,7 +1202,14 @@ export default function CardSearchScreen() {
                   onPress={() => card && Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent(card.name + " Magic the Gathering Karte")}&tag=masterofmtg-21`)}
                 >
                   <Ionicons name="cart-outline" size={13} color="#ff9900" />
-                  <Text style={[styles.externalLinkText, { color: "#ff9900" }]}>Amazon</Text>
+                  <Text style={[styles.externalLinkText, { color: "#ff9900" }]}>Amazon.de</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.externalLinkBtn, { borderColor: "#3b82f644", backgroundColor: "#3b82f618" }]}
+                  onPress={() => card && Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent(card.name + " Magic the Gathering Card")}`)}
+                >
+                  <Ionicons name="cart-outline" size={13} color="#3b82f6" />
+                  <Text style={[styles.externalLinkText, { color: "#3b82f6" }]}>Amazon.com</Text>
                 </TouchableOpacity>
               </View>
 
@@ -1574,8 +1581,8 @@ export default function CardSearchScreen() {
                         <TouchableOpacity
                           key={i}
                           style={[styles.boosterRow, { backgroundColor: colors.card, borderColor: colors.border }]}
-                          onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent("Magic the Gathering " + bp.setName + " Booster")}&tag=masterofmtg-21`)}
-                          activeOpacity={0.7}
+                          onPress={() => {}}
+                          activeOpacity={1}
                         >
                           <View style={[styles.boosterSetCode, { backgroundColor: colors.primary + "22" }]}>
                             <Text style={[styles.boosterSetCodeText, { color: colors.primary }]}>{bp.setCode}</Text>
@@ -1584,7 +1591,16 @@ export default function CardSearchScreen() {
                             <Text style={[styles.boosterSetName, { color: colors.foreground }]} numberOfLines={1}>{bp.setName}</Text>
                             <Text style={[styles.boosterSetType, { color: colors.mutedForeground }]}>{typeLabel}{year ? ` · ${year}` : ""}</Text>
                           </View>
-                          <Ionicons name="cart-outline" size={16} color="#ff9900" />
+                          <View style={{ flexDirection: "row", gap: 6 }}>
+                            <TouchableOpacity style={[styles.amazonSmallBtn, { borderColor: "#ff990066", backgroundColor: "#ff990022" }]}
+                              onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent("Magic the Gathering " + bp.setName + " Booster")}&tag=masterofmtg-21`)}>
+                              <Text style={[styles.amazonSmallBtnText, { color: "#ff9900" }]}>DE</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.amazonSmallBtn, { borderColor: "#3b82f666", backgroundColor: "#3b82f622" }]}
+                              onPress={() => Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent("Magic the Gathering " + bp.setName + " Booster Pack")}`)}>
+                              <Text style={[styles.amazonSmallBtnText, { color: "#3b82f6" }]}>COM</Text>
+                            </TouchableOpacity>
+                          </View>
                         </TouchableOpacity>
                       );
                     })}
@@ -1934,6 +1950,8 @@ const styles = StyleSheet.create({
   boosterList: { gap: 6, padding: 12, paddingTop: 4 },
   boosterRow: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 10, borderWidth: 1, padding: 10 },
   boosterSetCode: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 4, minWidth: 42, alignItems: "center" },
+  amazonSmallBtn: { borderRadius: 6, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 5, alignItems: "center", justifyContent: "center" },
+  amazonSmallBtnText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.4 },
   boosterSetCodeText: { fontSize: 11, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
   boosterMeta: { flex: 1, gap: 1 },
   boosterSetName: { fontSize: 13, fontFamily: "Inter_600SemiBold" },

@@ -235,28 +235,48 @@ function CardDetailModal({
               </Text>
               <Ionicons name="open-outline" size={14} color="#1da462" />
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.cardmarketBtn, { backgroundColor: "#ff990018", borderColor: "#ff990044" }]}
-              onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent(card.name + " Magic the Gathering Karte")}&tag=masterofmtg-21`)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="cart-outline" size={16} color="#ff9900" />
-              <Text style={[styles.cardmarketBtnText, { color: "#ff9900" }]}>
-                {showEnglish ? "Buy card on Amazon" : "Karte bei Amazon kaufen"}
-              </Text>
-              <Ionicons name="open-outline" size={14} color="#ff9900" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.cardmarketBtn, { backgroundColor: "#f59e0b18", borderColor: "#f59e0b44" }]}
-              onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent("Magic the Gathering " + card.name + " Booster Pack")}&tag=masterofmtg-21`)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="gift-outline" size={16} color="#f59e0b" />
-              <Text style={[styles.cardmarketBtnText, { color: "#f59e0b" }]}>
-                {showEnglish ? "Find booster packs on Amazon" : "Booster Packs bei Amazon suchen"}
-              </Text>
-              <Ionicons name="open-outline" size={14} color="#f59e0b" />
-            </TouchableOpacity>
+            {/* Amazon card — DE + COM row */}
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <TouchableOpacity
+                style={[styles.cardmarketBtn, { flex: 1, backgroundColor: "#ff990018", borderColor: "#ff990044" }]}
+                onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent(card.name + " Magic the Gathering Karte")}&tag=masterofmtg-21`)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="cart-outline" size={15} color="#ff9900" />
+                <Text style={[styles.cardmarketBtnText, { color: "#ff9900" }]}>Amazon.de</Text>
+                <Ionicons name="open-outline" size={13} color="#ff9900" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.cardmarketBtn, { flex: 1, backgroundColor: "#3b82f618", borderColor: "#3b82f644" }]}
+                onPress={() => Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent(card.name + " Magic the Gathering Card")}`)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="cart-outline" size={15} color="#3b82f6" />
+                <Text style={[styles.cardmarketBtnText, { color: "#3b82f6" }]}>Amazon.com</Text>
+                <Ionicons name="open-outline" size={13} color="#3b82f6" />
+              </TouchableOpacity>
+            </View>
+            {/* Amazon booster — DE + COM row */}
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <TouchableOpacity
+                style={[styles.cardmarketBtn, { flex: 1, backgroundColor: "#f59e0b18", borderColor: "#f59e0b44" }]}
+                onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent("Magic the Gathering " + card.name + " Booster Pack")}&tag=masterofmtg-21`)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="gift-outline" size={15} color="#f59e0b" />
+                <Text style={[styles.cardmarketBtnText, { color: "#f59e0b" }]}>{showEnglish ? "Booster .de" : "Booster .de"}</Text>
+                <Ionicons name="open-outline" size={13} color="#f59e0b" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.cardmarketBtn, { flex: 1, backgroundColor: "#8b5cf618", borderColor: "#8b5cf644" }]}
+                onPress={() => Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent("Magic the Gathering " + card.name + " Booster Pack")}`)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="gift-outline" size={15} color="#8b5cf6" />
+                <Text style={[styles.cardmarketBtnText, { color: "#8b5cf6" }]}>{showEnglish ? "Booster .com" : "Booster .com"}</Text>
+                <Ionicons name="open-outline" size={13} color="#8b5cf6" />
+              </TouchableOpacity>
+            </View>
           </ScrollView>
         </View>
       </View>
@@ -457,11 +477,9 @@ export default function DeckIdeasScreen() {
               {COMMANDER_PRECONS.map((deck, i) => {
                 const isLast = i === COMMANDER_PRECONS.length - 1;
                 return (
-                  <TouchableOpacity
+                  <View
                     key={i}
                     style={[styles.preconRow, { borderBottomColor: colors.border, borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth }]}
-                    onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent("Magic the Gathering " + deck.name + " Commander Deck")}&tag=masterofmtg-21`)}
-                    activeOpacity={0.7}
                   >
                     <View style={[styles.preconBadge, { backgroundColor: "#16a34a22" }]}>
                       <Text style={[styles.preconBadgeText, { color: "#16a34a" }]}>CMD</Text>
@@ -470,8 +488,17 @@ export default function DeckIdeasScreen() {
                       <Text style={[styles.preconName, { color: colors.foreground }]} numberOfLines={1}>{deck.name}</Text>
                       <Text style={[styles.preconSet, { color: colors.mutedForeground }]}>{deck.set} · {deck.year}</Text>
                     </View>
-                    <Ionicons name="cart-outline" size={16} color="#ff9900" />
-                  </TouchableOpacity>
+                    <View style={{ flexDirection: "row", gap: 6 }}>
+                      <TouchableOpacity style={[styles.amazonSmallBtn, { borderColor: "#ff990066", backgroundColor: "#ff990022" }]}
+                        onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent("Magic the Gathering " + deck.name + " Commander Deck")}&tag=masterofmtg-21`)}>
+                        <Text style={[styles.amazonSmallBtnText, { color: "#ff9900" }]}>DE</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.amazonSmallBtn, { borderColor: "#3b82f666", backgroundColor: "#3b82f622" }]}
+                        onPress={() => Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent("Magic the Gathering " + deck.name + " Commander Deck")}`)}>
+                        <Text style={[styles.amazonSmallBtnText, { color: "#3b82f6" }]}>COM</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 );
               })}
             </View>
@@ -863,6 +890,8 @@ const styles = StyleSheet.create({
   preconBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold" },
   preconName: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   preconSet: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 },
+  amazonSmallBtn: { borderRadius: 6, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 5, alignItems: "center", justifyContent: "center" },
+  amazonSmallBtnText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.4 },
 
   detailNavRow: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
