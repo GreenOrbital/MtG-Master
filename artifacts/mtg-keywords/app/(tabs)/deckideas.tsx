@@ -125,7 +125,7 @@ function PreconRow({ deck, isLast, colors, langEn }: {
   langEn: boolean;
 }) {
   const primaryUri = deck.commander
-    ? `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(deck.commander)}&format=image&version=art_crop`
+    ? `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(deck.commander)}&format=image&version=normal`
     : null;
   const [displayUri, setDisplayUri] = useState<string | null>(primaryUri);
   const [imgFailed, setImgFailed] = useState(false);
@@ -140,7 +140,7 @@ function PreconRow({ deck, isLast, colors, langEn }: {
         if (res.ok) {
           const data = await res.json();
           const card = data?.data?.[0];
-          const uri = card?.image_uris?.art_crop ?? card?.card_faces?.[0]?.image_uris?.art_crop;
+          const uri = card?.image_uris?.normal ?? card?.card_faces?.[0]?.image_uris?.normal;
           if (uri) { setDisplayUri(uri); return; }
         }
       } catch {}
@@ -155,12 +155,12 @@ function PreconRow({ deck, isLast, colors, langEn }: {
 
   return (
     <View style={[styles.preconRow, { borderBottomColor: colors.border, borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth }]}>
-      {/* Art crop image — commander card or set fallback */}
-      <View style={{ width: 96, height: 68, borderRadius: 6, overflow: "hidden", marginRight: 10, backgroundColor: "#16a34a22", flexShrink: 0 }}>
+      {/* Full card image — portrait, like a deck box */}
+      <View style={{ width: 62, height: 87, borderRadius: 7, overflow: "hidden", marginRight: 10, backgroundColor: "#16a34a22", flexShrink: 0, borderWidth: 1, borderColor: "#16a34a33" }}>
         {displayUri && !imgFailed ? (
           <Image
             source={{ uri: displayUri }}
-            style={{ width: 96, height: 68 }}
+            style={{ width: 62, height: 87 }}
             resizeMode="cover"
             onError={handleImgError}
           />

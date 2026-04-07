@@ -540,7 +540,7 @@ async function fetchBoosterPacks(cardName: string): Promise<BoosterPrint[]> {
         setCode: (c.set ?? "").toUpperCase(),
         setType: c.set_type ?? "",
         releasedAt: c.released_at ?? "",
-        imageUri: c.image_uris?.art_crop ?? c.card_faces?.[0]?.image_uris?.art_crop ?? undefined,
+        imageUri: c.image_uris?.normal ?? c.card_faces?.[0]?.image_uris?.normal ?? undefined,
       }));
   } catch { return []; }
 }
@@ -1588,7 +1588,7 @@ export default function CardSearchScreen() {
                           {bp.imageUri ? (
                             <Image
                               source={{ uri: bp.imageUri }}
-                              style={{ width: 72, height: 52, borderRadius: 6, backgroundColor: colors.border }}
+                              style={{ width: 52, height: 72, borderRadius: 6, backgroundColor: colors.border, borderWidth: 1, borderColor: colors.border }}
                               resizeMode="cover"
                             />
                           ) : (
