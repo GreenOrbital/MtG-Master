@@ -2,7 +2,7 @@
  * Post-build script: patches dist/index.html for iOS Safari viewport stability
  * and Replit static deployment compatibility (relative asset paths).
  */
-import { readFileSync, writeFileSync, copyFileSync } from "fs";
+import { readFileSync, writeFileSync, copyFileSync, mkdirSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -71,3 +71,15 @@ console.log("✓ dist/index.html patched (iOS Safari viewport fix + relative pat
 const notFoundPath = resolve(__dirname, "dist/404.html");
 copyFileSync(htmlPath, notFoundPath);
 console.log("✓ dist/404.html created (SPA routing fallback)");
+
+// ── Static legal pages (Impressum + Datenschutz) ──────────────────────────
+// These are plain HTML pages kept in legal-pages/ and copied into dist/
+// on each build so the Expo build step doesn't wipe them.
+const legalPages = ["impressum", "datenschutz"];
+for (const page of legalPages) {
+  const src = resolve(__dirname, `legal-pages/${page}.html`);
+  const destDir = resolve(__dirname, `dist/${page}`);
+  mkdirSync(destDir, { recursive: true });
+  copyFileSync(src, `${destDir}/index.html`);
+  console.log(`✓ dist/${page}/index.html copied`);
+}

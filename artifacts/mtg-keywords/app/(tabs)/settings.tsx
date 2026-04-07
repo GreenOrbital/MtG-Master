@@ -225,6 +225,41 @@ export default function SettingsScreen() {
           />
         </View>
 
+        {/* Impressum & Datenschutz */}
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
+            {showEnglish ? "LEGAL" : "RECHTLICHES"}
+          </Text>
+          <TouchableOpacity
+            style={[styles.row, { borderBottomColor: colors.border }]}
+            onPress={() => Linking.openURL("https://magic-keyword-explainer.replit.app/impressum")}
+          >
+            <View style={styles.rowLeft}>
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>
+                {showEnglish ? "Legal Notice (Impressum)" : "Impressum"}
+              </Text>
+              <Text style={[styles.rowSub, { color: colors.mutedForeground }]}>
+                {showEnglish ? "Operator & contact" : "Betreiber & Kontakt"}
+              </Text>
+            </View>
+            <Ionicons name="open-outline" size={18} color={colors.mutedForeground} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.row, { borderBottomWidth: 0, borderBottomColor: colors.border }]}
+            onPress={() => Linking.openURL("https://magic-keyword-explainer.replit.app/datenschutz")}
+          >
+            <View style={styles.rowLeft}>
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>
+                {showEnglish ? "Privacy Policy" : "Datenschutzerklärung"}
+              </Text>
+              <Text style={[styles.rowSub, { color: colors.mutedForeground }]}>
+                {showEnglish ? "Data usage & your rights" : "Datennutzung & deine Rechte"}
+              </Text>
+            </View>
+            <Ionicons name="open-outline" size={18} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+
         {/* Feedback */}
         <TouchableOpacity
           style={[styles.feedbackBtn, { backgroundColor: colors.card, borderColor: colors.primary }]}

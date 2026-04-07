@@ -15,9 +15,10 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import OfflineGuard from "@/components/OfflineGuard";
+import { CookieBanner } from "@/components/CookieBanner";
 import { CardHistoryProvider } from "@/context/CardHistoryContext";
 import { DeckProvider } from "@/context/DeckContext";
-import { SettingsProvider } from "@/context/SettingsContext";
+import { SettingsProvider, useSettings } from "@/context/SettingsContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -31,12 +32,22 @@ function RootLayoutNav() {
   );
 }
 
+function AppInner({ children }: { children: React.ReactNode }) {
+  const { showEnglish } = useSettings();
+  return (
+    <>
+      {children}
+      <CookieBanner showEnglish={showEnglish} />
+    </>
+  );
+}
+
 function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <SettingsProvider>
       <DeckProvider>
         <CardHistoryProvider>
-          {children}
+          <AppInner>{children}</AppInner>
         </CardHistoryProvider>
       </DeckProvider>
     </SettingsProvider>
