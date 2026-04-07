@@ -1998,92 +1998,58 @@ export default function ManapoolScreen() {
               const nonLandCards = activeDeck.cards.filter((c) => !isLand(c));
               if (nonLandCards.length === 0) return null;
 
-              // ── Histogram renderer ───────────────────────────────────────
-              function SimHistogram({ buckets, cardCopies, copiesOverride, handSize }: { buckets: number[]; cardCopies: number; copiesOverride: number; handSize: number }) {
-                const W = 320;
-                const H = 160;
-                const padL = 32;
-                const padB = 40;
-                const padT = 10;
-                const padR = 10;
-                const chartW = W - padL - padR;
-                const chartH = H - padB - padT;
-
-                // Show turns 0..10 + "Nie"
-                const labels = ["Hand", "T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "Nie"];
-                const data = [
-                  buckets[0],  // opening hand
-                  buckets[1], buckets[2], buckets[3], buckets[4], buckets[5],
-                  buckets[6], buckets[7], buckets[8], buckets[9], buckets[10],
-                  buckets[SIM_MAX_T + 1], // never
+              // ── Text-Ergebnisse (kein Chart) ───────────────────────────
+              function SimResults({ buckets, cardCopies, copiesOverride, handSize }: { buckets: number[]; cardCopies: number; copiesOverride: number; handSize: number }) {
+                const rows = [
+                  { label: showEnglish ? "Opening Hand" : "Eröffnungshand", val: buckets[0], col: "#16a34a" },
+                  { label: showEnglish ? "Turn 1" : "Runde 1",  val: buckets[1],  col: "#7c3aed" },
+                  { label: showEnglish ? "Turn 2" : "Runde 2",  val: buckets[2],  col: "#7c3aed" },
+                  { label: showEnglish ? "Turn 3" : "Runde 3",  val: buckets[3],  col: "#7c3aed" },
+                  { label: showEnglish ? "Turn 4" : "Runde 4",  val: buckets[4],  col: "#7c3aed" },
+                  { label: showEnglish ? "Turn 5" : "Runde 5",  val: buckets[5],  col: "#7c3aed" },
+                  { label: showEnglish ? "Turn 6" : "Runde 6",  val: buckets[6],  col: "#7c3aed" },
+                  { label: showEnglish ? "Turn 7" : "Runde 7",  val: buckets[7],  col: "#7c3aed" },
+                  { label: showEnglish ? "Turn 8–14" : "Runde 8–14",
+                    val: buckets.slice(8, SIM_MAX_T + 1).reduce((a, b) => a + b, 0), col: "#7c3aed" },
+                  { label: showEnglish ? "Not drawn" : "Nicht gezogen", val: buckets[SIM_MAX_T + 1], col: "#ef4444" },
                 ];
-                const maxVal = Math.max(...data, 1);
-                const barW   = chartW / data.length;
-                const BAR_COLOR  = "#7c3aed";
-                const NIE_COLOR  = "#d3202a";
-                const HAND_COLOR = "#16a34a";
-
-                // Cumulative % by turn 5
                 const cumBy5 = (buckets.slice(0, 6).reduce((a, b) => a + b, 0) / SIM_RUNS * 100).toFixed(1);
-
                 const handLabel = handSize === 7
                   ? (showEnglish ? "no mulligan" : "kein Mulligan")
-                  : handSize === 6
-                    ? (showEnglish ? "mull. to 6" : "Mull. auf 6")
-                    : (showEnglish ? "mull. to 5" : "Mull. auf 5");
+                  : handSize === 6 ? (showEnglish ? "mull. to 6" : "Mull. auf 6")
+                  : (showEnglish ? "mull. to 5" : "Mull. auf 5");
 
                 return (
-                  <View style={{ alignItems: "center", gap: 6 }}>
-                    <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
-                      {cardCopies}× {showEnglish ? "in deck" : "im Deck"} · {showEnglish ? "simulated with" : "simuliert mit"} {copiesOverride}× · {handLabel}
+                  <View style={{ gap: 0 }}>
+                    {/* Info line */}
+                    <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginBottom: 10, textAlign: "center" }}>
+                      {SIM_RUNS.toLocaleString()} {showEnglish ? "simulations" : "Simulationen"} · {copiesOverride}× {showEnglish ? "copies" : "Kopien"} · {handLabel}
                     </Text>
-                    <Svg width={W} height={H}>
-                      {/* Y-axis guide lines */}
-                      {[0.25, 0.5, 0.75, 1].map((frac) => {
-                        const y = padT + chartH * (1 - frac);
-                        return (
-                          <G key={frac}>
-                            <Line x1={padL} y1={y} x2={W - padR} y2={y} stroke="#ffffff18" strokeWidth={1} />
-                            <SvgText x={padL - 4} y={y + 4} fontSize={8} fill="#888" textAnchor="end">
-                              {Math.round(maxVal * frac / SIM_RUNS * 100)}%
-                            </SvgText>
-                          </G>
-                        );
-                      })}
-                      {/* Bars + X labels */}
-                      {data.map((val, i) => {
-                        const barH = val > 0 ? Math.max(2, (val / maxVal) * chartH) : 0;
-                        const x    = padL + i * barW + barW * 0.12;
-                        const bw   = barW * 0.76;
-                        const y    = padT + chartH - barH;
-                        const pct  = (val / SIM_RUNS * 100).toFixed(1);
-                        const color = i === 0 ? HAND_COLOR : i === data.length - 1 ? NIE_COLOR : BAR_COLOR;
-                        return (
-                          <G key={i}>
-                            <Rect x={x} y={y} width={bw} height={barH} fill={color} rx={2} />
-                            {val > 0 && (
-                              <SvgText
-                                x={x + bw / 2} y={y - 2}
-                                fontSize={7} fill={color} textAnchor="middle"
-                              >
-                                {pct}%
-                              </SvgText>
-                            )}
-                            <SvgText
-                              x={x + bw / 2} y={padT + chartH + 12}
-                              fontSize={8} fill="#888" textAnchor="middle"
-                            >
-                              {labels[i]}
-                            </SvgText>
-                          </G>
-                        );
-                      })}
-                      {/* X axis */}
-                      <Line x1={padL} y1={padT + chartH} x2={W - padR} y2={padT + chartH} stroke="#ffffff30" strokeWidth={1} />
-                    </Svg>
-                    <Text style={{ fontSize: 12, color: "#16a34a", fontFamily: "Inter_700Bold" }}>
-                      {showEnglish ? `≤ Turn 5: ${cumBy5}%` : `≤ Runde 5: ${cumBy5}%`}
-                    </Text>
+
+                    {/* Highlight: cumBy5 */}
+                    <View style={{ backgroundColor: "#16a34a18", borderRadius: 8, borderWidth: 1, borderColor: "#16a34a44", padding: 10, marginBottom: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                      <Text style={{ fontSize: 12, color: colors.foreground, fontFamily: "Inter_600SemiBold" }}>
+                        {showEnglish ? "≤ Turn 5 (cumulative)" : "≤ Runde 5 (kumuliert)"}
+                      </Text>
+                      <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#16a34a" }}>{cumBy5}%</Text>
+                    </View>
+
+                    {/* Per-turn rows */}
+                    {rows.map((r, i) => {
+                      const pct = (r.val / SIM_RUNS * 100);
+                      const barW = Math.max(0, Math.min(100, pct));
+                      return (
+                        <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6, borderBottomWidth: i < rows.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: colors.border }}>
+                          <Text style={{ width: 90, fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>{r.label}</Text>
+                          <View style={{ flex: 1, height: 6, backgroundColor: colors.border, borderRadius: 3 }}>
+                            <View style={{ width: `${barW}%` as any, height: 6, backgroundColor: r.col, borderRadius: 3 }} />
+                          </View>
+                          <Text style={{ width: 44, fontSize: 13, fontFamily: "Inter_700Bold", color: r.col, textAlign: "right" }}>
+                            {pct.toFixed(1)}%
+                          </Text>
+                        </View>
+                      );
+                    })}
                   </View>
                 );
               }
@@ -2216,12 +2182,7 @@ export default function ManapoolScreen() {
                     {simBuckets && !simRunning && (
                       <>
                         <View style={[styles.divider, { backgroundColor: colors.border }]} />
-                        <SimHistogram buckets={simBuckets} cardCopies={cardCopies} copiesOverride={simCopies} handSize={simHandSize} />
-                        <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 16 }}>
-                          {showEnglish
-                            ? "Green = opening hand · Purple = drawn on turn N · Red = not drawn in 14 turns"
-                            : "Grün = Eröffnungshand · Lila = gezogen in Runde N · Rot = nicht in 14 Runden gezogen"}
-                        </Text>
+                        <SimResults buckets={simBuckets} cardCopies={cardCopies} copiesOverride={simCopies} handSize={simHandSize} />
                       </>
                     )}
 
