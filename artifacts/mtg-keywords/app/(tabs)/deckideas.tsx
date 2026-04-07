@@ -248,7 +248,7 @@ function CardDetailModal({
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.cardmarketBtn, { flex: 1, backgroundColor: "#3b82f618", borderColor: "#3b82f644" }]}
-                onPress={() => Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent(card.name + " Magic the Gathering Card")}`)}
+                onPress={() => Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent(card.name + " Magic the Gathering Card")}&tag=mtg08d-20`)}
                 activeOpacity={0.7}
               >
                 <Ionicons name="cart-outline" size={15} color="#3b82f6" />
@@ -269,7 +269,7 @@ function CardDetailModal({
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.cardmarketBtn, { flex: 1, backgroundColor: "#8b5cf618", borderColor: "#8b5cf644" }]}
-                onPress={() => Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent("Magic the Gathering " + card.name + " Booster Pack")}`)}
+                onPress={() => Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent("Magic the Gathering " + card.name + " Booster Pack")}&tag=mtg08d-20`)}
                 activeOpacity={0.7}
               >
                 <Ionicons name="gift-outline" size={15} color="#8b5cf6" />
@@ -494,7 +494,7 @@ export default function DeckIdeasScreen() {
                         <Text style={[styles.amazonSmallBtnText, { color: "#ff9900" }]}>DE</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={[styles.amazonSmallBtn, { borderColor: "#3b82f666", backgroundColor: "#3b82f622" }]}
-                        onPress={() => Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent("Magic the Gathering " + deck.name + " Commander Deck")}`)}>
+                        onPress={() => Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent("Magic the Gathering " + deck.name + " Commander Deck")}&tag=mtg08d-20`)}>
                         <Text style={[styles.amazonSmallBtnText, { color: "#3b82f6" }]}>COM</Text>
                       </TouchableOpacity>
                     </View>

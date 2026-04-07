@@ -1206,7 +1206,7 @@ export default function CardSearchScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.externalLinkBtn, { borderColor: "#3b82f644", backgroundColor: "#3b82f618" }]}
-                  onPress={() => card && Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent(card.name + " Magic the Gathering Card")}`)}
+                  onPress={() => card && Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent(card.name + " Magic the Gathering Card")}&tag=mtg08d-20`)}
                 >
                   <Ionicons name="cart-outline" size={13} color="#3b82f6" />
                   <Text style={[styles.externalLinkText, { color: "#3b82f6" }]}>Amazon.com</Text>
@@ -1597,7 +1597,7 @@ export default function CardSearchScreen() {
                               <Text style={[styles.amazonSmallBtnText, { color: "#ff9900" }]}>DE</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={[styles.amazonSmallBtn, { borderColor: "#3b82f666", backgroundColor: "#3b82f622" }]}
-                              onPress={() => Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent("Magic the Gathering " + bp.setName + " Booster Pack")}`)}>
+                              onPress={() => Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent("Magic the Gathering " + bp.setName + " Booster Pack")}&tag=mtg08d-20`)}>
                               <Text style={[styles.amazonSmallBtnText, { color: "#3b82f6" }]}>COM</Text>
                             </TouchableOpacity>
                           </View>
