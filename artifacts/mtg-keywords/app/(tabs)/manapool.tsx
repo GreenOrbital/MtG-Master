@@ -267,6 +267,63 @@ function runDrawSim(
   return buckets;
 }
 
+// ─── Monte-Carlo Mana-Simulation ─────────────────────────────────────────────
+// Tracks land distribution, mana screw and flood across 10 000 games.
+
+const MC_RUNS = 10_000;
+
+type MCResult = {
+  handBuckets: number[];   // [0..7] → games where opening hand had N lands
+  screwRate: number;       // % with 0–1 lands in hand
+  floodRate: number;       // % with 5+ lands in hand
+  avgLands: number;        // average lands in opening hand
+  landTurnBuckets: number[]; // [0..14] → how often the Nth card drawn is a land
+  totalLands: number;
+  totalCards: number;
+};
+
+function runMonteCarloSim(deckCards: DeckCard[], handSize: number): MCResult {
+  const deck: ("land" | "other")[] = [];
+  let totalLands = 0;
+  for (const c of deckCards) {
+    const kind = isLand(c) ? "land" : "other";
+    if (kind === "land") totalLands += c.count;
+    for (let i = 0; i < c.count; i++) deck.push(kind);
+  }
+  const totalCards = deck.length;
+  const handBuckets    = new Array(8).fill(0);     // 0–7 lands
+  const landTurnBuckets = new Array(15).fill(0);   // card position 0–14 (0 = first card drawn)
+  let screwCount = 0, floodCount = 0, sumLands = 0;
+
+  const buf = [...deck];
+  for (let s = 0; s < MC_RUNS; s++) {
+    // Fisher-Yates
+    for (let i = totalCards - 1; i > 0; i--) {
+      const j = (Math.random() * (i + 1)) | 0;
+      const tmp = buf[i]; buf[i] = buf[j]; buf[j] = tmp;
+    }
+    // Opening hand
+    let landsInHand = 0;
+    for (let i = 0; i < Math.min(handSize, totalCards); i++) {
+      if (buf[i] === "land") { landsInHand++; landTurnBuckets[i]++; }
+    }
+    handBuckets[Math.min(landsInHand, 7)]++;
+    sumLands += landsInHand;
+    if (landsInHand <= 1) screwCount++;
+    if (landsInHand >= 5) floodCount++;
+  }
+
+  return {
+    handBuckets,
+    screwRate: screwCount / MC_RUNS * 100,
+    floodRate: floodCount / MC_RUNS * 100,
+    avgLands:  sumLands   / MC_RUNS,
+    landTurnBuckets,
+    totalLands,
+    totalCards,
+  };
+}
+
 // ─── Deck-Analyse Hilfsfunktionen ────────────────────────────────────────────
 
 type SpeedResult = { labelDe: string; labelEn: string; color: string; desc: string; descEn: string; detail: string; detailEn: string; tips: string[]; tipsEn: string[] };
@@ -722,6 +779,12 @@ export default function ManapoolScreen() {
   const [simHandSize, setSimHandSize]     = useState<5 | 6 | 7>(7);
   const [simCopies, setSimCopies]         = useState<number>(1);
 
+  // ── Monte-Carlo Mana-Simulation state ──────────────────────────────────────
+  const [mcResult, setMcResult]           = useState<MCResult | null>(null);
+  const [mcRunning, setMcRunning]         = useState(false);
+  const [mcHandSize, setMcHandSize]       = useState<5 | 6 | 7>(7);
+  const mcWorkerRef                       = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const runSimulation = useCallback((cardName: string, deckCards: DeckCard[], handSize: number, copies: number) => {
     if (simWorkerRef.current) clearTimeout(simWorkerRef.current);
     setSimRunning(true);
@@ -733,8 +796,22 @@ export default function ManapoolScreen() {
     }, 20);
   }, []);
 
+  const runMC = useCallback((deckCards: DeckCard[], handSize: number) => {
+    if (mcWorkerRef.current) clearTimeout(mcWorkerRef.current);
+    setMcRunning(true);
+    setMcResult(null);
+    mcWorkerRef.current = setTimeout(() => {
+      const result = runMonteCarloSim(deckCards, handSize);
+      setMcResult(result);
+      setMcRunning(false);
+    }, 20);
+  }, []);
+
   useEffect(() => {
-    return () => { if (simWorkerRef.current) clearTimeout(simWorkerRef.current); };
+    return () => {
+      if (simWorkerRef.current) clearTimeout(simWorkerRef.current);
+      if (mcWorkerRef.current)  clearTimeout(mcWorkerRef.current);
+    };
   }, []);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -2154,6 +2231,236 @@ export default function ManapoolScreen() {
                           ? "Select any non-land card to simulate when it first appears."
                           : "Wähle eine Nicht-Land-Karte, um zu simulieren, wann du sie ziehst."}
                       </Text>
+                    )}
+                  </View>
+                </>
+              );
+            })()}
+
+            {/* ── Monte-Carlo Mana-Simulation ── */}
+            {(() => {
+              const totalCards  = activeDeck.cards.reduce((a, c) => a + c.count, 0);
+              if (totalCards < 7) return null;
+              const totalLandsInDeck = activeDeck.cards.filter((c) => isLand(c)).reduce((a, c) => a + c.count, 0);
+              const landRatio   = totalLandsInDeck / totalCards * 100;
+
+              // Bar chart for opening-hand land distribution
+              function MCHistogram({ result }: { result: MCResult }) {
+                const W    = 300;
+                const H    = 140;
+                const padL = 36;
+                const padB = 30;
+                const padT = 10;
+                const padR = 10;
+                const cW   = W - padL - padR;
+                const cH   = H - padB - padT;
+                const data = result.handBuckets; // index 0..7
+                const max  = Math.max(...data, 1);
+
+                const SCREW_COLOR = "#ef4444";
+                const GOOD_COLOR  = "#16a34a";
+                const FLOOD_COLOR = "#f59e0b";
+
+                return (
+                  <Svg width={W} height={H}>
+                    {/* Y guide lines */}
+                    {[0.25, 0.5, 0.75, 1].map((f) => {
+                      const y = padT + cH * (1 - f);
+                      return (
+                        <G key={f}>
+                          <Line x1={padL} y1={y} x2={W - padR} y2={y} stroke="#ffffff18" strokeWidth={1} />
+                          <SvgText x={padL - 4} y={y + 4} fontSize={8} fill="#888" textAnchor="end">
+                            {Math.round(f * max / MC_RUNS * 100)}%
+                          </SvgText>
+                        </G>
+                      );
+                    })}
+                    {/* Bars */}
+                    {data.map((val, i) => {
+                      const bW   = cW / data.length;
+                      const bH   = val > 0 ? Math.max(2, val / max * cH) : 0;
+                      const x    = padL + i * bW + bW * 0.1;
+                      const bw   = bW * 0.8;
+                      const y    = padT + cH - bH;
+                      const pct  = (val / MC_RUNS * 100).toFixed(1);
+                      const col  = i <= 1 ? SCREW_COLOR : i >= 5 ? FLOOD_COLOR : GOOD_COLOR;
+                      return (
+                        <G key={i}>
+                          <Rect x={x} y={y} width={bw} height={bH} fill={col} rx={2} />
+                          {val > 0 && (
+                            <SvgText x={x + bw / 2} y={y - 2} fontSize={7} fill={col} textAnchor="middle">
+                              {pct}%
+                            </SvgText>
+                          )}
+                          <SvgText x={x + bw / 2} y={padT + cH + 12} fontSize={9} fill="#888" textAnchor="middle">
+                            {i}
+                          </SvgText>
+                        </G>
+                      );
+                    })}
+                    {/* X axis */}
+                    <Line x1={padL} y1={padT + cH} x2={W - padR} y2={padT + cH} stroke="#ffffff30" strokeWidth={1} />
+                    {/* X axis label */}
+                    <SvgText x={padL + cW / 2} y={H - 2} fontSize={8} fill="#888" textAnchor="middle">
+                      {showEnglish ? "Lands in opening hand" : "Länder in Eröffnungshand"}
+                    </SvgText>
+                  </Svg>
+                );
+              }
+
+              return (
+                <>
+                  <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                    {showEnglish ? "Mana Simulation (Monte Carlo)" : "Mana-Simulation (Monte Carlo)"}
+                  </Text>
+                  <View style={[styles.analysisBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+
+                    {/* Deck composition row */}
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      {[
+                        { label: showEnglish ? "Total cards" : "Gesamt", val: totalCards, col: colors.foreground },
+                        { label: showEnglish ? "Lands"      : "Länder", val: totalLandsInDeck, col: "#16a34a" },
+                        { label: showEnglish ? "Non-lands"  : "Nicht-Länder", val: totalCards - totalLandsInDeck, col: colors.primary },
+                        { label: showEnglish ? "Land ratio" : "Landanteil", val: landRatio.toFixed(0) + "%", col: "#06b6d4" },
+                      ].map((s) => (
+                        <View key={s.label} style={{ flex: 1, backgroundColor: colors.background, borderRadius: 8, borderWidth: 1, borderColor: colors.border, padding: 8, alignItems: "center" }}>
+                          <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: s.col }}>{s.val}</Text>
+                          <Text style={{ fontSize: 9, color: colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center" }}>{s.label}</Text>
+                        </View>
+                      ))}
+                    </View>
+
+                    {/* Hand size selector */}
+                    <View style={{ gap: 5 }}>
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
+                        {showEnglish ? "Starting hand size (mulligan)" : "Starthandgröße (Mulligan)"}
+                      </Text>
+                      <View style={{ flexDirection: "row", gap: 6 }}>
+                        {([7, 6, 5] as const).map((h) => (
+                          <TouchableOpacity
+                            key={h}
+                            style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: "center", backgroundColor: mcHandSize === h ? colors.primary : colors.background, borderWidth: 1, borderColor: mcHandSize === h ? colors.primary : colors.border }}
+                            onPress={() => { setMcHandSize(h); setMcResult(null); }}
+                            activeOpacity={0.75}
+                          >
+                            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: mcHandSize === h ? "#fff" : colors.mutedForeground }}>
+                              {h} {showEnglish ? "cards" : "Karten"}
+                            </Text>
+                            <Text style={{ fontSize: 9, color: mcHandSize === h ? "#ffffffaa" : colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                              {h === 7 ? (showEnglish ? "no mulligan" : "kein Mulligan") : h === 6 ? (showEnglish ? "1 mull." : "1 Mull.") : (showEnglish ? "2 mull." : "2 Mull.")}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+
+                    {/* Run button */}
+                    {!mcRunning && (
+                      <TouchableOpacity
+                        style={{ backgroundColor: "#06b6d4", borderRadius: 10, padding: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
+                        onPress={() => runMC(activeDeck.cards, mcHandSize)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="dice-outline" size={16} color="#fff" />
+                        <Text style={{ color: "#fff", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>
+                          {showEnglish ? `Run ${MC_RUNS.toLocaleString()} Monte Carlo Games` : `${MC_RUNS.toLocaleString()} Monte-Carlo-Spiele starten`}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {mcRunning && (
+                      <View style={{ alignItems: "center", padding: 24, gap: 10 }}>
+                        <ActivityIndicator color="#06b6d4" />
+                        <Text style={{ color: colors.mutedForeground, fontSize: 12, fontFamily: "Inter_400Regular" }}>
+                          {showEnglish ? "Simulating games…" : "Spiele werden simuliert…"}
+                        </Text>
+                      </View>
+                    )}
+
+                    {mcResult && !mcRunning && (
+                      <>
+                        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+                        {/* Stat badges: Screw / Flood / Avg */}
+                        <View style={{ flexDirection: "row", gap: 8 }}>
+                          {[
+                            {
+                              label: showEnglish ? "Mana Screw" : "Mana-Screw",
+                              sub:   showEnglish ? "0–1 lands" : "0–1 Länder",
+                              val:   mcResult.screwRate.toFixed(1) + "%",
+                              col:   "#ef4444",
+                              icon:  "alert-circle-outline" as const,
+                              note:  mcResult.screwRate > 15 ? (showEnglish ? "High risk!" : "Hohes Risiko!") : mcResult.screwRate > 8 ? (showEnglish ? "Moderate" : "Moderat") : (showEnglish ? "Low risk" : "Geringes Risiko"),
+                            },
+                            {
+                              label: showEnglish ? "Mana Flood" : "Mana-Flood",
+                              sub:   showEnglish ? "5+ lands" : "5+ Länder",
+                              val:   mcResult.floodRate.toFixed(1) + "%",
+                              col:   "#f59e0b",
+                              icon:  "water-outline" as const,
+                              note:  mcResult.floodRate > 15 ? (showEnglish ? "High risk!" : "Hohes Risiko!") : mcResult.floodRate > 8 ? (showEnglish ? "Moderate" : "Moderat") : (showEnglish ? "Low risk" : "Geringes Risiko"),
+                            },
+                            {
+                              label: showEnglish ? "Avg. Lands" : "Ø Länder",
+                              sub:   showEnglish ? "in hand" : "in Hand",
+                              val:   mcResult.avgLands.toFixed(2),
+                              col:   "#16a34a",
+                              icon:  "analytics-outline" as const,
+                              note:  mcResult.avgLands >= 2.5 && mcResult.avgLands <= 3.5 ? (showEnglish ? "Ideal" : "Ideal") : (showEnglish ? "Off-target" : "Nicht ideal"),
+                            },
+                          ].map((s) => (
+                            <View key={s.label} style={{ flex: 1, backgroundColor: s.col + "15", borderRadius: 10, borderWidth: 1, borderColor: s.col + "44", padding: 10, gap: 2 }}>
+                              <Ionicons name={s.icon} size={14} color={s.col} />
+                              <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: s.col }}>{s.val}</Text>
+                              <Text style={{ fontSize: 10, fontFamily: "Inter_600SemiBold", color: colors.foreground }}>{s.label}</Text>
+                              <Text style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{s.sub}</Text>
+                              <Text style={{ fontSize: 9, fontFamily: "Inter_600SemiBold", color: s.col }}>{s.note}</Text>
+                            </View>
+                          ))}
+                        </View>
+
+                        {/* Histogram */}
+                        <View style={{ alignItems: "center" }}>
+                          <MCHistogram result={mcResult} />
+                        </View>
+
+                        {/* Legend */}
+                        <View style={{ flexDirection: "row", justifyContent: "center", gap: 14, flexWrap: "wrap" }}>
+                          {[
+                            { col: "#ef4444", label: showEnglish ? "Screw (0–1)" : "Screw (0–1)" },
+                            { col: "#16a34a", label: showEnglish ? "Good (2–4)" : "Gut (2–4)" },
+                            { col: "#f59e0b", label: showEnglish ? "Flood (5+)" : "Flood (5+)" },
+                          ].map((l) => (
+                            <View key={l.label} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                              <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: l.col }} />
+                              <Text style={{ fontSize: 10, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>{l.label}</Text>
+                            </View>
+                          ))}
+                        </View>
+
+                        {/* Recommendation */}
+                        {(() => {
+                          const { screwRate, floodRate, avgLands } = mcResult;
+                          const msgs: { text: string; col: string; icon: "checkmark-circle-outline" | "warning-outline" | "information-circle-outline" }[] = [];
+                          if (screwRate > 15)  msgs.push({ text: showEnglish ? `Mana screw risk is very high (${screwRate.toFixed(1)}%). Consider adding more lands.` : `Mana-Screw-Risiko ist sehr hoch (${screwRate.toFixed(1)}%). Füge mehr Länder hinzu.`, col: "#ef4444", icon: "warning-outline" });
+                          else if (screwRate > 8) msgs.push({ text: showEnglish ? `Mana screw risk is elevated (${screwRate.toFixed(1)}%). A few more lands might help.` : `Mana-Screw-Risiko erhöht (${screwRate.toFixed(1)}%). Einige Länder mehr helfen.`, col: "#f59e0b", icon: "information-circle-outline" });
+                          if (floodRate > 15)  msgs.push({ text: showEnglish ? `Mana flood risk is very high (${floodRate.toFixed(1)}%). Consider removing some lands.` : `Mana-Flood-Risiko ist sehr hoch (${floodRate.toFixed(1)}%). Entferne einige Länder.`, col: "#f59e0b", icon: "warning-outline" });
+                          else if (floodRate > 8) msgs.push({ text: showEnglish ? `Mana flood risk is elevated (${floodRate.toFixed(1)}%).` : `Mana-Flood-Risiko erhöht (${floodRate.toFixed(1)}%).`, col: "#f59e0b", icon: "information-circle-outline" });
+                          if (msgs.length === 0) msgs.push({ text: showEnglish ? `Mana balance looks good! Avg ${avgLands.toFixed(2)} lands in opening hand.` : `Mana-Balance sieht gut aus! Ø ${avgLands.toFixed(2)} Länder in Eröffnungshand.`, col: "#16a34a", icon: "checkmark-circle-outline" });
+                          return msgs.map((m, i) => (
+                            <View key={i} style={{ flexDirection: "row", gap: 8, backgroundColor: m.col + "15", borderRadius: 8, borderWidth: 1, borderColor: m.col + "44", padding: 10 }}>
+                              <Ionicons name={m.icon} size={14} color={m.col} style={{ marginTop: 1 }} />
+                              <Text style={{ flex: 1, fontSize: 12, color: colors.foreground, fontFamily: "Inter_400Regular", lineHeight: 18 }}>{m.text}</Text>
+                            </View>
+                          ));
+                        })()}
+
+                        <Text style={{ fontSize: 10, color: colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center" }}>
+                          {showEnglish
+                            ? `${MC_RUNS.toLocaleString()} games · ${mcResult.totalLands}/${mcResult.totalCards} lands · hand size ${mcHandSize}`
+                            : `${MC_RUNS.toLocaleString()} Spiele · ${mcResult.totalLands}/${mcResult.totalCards} Länder · Handgröße ${mcHandSize}`}
+                        </Text>
+                      </>
                     )}
                   </View>
                 </>
