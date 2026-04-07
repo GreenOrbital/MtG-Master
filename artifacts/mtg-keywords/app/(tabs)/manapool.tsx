@@ -219,34 +219,45 @@ function sumMana(cards: Deck["cards"]): ManaCounts {
 const SIM_RUNS    = 50_000;
 const SIM_MAX_T   = 14; // turns 0 (opening hand) … 14
 
-function runDrawSim(cardName: string, deckCards: DeckCard[]): number[] {
-  // Build flat deck array with duplicates
+function runDrawSim(
+  cardName: string,
+  deckCards: DeckCard[],
+  handSize: number,    // 5, 6, or 7 (simulates mulligan depth)
+  copiesOverride: number, // how many copies of the card are in the deck
+): number[] {
+  // Build flat deck, replacing actual copies with override count
   const deck: string[] = [];
+  let cardAdded = 0;
   for (const c of deckCards) {
-    for (let i = 0; i < c.count; i++) deck.push(c.name);
+    if (c.name === cardName) {
+      for (let i = 0; i < copiesOverride; i++) deck.push(c.name);
+      cardAdded = copiesOverride;
+    } else {
+      for (let i = 0; i < c.count; i++) deck.push(c.name);
+    }
   }
+  // If card not yet added (shouldn't happen), push it
+  if (cardAdded === 0) for (let i = 0; i < copiesOverride; i++) deck.push(cardName);
+
   const deckSize = deck.length;
-  // buckets[0]        = found in opening hand
-  // buckets[1..14]    = found on turn N
-  // buckets[15]       = never drawn within SIM_MAX_T turns
   const buckets = new Array(SIM_MAX_T + 2).fill(0);
 
-  const buf = [...deck]; // reused buffer
+  const buf = [...deck];
   for (let s = 0; s < SIM_RUNS; s++) {
-    // Fisher-Yates shuffle (in-place on buf)
+    // Fisher-Yates shuffle
     for (let i = deckSize - 1; i > 0; i--) {
       const j = (Math.random() * (i + 1)) | 0;
       const tmp = buf[i]; buf[i] = buf[j]; buf[j] = tmp;
     }
-    // Opening hand (7 cards)
+    // Opening hand (handSize cards)
     let found = -1;
-    for (let i = 0; i < Math.min(7, deckSize); i++) {
+    for (let i = 0; i < Math.min(handSize, deckSize); i++) {
       if (buf[i] === cardName) { found = 0; break; }
     }
     // Subsequent draws (1 per turn)
     if (found === -1) {
       for (let t = 1; t <= SIM_MAX_T; t++) {
-        const idx = 6 + t; // card drawn on turn t (0-indexed: pos 7, 8, …)
+        const idx = handSize - 1 + t; // card drawn on turn t
         if (idx >= deckSize) break;
         if (buf[idx] === cardName) { found = t; break; }
       }
@@ -708,13 +719,15 @@ export default function ManapoolScreen() {
   const [simRunning, setSimRunning]       = useState(false);
   const [simShowPicker, setSimShowPicker] = useState(false);
   const simWorkerRef                      = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [simHandSize, setSimHandSize]     = useState<5 | 6 | 7>(7);
+  const [simCopies, setSimCopies]         = useState<number>(1);
 
-  const runSimulation = useCallback((cardName: string, deckCards: DeckCard[]) => {
+  const runSimulation = useCallback((cardName: string, deckCards: DeckCard[], handSize: number, copies: number) => {
     if (simWorkerRef.current) clearTimeout(simWorkerRef.current);
     setSimRunning(true);
     setSimBuckets(null);
     simWorkerRef.current = setTimeout(() => {
-      const result = runDrawSim(cardName, deckCards);
+      const result = runDrawSim(cardName, deckCards, handSize, copies);
       setSimBuckets(result);
       setSimRunning(false);
     }, 20);
@@ -1909,7 +1922,7 @@ export default function ManapoolScreen() {
               if (nonLandCards.length === 0) return null;
 
               // ── Histogram renderer ───────────────────────────────────────
-              function SimHistogram({ buckets, cardCopies }: { buckets: number[]; cardCopies: number }) {
+              function SimHistogram({ buckets, cardCopies, copiesOverride, handSize }: { buckets: number[]; cardCopies: number; copiesOverride: number; handSize: number }) {
                 const W = 320;
                 const H = 160;
                 const padL = 32;
@@ -1936,8 +1949,17 @@ export default function ManapoolScreen() {
                 // Cumulative % by turn 5
                 const cumBy5 = (buckets.slice(0, 6).reduce((a, b) => a + b, 0) / SIM_RUNS * 100).toFixed(1);
 
+                const handLabel = handSize === 7
+                  ? (showEnglish ? "no mulligan" : "kein Mulligan")
+                  : handSize === 6
+                    ? (showEnglish ? "mull. to 6" : "Mull. auf 6")
+                    : (showEnglish ? "mull. to 5" : "Mull. auf 5");
+
                 return (
                   <View style={{ alignItems: "center", gap: 6 }}>
+                    <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                      {cardCopies}× {showEnglish ? "in deck" : "im Deck"} · {showEnglish ? "simulated with" : "simuliert mit"} {copiesOverride}× · {handLabel}
+                    </Text>
                     <Svg width={W} height={H}>
                       {/* Y-axis guide lines */}
                       {[0.25, 0.5, 0.75, 1].map((frac) => {
@@ -1982,10 +2004,8 @@ export default function ManapoolScreen() {
                       {/* X axis */}
                       <Line x1={padL} y1={padT + chartH} x2={W - padR} y2={padT + chartH} stroke="#ffffff30" strokeWidth={1} />
                     </Svg>
-                    <Text style={{ fontSize: 11, color: "#16a34a", fontFamily: "Inter_600SemiBold" }}>
-                      {showEnglish
-                        ? `≤ Turn 5: ${cumBy5}% · ${cardCopies}× in deck · ${SIM_RUNS.toLocaleString()} simulations`
-                        : `≤ Runde 5: ${cumBy5}% · ${cardCopies}× im Deck · ${SIM_RUNS.toLocaleString()} Simulationen`}
+                    <Text style={{ fontSize: 12, color: "#16a34a", fontFamily: "Inter_700Bold" }}>
+                      {showEnglish ? `≤ Turn 5: ${cumBy5}%` : `≤ Runde 5: ${cumBy5}%`}
                     </Text>
                   </View>
                 );
@@ -2028,6 +2048,7 @@ export default function ManapoolScreen() {
                               style={{ flexDirection: "row", alignItems: "center", padding: 10, gap: 10, backgroundColor: c.name === simCardName ? colors.primary + "18" : "transparent", borderBottomWidth: i < nonLandCards.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: colors.border }}
                               onPress={() => {
                                 setSimCardName(c.name);
+                                setSimCopies(Math.min(c.count, 4));
                                 setSimShowPicker(false);
                                 setSimBuckets(null);
                               }}
@@ -2044,11 +2065,59 @@ export default function ManapoolScreen() {
                       </View>
                     )}
 
+                    {/* Variable controls */}
+                    {simCardName && (
+                      <View style={{ gap: 10 }}>
+                        {/* Hand size */}
+                        <View style={{ gap: 5 }}>
+                          <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
+                            {showEnglish ? "Starting hand size (mulligan)" : "Starthandgröße (Mulligan)"}
+                          </Text>
+                          <View style={{ flexDirection: "row", gap: 6 }}>
+                            {([5, 6, 7] as const).map((h) => (
+                              <TouchableOpacity
+                                key={h}
+                                style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: "center", backgroundColor: simHandSize === h ? colors.primary : colors.background, borderWidth: 1, borderColor: simHandSize === h ? colors.primary : colors.border }}
+                                onPress={() => { setSimHandSize(h); setSimBuckets(null); }}
+                                activeOpacity={0.75}
+                              >
+                                <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: simHandSize === h ? "#fff" : colors.mutedForeground }}>
+                                  {h} {showEnglish ? "cards" : "Karten"}
+                                </Text>
+                                <Text style={{ fontSize: 9, color: simHandSize === h ? "#ffffffaa" : colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                                  {h === 7 ? (showEnglish ? "no mulligan" : "kein Mulligan") : h === 6 ? (showEnglish ? "1 mull." : "1 Mull.") : (showEnglish ? "2 mull." : "2 Mull.")}
+                                </Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        </View>
+
+                        {/* Copies override */}
+                        <View style={{ gap: 5 }}>
+                          <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
+                            {showEnglish ? "Copies in deck (what-if)" : "Kopien im Deck (Was-wäre-wenn)"}
+                          </Text>
+                          <View style={{ flexDirection: "row", gap: 6 }}>
+                            {[1, 2, 3, 4].map((n) => (
+                              <TouchableOpacity
+                                key={n}
+                                style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: "center", backgroundColor: simCopies === n ? colors.accent : colors.background, borderWidth: 1, borderColor: simCopies === n ? colors.accent : colors.border }}
+                                onPress={() => { setSimCopies(n); setSimBuckets(null); }}
+                                activeOpacity={0.75}
+                              >
+                                <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: simCopies === n ? "#fff" : colors.mutedForeground }}>{n}×</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        </View>
+                      </View>
+                    )}
+
                     {/* Run button */}
                     {simCardName && !simRunning && (
                       <TouchableOpacity
                         style={{ backgroundColor: colors.primary, borderRadius: 10, padding: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
-                        onPress={() => runSimulation(simCardName, activeDeck.cards)}
+                        onPress={() => runSimulation(simCardName, activeDeck.cards, simHandSize, simCopies)}
                         activeOpacity={0.8}
                       >
                         <Ionicons name="analytics-outline" size={16} color="#fff" />
@@ -2070,7 +2139,7 @@ export default function ManapoolScreen() {
                     {simBuckets && !simRunning && (
                       <>
                         <View style={[styles.divider, { backgroundColor: colors.border }]} />
-                        <SimHistogram buckets={simBuckets} cardCopies={cardCopies} />
+                        <SimHistogram buckets={simBuckets} cardCopies={cardCopies} copiesOverride={simCopies} handSize={simHandSize} />
                         <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 16 }}>
                           {showEnglish
                             ? "Green = opening hand · Purple = drawn on turn N · Red = not drawn in 14 turns"
