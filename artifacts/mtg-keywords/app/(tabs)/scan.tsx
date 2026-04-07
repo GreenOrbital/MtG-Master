@@ -1567,7 +1567,7 @@ export default function CardSearchScreen() {
                         <TouchableOpacity
                           key={i}
                           style={[styles.boosterRow, { backgroundColor: colors.card, borderColor: colors.border }]}
-                          onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent("Magic the Gathering " + bp.setName + " Booster")}`)}
+                          onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent("Magic the Gathering " + bp.setName + " Booster")}&tag=masterofmtg-21`)}
                           activeOpacity={0.7}
                         >
                           <View style={[styles.boosterSetCode, { backgroundColor: colors.primary + "22" }]}>
