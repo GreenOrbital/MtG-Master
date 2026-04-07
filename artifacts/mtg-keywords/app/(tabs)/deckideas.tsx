@@ -31,8 +31,28 @@ function getApiBase(): string {
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+type GameFormat = {
+  key: string;
+  labelDe: string;
+  labelEn: string;
+  icon: string;
+  color: string;
+  descDe: string;
+  descEn: string;
+};
+
+const FORMATS: GameFormat[] = [
+  { key: "modern",    labelDe: "Modern",    labelEn: "Modern",    icon: "time-outline",          color: "#7c3aed", descDe: "60 Karten · Ab 2003",      descEn: "60 cards · From 2003" },
+  { key: "standard",  labelDe: "Standard",  labelEn: "Standard",  icon: "calendar-outline",      color: "#0ea5e9", descDe: "60 Karten · Aktuelle Sets", descEn: "60 cards · Current sets" },
+  { key: "pioneer",   labelDe: "Pioneer",   labelEn: "Pioneer",   icon: "compass-outline",       color: "#f59e0b", descDe: "60 Karten · Ab 2012",      descEn: "60 cards · From 2012" },
+  { key: "commander", labelDe: "Commander", labelEn: "Commander", icon: "shield-half-outline",   color: "#16a34a", descDe: "100 Karten · Multiplayer",  descEn: "100 cards · Multiplayer" },
+  { key: "pauper",    labelDe: "Pauper",    labelEn: "Pauper",    icon: "cash-outline",          color: "#ef4444", descDe: "60 Karten · Nur Commons",   descEn: "60 cards · Commons only" },
+];
+
 type ArchetypeMeta = {
   key: string;
+  format?: string;
+  deckSize?: number;
   labelDe: string;
   labelEn: string;
   colors: string[];
@@ -64,6 +84,7 @@ type DeckSuggestion = ArchetypeMeta & {
   whyDe: string;
   whyEn: string;
   totalCards: number;
+  commanderCard: SuggestedCard | null;
   deckCards: SuggestedCard[];
   landCards: SuggestedCard[];
 };
@@ -236,6 +257,8 @@ export default function DeckIdeasScreen() {
   const { decks, createDeck, importDeck } = useDecks();
   const router = useRouter();
 
+  const [selectedFormat, setSelectedFormat] = useState<string>("modern");
+
   const [archetypes, setArchetypes] = useState<ArchetypeMeta[]>([]);
   const [loadingList, setLoadingList] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
@@ -252,13 +275,15 @@ export default function DeckIdeasScreen() {
 
   const apiBase = getApiBase();
 
-  // Load archetype list on mount
+  // Load archetype list when format changes
   useEffect(() => {
     async function load() {
       setLoadingList(true);
       setListError(null);
+      setSelectedKey(null);
+      setSuggestion(null);
       try {
-        const r = await fetch(`${apiBase}/api/deck-suggestion/archetypes`);
+        const r = await fetch(`${apiBase}/api/deck-suggestion/archetypes?format=${selectedFormat}`);
         const data = await r.json();
         setArchetypes(data.archetypes ?? []);
       } catch {
@@ -268,7 +293,7 @@ export default function DeckIdeasScreen() {
       }
     }
     if (apiBase) load();
-  }, [apiBase]);
+  }, [apiBase, selectedFormat]);
 
   // Load specific archetype deck
   const loadSuggestion = useCallback(async (key: string) => {
@@ -277,7 +302,7 @@ export default function DeckIdeasScreen() {
     setSuggestionError(null);
     setLoadingSuggestion(true);
     try {
-      const r = await fetch(`${apiBase}/api/deck-suggestion/${key}`);
+      const r = await fetch(`${apiBase}/api/deck-suggestion/${key}?format=${selectedFormat}`);
       if (!r.ok) throw new Error("not found");
       const data: DeckSuggestion = await r.json();
       setSuggestion(data);
@@ -286,7 +311,7 @@ export default function DeckIdeasScreen() {
     } finally {
       setLoadingSuggestion(false);
     }
-  }, [apiBase, showEnglish]);
+  }, [apiBase, showEnglish, selectedFormat]);
 
   function handleImportDeck() {
     if (!suggestion) return;
@@ -337,12 +362,52 @@ export default function DeckIdeasScreen() {
               </Text>
               <Text style={[styles.screenSubtitle, { color: colors.mutedForeground }]}>
                 {showEnglish
-                  ? "12 curated archetypes with real Scryfall cards and strategy explanations"
-                  : "12 kuratierte Archetypen mit echten Scryfall-Karten und Strategie-Erklärungen"}
+                  ? `${archetypes.length || "—"} archetypes for the selected format`
+                  : `${archetypes.length || "—"} Archetypen für das gewählte Format`}
               </Text>
             </View>
             <LanguageToggle />
           </View>
+
+          {/* Format Picker */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.formatScroll} contentContainerStyle={styles.formatRow}>
+            {FORMATS.map((fmt) => {
+              const active = selectedFormat === fmt.key;
+              return (
+                <TouchableOpacity
+                  key={fmt.key}
+                  style={[
+                    styles.formatPill,
+                    {
+                      backgroundColor: active ? fmt.color : colors.card,
+                      borderColor: active ? fmt.color : colors.border,
+                    },
+                  ]}
+                  onPress={() => setSelectedFormat(fmt.key)}
+                  activeOpacity={0.75}
+                >
+                  <Ionicons name={fmt.icon as any} size={14} color={active ? "#fff" : fmt.color} />
+                  <Text style={[styles.formatPillText, { color: active ? "#fff" : colors.foreground }]}>
+                    {showEnglish ? fmt.labelEn : fmt.labelDe}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {/* Format description */}
+          {(() => {
+            const fmt = FORMATS.find((f) => f.key === selectedFormat);
+            if (!fmt) return null;
+            return (
+              <View style={[styles.formatDesc, { backgroundColor: fmt.color + "18", borderColor: fmt.color + "44" }]}>
+                <Ionicons name={fmt.icon as any} size={14} color={fmt.color} />
+                <Text style={[styles.formatDescText, { color: colors.mutedForeground }]}>
+                  {showEnglish ? fmt.descEn : fmt.descDe}
+                </Text>
+              </View>
+            );
+          })()}
 
           {loadingList && (
             <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
@@ -485,6 +550,47 @@ export default function DeckIdeasScreen() {
                 {showEnglish ? suggestion.whyEn : suggestion.whyDe}
               </Text>
             </View>
+
+            {/* Commander Card – prominently displayed for Commander format */}
+            {suggestion.commanderCard && (
+              <View style={[styles.commanderSection, { backgroundColor: "#0d1a0d", borderColor: "#16a34a77" }]}>
+                <View style={styles.commanderHeader}>
+                  <Ionicons name="shield-half-outline" size={18} color="#4ade80" />
+                  <Text style={[styles.commanderTitle, { color: "#4ade80" }]}>
+                    {showEnglish ? "Commander" : "Commander"}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.commanderCardRow}
+                  onPress={() => { setDetailCard(suggestion.commanderCard!); setShowCardDetail(true); }}
+                  activeOpacity={0.82}
+                >
+                  {suggestion.commanderCard.imageUri ? (
+                    <Image
+                      source={{ uri: suggestion.commanderCard.imageUri }}
+                      style={styles.commanderImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={[styles.commanderImagePlaceholder, { backgroundColor: colors.secondary }]}>
+                      <Ionicons name="shield-half-outline" size={36} color="#16a34a" />
+                    </View>
+                  )}
+                  <View style={{ flex: 1, gap: 6 }}>
+                    <Text style={[styles.commanderName, { color: colors.foreground }]}>
+                      {suggestion.commanderCard.name}
+                    </Text>
+                    <Text style={[styles.commanderType, { color: colors.mutedForeground }]} numberOfLines={1}>
+                      {suggestion.commanderCard.type_line}
+                    </Text>
+                    <Text style={[styles.commanderRole, { color: "#4ade80" }]} numberOfLines={3}>
+                      {showEnglish ? suggestion.commanderCard.roleEn : suggestion.commanderCard.roleDe}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Import button */}
             {importFeedback ? (
@@ -748,4 +854,46 @@ const styles = StyleSheet.create({
     marginHorizontal: 12, marginTop: 4, marginBottom: 12,
   },
   cardmarketBtnText: { flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold" },
+
+  // Format picker
+  formatScroll: { marginBottom: 4 },
+  formatRow: { flexDirection: "row", gap: 8, paddingVertical: 4 },
+  formatPill: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    borderRadius: 99, borderWidth: 1,
+    paddingHorizontal: 12, paddingVertical: 7,
+  },
+  formatPillText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  formatDesc: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    borderRadius: 10, borderWidth: 1,
+    paddingHorizontal: 12, paddingVertical: 8, marginBottom: 2,
+  },
+  formatDescText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
+
+  // Commander section
+  commanderSection: {
+    borderRadius: 16, borderWidth: 2,
+    overflow: "hidden", marginBottom: 0,
+  },
+  commanderHeader: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8,
+  },
+  commanderTitle: { fontSize: 15, fontFamily: "Inter_700Bold", flex: 1 },
+  commanderCardRow: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    paddingHorizontal: 14, paddingBottom: 14,
+  },
+  commanderImage: {
+    width: 70, height: 98, borderRadius: 8,
+    borderWidth: 2, borderColor: "#16a34a66",
+  },
+  commanderImagePlaceholder: {
+    width: 70, height: 98, borderRadius: 8,
+    alignItems: "center", justifyContent: "center",
+  },
+  commanderName: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  commanderType: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  commanderRole: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
 });
