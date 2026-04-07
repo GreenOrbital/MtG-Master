@@ -2039,16 +2039,6 @@ export default function ManapoolScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Button row 2: Manabox export */}
-            <TouchableOpacity
-              style={[styles.deckActionBtn, { backgroundColor: "#1a2a1a", borderColor: "#4ade80", borderWidth: 1.5, marginTop: 2 }]}
-              onPress={() => handleExportManabox(activeDeck)}
-            >
-              <Ionicons name="grid-outline" size={17} color="#4ade80" />
-              <Text style={[styles.deckActionBtnText, { color: "#4ade80" }]}>
-                {showEnglish ? "Export for Manabox (.txt)" : "Für Manabox exportieren (.txt)"}
-              </Text>
-            </TouchableOpacity>
 
             {/* ── Delete Deck ── */}
             <TouchableOpacity style={[styles.deleteDeckBtn, { borderColor: colors.destructive }]}

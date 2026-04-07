@@ -551,8 +551,8 @@ export default function DeckIdeasScreen() {
               </Text>
               <Text style={[styles.preconSubtitle, { color: colors.mutedForeground }]}>
                 {showEnglish
-                  ? `${COMMANDER_PRECONS.length} official decks — buy on Amazon`
-                  : `${COMMANDER_PRECONS.length} offizielle Decks — bei Amazon kaufen`}
+                  ? `${COMMANDER_PRECONS.length} official decks`
+                  : `${COMMANDER_PRECONS.length} offizielle Decks`}
               </Text>
             </View>
             <Ionicons name={showPreconSection ? "chevron-up" : "chevron-down"} size={18} color="#16a34a" />
