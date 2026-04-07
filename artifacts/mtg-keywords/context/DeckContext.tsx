@@ -21,9 +21,12 @@ export type DeckCard = {
   count: number;
 };
 
+export type GameFormat = "standard" | "commander" | "brawl" | "limited";
+
 export type Deck = {
   id: string;
   name: string;
+  format?: GameFormat;
   cards: DeckCard[];
   lands: LandCounts;
   savedAt: number;
@@ -31,7 +34,7 @@ export type Deck = {
 
 type DeckContextType = {
   decks: Deck[];
-  createDeck: (name: string) => Deck;
+  createDeck: (name: string, format?: GameFormat) => Deck;
   updateDeck: (deck: Deck) => void;
   deleteDeck: (id: string) => void;
   addCardToDeck: (deckId: string, card: Omit<DeckCard, "count">, count?: number) => void;
@@ -84,10 +87,11 @@ export function DeckProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(d));
   }
 
-  function createDeck(name: string): Deck {
+  function createDeck(name: string, format?: GameFormat): Deck {
     const deck: Deck = {
       id: Date.now().toString(),
       name: name.trim() || "Mein Deck",
+      format,
       cards: [],
       lands: { ...EMPTY_LANDS },
       savedAt: Date.now(),

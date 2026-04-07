@@ -22,7 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { G, Line, Rect, Text as SvgText } from "react-native-svg";
 
 import { LanguageToggle } from "@/components/LanguageToggle";
-import { type Deck, type DeckCard, useDecks } from "@/context/DeckContext";
+import { type Deck, type DeckCard, type GameFormat, useDecks } from "@/context/DeckContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -219,47 +219,49 @@ function sumMana(cards: Deck["cards"]): ManaCounts {
 const SIM_RUNS    = 50_000;
 const SIM_MAX_T   = 14; // turns 0 (opening hand) … 14
 
+// ─── Game formats ─────────────────────────────────────────────────────────────
+export const GAME_FORMATS: Record<GameFormat, {
+  labelDe: string; labelEn: string; deckSize: number; maxCopies: number;
+}> = {
+  standard:  { labelDe: "Standard / Modern", labelEn: "Standard / Modern", deckSize: 60,  maxCopies: 4 },
+  commander: { labelDe: "Commander",          labelEn: "Commander",          deckSize: 100, maxCopies: 1 },
+  brawl:     { labelDe: "Brawl",              labelEn: "Brawl",              deckSize: 60,  maxCopies: 1 },
+  limited:   { labelDe: "Limited",            labelEn: "Limited",            deckSize: 40,  maxCopies: 4 },
+};
+export const FORMAT_KEYS: GameFormat[] = ["standard", "commander", "brawl", "limited"];
+
+// ─── Draw Simulation ──────────────────────────────────────────────────────────
+// Virtual-deck approach: simulates a deck of `deckSize` cards with `copies`
+// target cards. No actual deck cards needed — probability is identical for any
+// card with the same copy count in a same-size deck.
 function runDrawSim(
-  cardName: string,
-  deckCards: DeckCard[],
-  handSize: number,    // 5, 6, or 7 (simulates mulligan depth)
-  copiesOverride: number, // how many copies of the card are in the deck
+  deckSize: number,      // total cards in virtual deck
+  copies: number,        // copies of target card in that deck
+  handSize: number,      // starting hand size (after mulligans)
 ): number[] {
-  // Build flat deck, replacing actual copies with override count
-  const deck: string[] = [];
-  let cardAdded = 0;
-  for (const c of deckCards) {
-    if (c.name === cardName) {
-      for (let i = 0; i < copiesOverride; i++) deck.push(c.name);
-      cardAdded = copiesOverride;
-    } else {
-      for (let i = 0; i < c.count; i++) deck.push(c.name);
-    }
-  }
-  // If card not yet added (shouldn't happen), push it
-  if (cardAdded === 0) for (let i = 0; i < copiesOverride; i++) deck.push(cardName);
+  if (deckSize <= 0 || copies <= 0 || copies > deckSize) return new Array(SIM_MAX_T + 2).fill(0);
 
-  const deckSize = deck.length;
   const buckets = new Array(SIM_MAX_T + 2).fill(0);
+  // Boolean deck buffer: true = target card
+  const buf: boolean[] = new Array(deckSize).fill(false).map((_, i) => i < copies);
 
-  const buf = [...deck];
   for (let s = 0; s < SIM_RUNS; s++) {
     // Fisher-Yates shuffle
     for (let i = deckSize - 1; i > 0; i--) {
       const j = (Math.random() * (i + 1)) | 0;
       const tmp = buf[i]; buf[i] = buf[j]; buf[j] = tmp;
     }
-    // Opening hand (handSize cards)
+    // Opening hand
     let found = -1;
     for (let i = 0; i < Math.min(handSize, deckSize); i++) {
-      if (buf[i] === cardName) { found = 0; break; }
+      if (buf[i]) { found = 0; break; }
     }
     // Subsequent draws (1 per turn)
     if (found === -1) {
       for (let t = 1; t <= SIM_MAX_T; t++) {
-        const idx = handSize - 1 + t; // card drawn on turn t
+        const idx = handSize - 1 + t;
         if (idx >= deckSize) break;
-        if (buf[idx] === cardName) { found = t; break; }
+        if (buf[idx]) { found = t; break; }
       }
     }
     buckets[found === -1 ? SIM_MAX_T + 1 : found]++;
@@ -755,6 +757,8 @@ export default function ManapoolScreen() {
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [showNewDeckModal, setShowNewDeckModal] = useState(false);
+  const [newDeckStep, setNewDeckStep] = useState<"format" | "name">("format");
+  const [newDeckFormat, setNewDeckFormat] = useState<GameFormat>("standard");
   const [newDeckName, setNewDeckName] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [deckCombos, setDeckCombos] = useState<ComboData[]>([]);
@@ -770,27 +774,29 @@ export default function ManapoolScreen() {
   const [exportFeedback, setExportFeedback] = useState<string | null>(null);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 
+  // ── Shared simulation controls (format + mulligans) ─────────────────────────
+  const [simFormat, setSimFormat]         = useState<GameFormat>("standard");
+  const [simMulligans, setSimMulligans]   = useState<0 | 1 | 2>(0);
+  // derived: hand size = 7 − mulligans
+  const simHandSize = (7 - simMulligans) as 5 | 6 | 7;
+
   // ── Draw-Simulation state ───────────────────────────────────────────────────
-  const [simCardName, setSimCardName]     = useState<string | null>(null);
   const [simBuckets, setSimBuckets]       = useState<number[] | null>(null);
   const [simRunning, setSimRunning]       = useState(false);
-  const [simShowPicker, setSimShowPicker] = useState(false);
   const simWorkerRef                      = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [simHandSize, setSimHandSize]     = useState<5 | 6 | 7>(7);
   const [simCopies, setSimCopies]         = useState<number>(1);
 
   // ── Monte-Carlo Mana-Simulation state ──────────────────────────────────────
   const [mcResult, setMcResult]           = useState<MCResult | null>(null);
   const [mcRunning, setMcRunning]         = useState(false);
-  const [mcHandSize, setMcHandSize]       = useState<5 | 6 | 7>(7);
   const mcWorkerRef                       = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const runSimulation = useCallback((cardName: string, deckCards: DeckCard[], handSize: number, copies: number) => {
+  const runSimulation = useCallback((deckSize: number, copies: number, handSize: number) => {
     if (simWorkerRef.current) clearTimeout(simWorkerRef.current);
     setSimRunning(true);
     setSimBuckets(null);
     simWorkerRef.current = setTimeout(() => {
-      const result = runDrawSim(cardName, deckCards, handSize, copies);
+      const result = runDrawSim(deckSize, copies, handSize);
       setSimBuckets(result);
       setSimRunning(false);
     }, 20);
@@ -888,9 +894,12 @@ export default function ManapoolScreen() {
 
   function handleCreateDeck() {
     const name = newDeckName.trim();
-    const deck = createDeck(name || (showEnglish ? "My Deck" : "Mein Deck"));
+    const deck = createDeck(name || (showEnglish ? "My Deck" : "Mein Deck"), newDeckFormat);
     setNewDeckName("");
+    setNewDeckStep("format");
     setShowNewDeckModal(false);
+    // Pre-populate simFormat with the new deck's format
+    setSimFormat(newDeckFormat);
     openDeck(deck);
   }
 
@@ -1158,7 +1167,7 @@ export default function ManapoolScreen() {
             <View style={{ flexDirection: "row", gap: 10 }}>
               <TouchableOpacity
                 style={[styles.newDeckBtn, { backgroundColor: colors.primary, flex: 1 }]}
-                onPress={() => setShowNewDeckModal(true)}
+                onPress={() => { setNewDeckStep("format"); setNewDeckName(""); setShowNewDeckModal(true); }}
               >
                 <Ionicons name="add-circle-outline" size={20} color="#fff" />
                 <Text style={styles.newDeckBtnText}>
@@ -1995,8 +2004,8 @@ export default function ManapoolScreen() {
 
             {/* ── Ziehwahrscheinlichkeit / Draw Probability ── */}
             {(() => {
-              const nonLandCards = activeDeck.cards.filter((c) => !isLand(c));
-              if (nonLandCards.length === 0) return null;
+              const totalDeckCards = activeDeck.cards.reduce((a, c) => a + c.count, 0);
+              if (totalDeckCards < 7) return null;
 
               // ── Text-Ergebnisse (kein Chart) ───────────────────────────
               function SimResults({ buckets, cardCopies, copiesOverride, handSize }: { buckets: number[]; cardCopies: number; copiesOverride: number; handSize: number }) {
@@ -2054,8 +2063,9 @@ export default function ManapoolScreen() {
                 );
               }
 
-              const selCard  = nonLandCards.find((c) => c.name === simCardName) ?? null;
-              const cardCopies = selCard?.count ?? 0;
+              const fmtInfo = GAME_FORMATS[simFormat];
+              const maxCopiesForFormat = fmtInfo.maxCopies;
+              const cappedCopies = Math.min(simCopies, maxCopiesForFormat);
 
               return (
                 <>
@@ -2064,103 +2074,90 @@ export default function ManapoolScreen() {
                   </Text>
                   <View style={[styles.analysisBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
 
-                    {/* Card picker */}
-                    <TouchableOpacity
-                      style={{ flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: colors.background, borderRadius: 10, borderWidth: 1, borderColor: colors.border, padding: 12 }}
-                      onPress={() => setSimShowPicker((v) => !v)}
-                      activeOpacity={0.75}
-                    >
-                      <Ionicons name="search-outline" size={16} color={colors.mutedForeground} />
-                      <Text style={{ flex: 1, color: simCardName ? colors.foreground : colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14 }} numberOfLines={1}>
-                        {simCardName ?? (showEnglish ? "Select a card…" : "Karte wählen…")}
+                    {/* Info hint */}
+                    <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center" }}>
+                      {showEnglish
+                        ? "Probability to draw at least one copy of any card."
+                        : "Wahrscheinlichkeit, mindestens eine Kopie einer beliebigen Karte zu ziehen."}
+                    </Text>
+
+                    {/* Shared controls */}
+                    {/* 1. Game mode */}
+                    <View style={{ gap: 6 }}>
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
+                        {showEnglish ? "Game Mode" : "Spielmodus"}
                       </Text>
-                      {simCardName && (
-                        <View style={{ backgroundColor: colors.primary + "22", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 }}>
-                          <Text style={{ color: colors.primary, fontSize: 11, fontFamily: "Inter_600SemiBold" }}>{cardCopies}×</Text>
-                        </View>
-                      )}
-                      <Ionicons name={simShowPicker ? "chevron-up" : "chevron-down"} size={14} color={colors.mutedForeground} />
-                    </TouchableOpacity>
-
-                    {simShowPicker && (
-                      <View style={{ borderRadius: 10, borderWidth: 1, borderColor: colors.border, overflow: "hidden", maxHeight: 220 }}>
-                        <ScrollView nestedScrollEnabled>
-                          {nonLandCards.map((c, i) => (
+                      <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
+                        {FORMAT_KEYS.map((fk) => {
+                          const fi = GAME_FORMATS[fk];
+                          const sel = simFormat === fk;
+                          return (
                             <TouchableOpacity
-                              key={i}
-                              style={{ flexDirection: "row", alignItems: "center", padding: 10, gap: 10, backgroundColor: c.name === simCardName ? colors.primary + "18" : "transparent", borderBottomWidth: i < nonLandCards.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: colors.border }}
-                              onPress={() => {
-                                setSimCardName(c.name);
-                                setSimCopies(Math.min(c.count, 4));
-                                setSimShowPicker(false);
-                                setSimBuckets(null);
-                              }}
-                              activeOpacity={0.7}
+                              key={fk}
+                              style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, alignItems: "center", backgroundColor: sel ? colors.primary : colors.background, borderWidth: 1, borderColor: sel ? colors.primary : colors.border, minWidth: 80 }}
+                              onPress={() => { setSimFormat(fk); setSimBuckets(null); if (simCopies > GAME_FORMATS[fk].maxCopies) setSimCopies(1); }}
+                              activeOpacity={0.75}
                             >
-                              <View style={{ width: 26, height: 26, borderRadius: 6, backgroundColor: colors.primary + "22", alignItems: "center", justifyContent: "center" }}>
-                                <Text style={{ fontSize: 11, color: colors.primary, fontFamily: "Inter_700Bold" }}>{c.count}×</Text>
-                              </View>
-                              <Text style={{ flex: 1, color: c.name === simCardName ? colors.primary : colors.foreground, fontFamily: "Inter_400Regular", fontSize: 13 }} numberOfLines={1}>{c.name}</Text>
-                              {c.name === simCardName && <Ionicons name="checkmark" size={14} color={colors.primary} />}
+                              <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: sel ? "#fff" : colors.mutedForeground }}>{showEnglish ? fi.labelEn : fi.labelDe}</Text>
+                              <Text style={{ fontSize: 9, color: sel ? "#ffffffaa" : colors.mutedForeground, fontFamily: "Inter_400Regular" }}>{fi.deckSize} {showEnglish ? "cards" : "Ktn."}</Text>
                             </TouchableOpacity>
-                          ))}
-                        </ScrollView>
+                          );
+                        })}
                       </View>
-                    )}
+                    </View>
 
-                    {/* Variable controls */}
-                    {simCardName && (
-                      <View style={{ gap: 10 }}>
-                        {/* Hand size */}
-                        <View style={{ gap: 5 }}>
-                          <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
-                            {showEnglish ? "Starting hand size (mulligan)" : "Starthandgröße (Mulligan)"}
-                          </Text>
-                          <View style={{ flexDirection: "row", gap: 6 }}>
-                            {([5, 6, 7] as const).map((h) => (
-                              <TouchableOpacity
-                                key={h}
-                                style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: "center", backgroundColor: simHandSize === h ? colors.primary : colors.background, borderWidth: 1, borderColor: simHandSize === h ? colors.primary : colors.border }}
-                                onPress={() => { setSimHandSize(h); setSimBuckets(null); }}
-                                activeOpacity={0.75}
-                              >
-                                <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: simHandSize === h ? "#fff" : colors.mutedForeground }}>
-                                  {h} {showEnglish ? "cards" : "Karten"}
-                                </Text>
-                                <Text style={{ fontSize: 9, color: simHandSize === h ? "#ffffffaa" : colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
-                                  {h === 7 ? (showEnglish ? "no mulligan" : "kein Mulligan") : h === 6 ? (showEnglish ? "1 mull." : "1 Mull.") : (showEnglish ? "2 mull." : "2 Mull.")}
-                                </Text>
-                              </TouchableOpacity>
-                            ))}
-                          </View>
-                        </View>
-
-                        {/* Copies override */}
-                        <View style={{ gap: 5 }}>
-                          <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
-                            {showEnglish ? "Copies in deck (what-if)" : "Kopien im Deck (Was-wäre-wenn)"}
-                          </Text>
-                          <View style={{ flexDirection: "row", gap: 6 }}>
-                            {[1, 2, 3, 4].map((n) => (
-                              <TouchableOpacity
-                                key={n}
-                                style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: "center", backgroundColor: simCopies === n ? colors.accent : colors.background, borderWidth: 1, borderColor: simCopies === n ? colors.accent : colors.border }}
-                                onPress={() => { setSimCopies(n); setSimBuckets(null); }}
-                                activeOpacity={0.75}
-                              >
-                                <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: simCopies === n ? "#fff" : colors.mutedForeground }}>{n}×</Text>
-                              </TouchableOpacity>
-                            ))}
-                          </View>
-                        </View>
+                    {/* 2. Mulligans */}
+                    <View style={{ gap: 6 }}>
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
+                        {showEnglish ? "Mulligans" : "Mulligans"}
+                      </Text>
+                      <View style={{ flexDirection: "row", gap: 6 }}>
+                        {([0, 1, 2] as const).map((m) => {
+                          const hs = 7 - m;
+                          const sel = simMulligans === m;
+                          return (
+                            <TouchableOpacity
+                              key={m}
+                              style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: "center", backgroundColor: sel ? colors.primary : colors.background, borderWidth: 1, borderColor: sel ? colors.primary : colors.border }}
+                              onPress={() => { setSimMulligans(m); setSimBuckets(null); }}
+                              activeOpacity={0.75}
+                            >
+                              <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: sel ? "#fff" : colors.mutedForeground }}>{m}×</Text>
+                              <Text style={{ fontSize: 9, color: sel ? "#ffffffaa" : colors.mutedForeground, fontFamily: "Inter_400Regular" }}>{hs} {showEnglish ? "cards" : "Ktn."}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
                       </View>
-                    )}
+                    </View>
+
+                    {/* 3. Copies */}
+                    <View style={{ gap: 6 }}>
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
+                        {showEnglish ? "Copies in deck" : "Kopien im Deck"}
+                      </Text>
+                      <View style={{ flexDirection: "row", gap: 6 }}>
+                        {[1, 2, 3, 4].map((n) => {
+                          const disabled = n > maxCopiesForFormat;
+                          const sel = cappedCopies === n && !disabled;
+                          return (
+                            <TouchableOpacity
+                              key={n}
+                              style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: "center", backgroundColor: sel ? colors.accent : colors.background, borderWidth: 1, borderColor: sel ? colors.accent : disabled ? colors.border + "44" : colors.border, opacity: disabled ? 0.35 : 1 }}
+                              onPress={() => { if (!disabled) { setSimCopies(n); setSimBuckets(null); } }}
+                              activeOpacity={disabled ? 1 : 0.75}
+                            >
+                              <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: sel ? "#fff" : colors.mutedForeground }}>{n}×</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
 
                     {/* Run button */}
-                    {simCardName && !simRunning && (
+                    {!simRunning && (
                       <TouchableOpacity
                         style={{ backgroundColor: colors.primary, borderRadius: 10, padding: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
-                        onPress={() => runSimulation(simCardName, activeDeck.cards, simHandSize, simCopies)}
+                        onPress={() => runSimulation(fmtInfo.deckSize, cappedCopies, simHandSize)}
                         activeOpacity={0.8}
                       >
                         <Ionicons name="analytics-outline" size={16} color="#fff" />
@@ -2182,16 +2179,8 @@ export default function ManapoolScreen() {
                     {simBuckets && !simRunning && (
                       <>
                         <View style={[styles.divider, { backgroundColor: colors.border }]} />
-                        <SimResults buckets={simBuckets} cardCopies={cardCopies} copiesOverride={simCopies} handSize={simHandSize} />
+                        <SimResults buckets={simBuckets} cardCopies={cappedCopies} copiesOverride={cappedCopies} handSize={simHandSize} />
                       </>
-                    )}
-
-                    {!simCardName && (
-                      <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center" }}>
-                        {showEnglish
-                          ? "Select any non-land card to simulate when it first appears."
-                          : "Wähle eine Nicht-Land-Karte, um zu simulieren, wann du sie ziehst."}
-                      </Text>
                     )}
                   </View>
                 </>
@@ -2291,27 +2280,50 @@ export default function ManapoolScreen() {
                       ))}
                     </View>
 
-                    {/* Hand size selector */}
-                    <View style={{ gap: 5 }}>
+                    {/* Shared controls (same game mode + mulligans as Draw Probability above) */}
+                    <View style={{ gap: 6 }}>
                       <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
-                        {showEnglish ? "Starting hand size (mulligan)" : "Starthandgröße (Mulligan)"}
+                        {showEnglish ? "Game Mode" : "Spielmodus"}
+                      </Text>
+                      <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
+                        {FORMAT_KEYS.map((fk) => {
+                          const fi = GAME_FORMATS[fk];
+                          const sel = simFormat === fk;
+                          return (
+                            <TouchableOpacity
+                              key={fk}
+                              style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, alignItems: "center", backgroundColor: sel ? colors.primary : colors.background, borderWidth: 1, borderColor: sel ? colors.primary : colors.border, minWidth: 80 }}
+                              onPress={() => { setSimFormat(fk); setMcResult(null); }}
+                              activeOpacity={0.75}
+                            >
+                              <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: sel ? "#fff" : colors.mutedForeground }}>{showEnglish ? fi.labelEn : fi.labelDe}</Text>
+                              <Text style={{ fontSize: 9, color: sel ? "#ffffffaa" : colors.mutedForeground, fontFamily: "Inter_400Regular" }}>{fi.deckSize} {showEnglish ? "cards" : "Ktn."}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+
+                    <View style={{ gap: 6 }}>
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
+                        {showEnglish ? "Mulligans" : "Mulligans"}
                       </Text>
                       <View style={{ flexDirection: "row", gap: 6 }}>
-                        {([7, 6, 5] as const).map((h) => (
-                          <TouchableOpacity
-                            key={h}
-                            style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: "center", backgroundColor: mcHandSize === h ? colors.primary : colors.background, borderWidth: 1, borderColor: mcHandSize === h ? colors.primary : colors.border }}
-                            onPress={() => { setMcHandSize(h); setMcResult(null); }}
-                            activeOpacity={0.75}
-                          >
-                            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: mcHandSize === h ? "#fff" : colors.mutedForeground }}>
-                              {h} {showEnglish ? "cards" : "Karten"}
-                            </Text>
-                            <Text style={{ fontSize: 9, color: mcHandSize === h ? "#ffffffaa" : colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
-                              {h === 7 ? (showEnglish ? "no mulligan" : "kein Mulligan") : h === 6 ? (showEnglish ? "1 mull." : "1 Mull.") : (showEnglish ? "2 mull." : "2 Mull.")}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
+                        {([0, 1, 2] as const).map((m) => {
+                          const hs = 7 - m;
+                          const sel = simMulligans === m;
+                          return (
+                            <TouchableOpacity
+                              key={m}
+                              style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: "center", backgroundColor: sel ? colors.primary : colors.background, borderWidth: 1, borderColor: sel ? colors.primary : colors.border }}
+                              onPress={() => { setSimMulligans(m); setMcResult(null); }}
+                              activeOpacity={0.75}
+                            >
+                              <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: sel ? "#fff" : colors.mutedForeground }}>{m}×</Text>
+                              <Text style={{ fontSize: 9, color: sel ? "#ffffffaa" : colors.mutedForeground, fontFamily: "Inter_400Regular" }}>{hs} {showEnglish ? "cards" : "Ktn."}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
                       </View>
                     </View>
 
@@ -2319,7 +2331,7 @@ export default function ManapoolScreen() {
                     {!mcRunning && (
                       <TouchableOpacity
                         style={{ backgroundColor: "#06b6d4", borderRadius: 10, padding: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
-                        onPress={() => runMC(activeDeck.cards, mcHandSize)}
+                        onPress={() => runMC(activeDeck.cards, simHandSize)}
                         activeOpacity={0.8}
                       >
                         <Ionicons name="dice-outline" size={16} color="#fff" />
@@ -2418,8 +2430,8 @@ export default function ManapoolScreen() {
 
                         <Text style={{ fontSize: 10, color: colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center" }}>
                           {showEnglish
-                            ? `${MC_RUNS.toLocaleString()} games · ${mcResult.totalLands}/${mcResult.totalCards} lands · hand size ${mcHandSize}`
-                            : `${MC_RUNS.toLocaleString()} Spiele · ${mcResult.totalLands}/${mcResult.totalCards} Länder · Handgröße ${mcHandSize}`}
+                            ? `${MC_RUNS.toLocaleString()} games · ${mcResult.totalLands}/${mcResult.totalCards} lands · hand size ${simHandSize}`
+                            : `${MC_RUNS.toLocaleString()} Spiele · ${mcResult.totalLands}/${mcResult.totalCards} Länder · Handgröße ${simHandSize}`}
                         </Text>
                       </>
                     )}
@@ -2771,22 +2783,78 @@ export default function ManapoolScreen() {
       <Modal visible={showNewDeckModal} transparent animationType="fade">
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowNewDeckModal(false)}>
           <View style={[styles.modalSheet, { backgroundColor: colors.card }]} onStartShouldSetResponder={() => true}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
-              {showEnglish ? "New Deck" : "Neues Deck"}
-            </Text>
-            <TextInput
-              value={newDeckName}
-              onChangeText={setNewDeckName}
-              placeholder={showEnglish ? "Deck name…" : "Deckname…"}
-              placeholderTextColor={colors.mutedForeground}
-              style={[styles.modalInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              autoFocus autoCorrect={false}
-              returnKeyType="done"
-              onSubmitEditing={handleCreateDeck}
-            />
-            <TouchableOpacity style={[styles.modalCreateBtn, { backgroundColor: colors.primary }]} onPress={handleCreateDeck}>
-              <Text style={styles.modalCreateBtnText}>{showEnglish ? "Create" : "Erstellen"}</Text>
-            </TouchableOpacity>
+            {newDeckStep === "format" ? (
+              <>
+                <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+                  {showEnglish ? "Select Format" : "Format wählen"}
+                </Text>
+                <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginBottom: 14, textAlign: "center" }}>
+                  {showEnglish ? "This sets deck size and max copies." : "Bestimmt Deckgröße und max. Kopien."}
+                </Text>
+                <View style={{ gap: 8 }}>
+                  {FORMAT_KEYS.map((fk) => {
+                    const f = GAME_FORMATS[fk];
+                    const selected = newDeckFormat === fk;
+                    return (
+                      <TouchableOpacity
+                        key={fk}
+                        onPress={() => setNewDeckFormat(fk)}
+                        activeOpacity={0.7}
+                        style={{ flexDirection: "row", alignItems: "center", padding: 12, borderRadius: 10, borderWidth: 1.5, borderColor: selected ? colors.primary : colors.border, backgroundColor: selected ? colors.primary + "15" : colors.background, gap: 10 }}
+                      >
+                        <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: selected ? colors.primary : colors.border, alignItems: "center", justifyContent: "center" }}>
+                          {selected && <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: colors.primary }} />}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: selected ? colors.primary : colors.foreground }}>
+                            {showEnglish ? f.labelEn : f.labelDe}
+                          </Text>
+                          <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                            {f.deckSize} {showEnglish ? "cards" : "Karten"} · max. {f.maxCopies}×
+                          </Text>
+                        </View>
+                        {selected && <Ionicons name="checkmark-circle" size={18} color={colors.primary} />}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                <TouchableOpacity
+                  style={[styles.modalCreateBtn, { backgroundColor: colors.primary, marginTop: 16 }]}
+                  onPress={() => setNewDeckStep("name")}
+                >
+                  <Text style={styles.modalCreateBtnText}>{showEnglish ? "Next →" : "Weiter →"}</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+                  {showEnglish ? "New Deck" : "Neues Deck"}
+                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14, justifyContent: "center" }}>
+                  <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: colors.primary + "22", borderWidth: 1, borderColor: colors.primary + "44" }}>
+                    <Text style={{ fontSize: 12, color: colors.primary, fontFamily: "Inter_600SemiBold" }}>
+                      {showEnglish ? GAME_FORMATS[newDeckFormat].labelEn : GAME_FORMATS[newDeckFormat].labelDe}
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setNewDeckStep("format")}>
+                    <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>{showEnglish ? "change" : "ändern"}</Text>
+                  </TouchableOpacity>
+                </View>
+                <TextInput
+                  value={newDeckName}
+                  onChangeText={setNewDeckName}
+                  placeholder={showEnglish ? "Deck name…" : "Deckname…"}
+                  placeholderTextColor={colors.mutedForeground}
+                  style={[styles.modalInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+                  autoFocus autoCorrect={false}
+                  returnKeyType="done"
+                  onSubmitEditing={handleCreateDeck}
+                />
+                <TouchableOpacity style={[styles.modalCreateBtn, { backgroundColor: colors.primary }]} onPress={handleCreateDeck}>
+                  <Text style={styles.modalCreateBtnText}>{showEnglish ? "Create" : "Erstellen"}</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </TouchableOpacity>
       </Modal>
