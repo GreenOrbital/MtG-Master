@@ -419,6 +419,53 @@ export default function DeckIdeasScreen() {
             </View>
           )}
 
+          {/* ── Commander Fertigdecks kaufen ── */}
+          <TouchableOpacity
+            style={[styles.preconHeader, { backgroundColor: "#16a34a18", borderColor: "#16a34a55" }]}
+            onPress={() => setShowPreconSection(v => !v)}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.preconIconWrap, { backgroundColor: "#16a34a33" }]}>
+              <Ionicons name="cart-outline" size={22} color="#16a34a" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.preconTitle, { color: colors.foreground }]}>
+                {showEnglish ? "Commander Precon Decks" : "Commander Fertigdecks"}
+              </Text>
+              <Text style={[styles.preconSubtitle, { color: colors.mutedForeground }]}>
+                {showEnglish
+                  ? `${COMMANDER_PRECONS.length} official decks · buy on Amazon`
+                  : `${COMMANDER_PRECONS.length} offizielle Decks · bei Amazon kaufen`}
+              </Text>
+            </View>
+            <Ionicons name={showPreconSection ? "chevron-up" : "chevron-down"} size={18} color="#16a34a" />
+          </TouchableOpacity>
+
+          {showPreconSection && (
+            <View style={[styles.preconList, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {COMMANDER_PRECONS.map((deck, i) => {
+                const isLast = i === COMMANDER_PRECONS.length - 1;
+                return (
+                  <TouchableOpacity
+                    key={i}
+                    style={[styles.preconRow, { borderBottomColor: colors.border, borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth }]}
+                    onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent("Magic the Gathering " + deck.name + " Commander Deck")}&tag=masterofmtg-21`)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.preconBadge, { backgroundColor: "#16a34a22" }]}>
+                      <Text style={[styles.preconBadgeText, { color: "#16a34a" }]}>CMD</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.preconName, { color: colors.foreground }]} numberOfLines={1}>{deck.name}</Text>
+                      <Text style={[styles.preconSet, { color: colors.mutedForeground }]}>{deck.set} · {deck.year}</Text>
+                    </View>
+                    <Ionicons name="cart-outline" size={16} color="#ff9900" />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
           {archetypes.map((a) => (
             <TouchableOpacity
               key={a.key}
@@ -455,53 +502,6 @@ export default function DeckIdeasScreen() {
               </View>
             </TouchableOpacity>
           ))}
-
-          {/* ── Commander Fertigdecks kaufen ── */}
-          <TouchableOpacity
-            style={[styles.preconHeader, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={() => setShowPreconSection(v => !v)}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.preconIconWrap, { backgroundColor: "#16a34a22" }]}>
-              <Ionicons name="shield-half-outline" size={22} color="#16a34a" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.preconTitle, { color: colors.foreground }]}>
-                {showEnglish ? "Commander Precon Decks" : "Commander Fertigdecks"}
-              </Text>
-              <Text style={[styles.preconSubtitle, { color: colors.mutedForeground }]}>
-                {showEnglish
-                  ? `${COMMANDER_PRECONS.length} official decks · buy on Amazon`
-                  : `${COMMANDER_PRECONS.length} offizielle Decks · bei Amazon kaufen`}
-              </Text>
-            </View>
-            <Ionicons name={showPreconSection ? "chevron-up" : "chevron-down"} size={18} color={colors.mutedForeground} />
-          </TouchableOpacity>
-
-          {showPreconSection && (
-            <View style={[styles.preconList, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              {COMMANDER_PRECONS.map((deck, i) => {
-                const isLast = i === COMMANDER_PRECONS.length - 1;
-                return (
-                  <TouchableOpacity
-                    key={i}
-                    style={[styles.preconRow, { borderBottomColor: colors.border, borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth }]}
-                    onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent("Magic the Gathering " + deck.name + " Commander Deck")}&tag=masterofmtg-21`)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[styles.preconBadge, { backgroundColor: "#16a34a22" }]}>
-                      <Text style={[styles.preconBadgeText, { color: "#16a34a" }]}>CMD</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.preconName, { color: colors.foreground }]} numberOfLines={1}>{deck.name}</Text>
-                      <Text style={[styles.preconSet, { color: colors.mutedForeground }]}>{deck.set} · {deck.year}</Text>
-                    </View>
-                    <Ionicons name="cart-outline" size={16} color="#ff9900" />
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
 
           <View style={{ height: insets.bottom + 100 }} />
         </ScrollView>
