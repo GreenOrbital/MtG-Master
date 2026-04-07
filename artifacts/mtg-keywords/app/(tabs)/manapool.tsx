@@ -842,20 +842,119 @@ export default function ManapoolScreen() {
     setShowImportModal(true);
   }
 
+  /** Parse MTGA / Moxfield text format: "4 Lightning Bolt" per line */
+  function parseTxtToDeck(text: string): Deck | null {
+    const lines = text.split("\n");
+    const cards: DeckCard[] = [];
+    let deckName = showEnglish ? "Imported Deck" : "Importiertes Deck";
+    let inSideboard = false;
+
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line || line.startsWith("//") || line.startsWith("#")) continue;
+
+      // Section headers
+      const lower = line.toLowerCase();
+      if (lower === "deck" || lower === "mainboard") { inSideboard = false; continue; }
+      if (lower === "sideboard" || lower === "commander") { inSideboard = true; continue; }
+
+      // Card lines: "4 Lightning Bolt" or "4x Lightning Bolt" or "4 Lightning Bolt (M21) 150"
+      const m = line.match(/^(\d+)x?\s+(.+)$/);
+      if (!m) continue;
+      const count = parseInt(m[1], 10);
+      // Strip set code: "Lightning Bolt (M21) 150" → "Lightning Bolt"
+      const name = m[2].replace(/\s*\([A-Z0-9]+\)\s*\d*$/, "").trim();
+      if (!name || count < 1) continue;
+
+      if (inSideboard) continue; // skip sideboard for now
+
+      // Check if already added (merge duplicates)
+      const existing = cards.find(c => c.name.toLowerCase() === name.toLowerCase());
+      if (existing) {
+        existing.count += count;
+      } else {
+        cards.push({
+          id: `imported-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          name,
+          count,
+        });
+      }
+    }
+
+    if (cards.length === 0) return null;
+
+    return {
+      id: `deck-${Date.now()}`,
+      name: deckName,
+      cards,
+      lands: { W: 0, U: 0, B: 0, R: 0, G: 0 },
+      savedAt: Date.now(),
+    };
+  }
+
+  /** Open OS file picker (web: hidden input, native: clipboard fallback) */
+  function handlePickFile() {
+    if (Platform.OS === "web") {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = ".json,.txt,.text";
+      input.onchange = () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const content = (e.target?.result as string) ?? "";
+          setImportJson(content);
+          setImportError(null);
+        };
+        reader.onerror = () => {
+          setImportError(showEnglish ? "Could not read file" : "Datei konnte nicht gelesen werden");
+        };
+        reader.readAsText(file, "utf-8");
+      };
+      input.click();
+    } else {
+      // Native: ask user to paste
+      setImportError(showEnglish
+        ? "On mobile: copy your deck text and paste it below."
+        : "Auf Mobilgerät: Deck-Text kopieren und unten einfügen.");
+    }
+  }
+
   function handleImportDeck() {
-    try {
-      const data = JSON.parse(importJson);
-      if (!data.name || !Array.isArray(data.cards)) {
-        setImportError(showEnglish ? "Invalid deck format" : "Ungültiges Deck-Format");
+    const text = importJson.trim();
+    if (!text) return;
+    setImportError(null);
+
+    // Try JSON first
+    if (text.startsWith("{")) {
+      try {
+        const data = JSON.parse(text);
+        if (!data.name || !Array.isArray(data.cards)) {
+          setImportError(showEnglish ? "Invalid deck format" : "Ungültiges Deck-Format");
+          return;
+        }
+        importDeck(data as Deck);
+        setShowImportModal(false);
+        setImportJson("");
+        return;
+      } catch {
+        setImportError(showEnglish ? "Invalid JSON" : "Ungültiges JSON");
         return;
       }
-      importDeck(data as Deck);
-      setShowImportModal(false);
-      setImportJson("");
-      setImportError(null);
-    } catch {
-      setImportError(showEnglish ? "Could not read JSON" : "JSON konnte nicht gelesen werden");
     }
+
+    // Try TXT format
+    const deck = parseTxtToDeck(text);
+    if (!deck || deck.cards.length === 0) {
+      setImportError(showEnglish
+        ? "No cards found. Use format: '4 Lightning Bolt' per line."
+        : "Keine Karten gefunden. Format: '4 Blitz' pro Zeile.");
+      return;
+    }
+    importDeck(deck);
+    setShowImportModal(false);
+    setImportJson("");
   }
 
   // ─── Saved-at label ────────────────────────────────────────────────────────
@@ -2222,25 +2321,45 @@ export default function ManapoolScreen() {
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>
               {showEnglish ? "Import Deck" : "Deck importieren"}
             </Text>
-            <Text style={{ fontSize: 13, color: colors.mutedForeground, lineHeight: 18 }}>
-              {showEnglish
-                ? "Paste a previously exported deck JSON below."
-                : "Hier das zuvor exportierte Deck-JSON einfügen."}
+
+            {/* File pick button */}
+            <TouchableOpacity
+              style={[styles.importFileBtn, { borderColor: colors.primary, backgroundColor: colors.primary + "18" }]}
+              onPress={handlePickFile}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="folder-open-outline" size={18} color={colors.primary} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.primary }}>
+                  {showEnglish ? "Choose File (.json / .txt)" : "Datei wählen (.json / .txt)"}
+                </Text>
+                <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 1 }}>
+                  {showEnglish
+                    ? "MTGA export, Moxfield txt, or app JSON"
+                    : "MTGA-Export, Moxfield txt oder App-JSON"}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward-outline" size={16} color={colors.mutedForeground} />
+            </TouchableOpacity>
+
+            <Text style={{ fontSize: 12, color: colors.mutedForeground, textAlign: "center" }}>
+              {showEnglish ? "— or paste text below —" : "— oder Text unten einfügen —"}
             </Text>
+
             <TextInput
               value={importJson}
               onChangeText={(t) => { setImportJson(t); setImportError(null); }}
-              placeholder={showEnglish ? "Paste JSON here…" : "JSON hier einfügen…"}
+              placeholder={showEnglish ? "4 Lightning Bolt\n2 Island\n…  (or paste JSON)" : "4 Blitz\n2 Insel\n…  (oder JSON einfügen)"}
               placeholderTextColor={colors.mutedForeground}
               multiline
-              numberOfLines={8}
+              numberOfLines={6}
               style={[
                 styles.modalInput,
                 {
                   color: colors.foreground,
                   borderColor: importError ? "#dc2626" : colors.border,
                   backgroundColor: colors.background,
-                  minHeight: 120,
+                  minHeight: 100,
                   textAlignVertical: "top",
                   fontFamily: "Inter_400Regular",
                   fontSize: 12,
@@ -2249,6 +2368,21 @@ export default function ManapoolScreen() {
               autoCorrect={false}
               autoCapitalize="none"
             />
+
+            {/* File loaded indicator */}
+            {importJson.trim().length > 0 && !importError && (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Ionicons name="checkmark-circle-outline" size={15} color="#22c55e" />
+                <Text style={{ fontSize: 12, color: "#22c55e", fontFamily: "Inter_400Regular" }}>
+                  {importJson.trim().startsWith("{")
+                    ? (showEnglish ? "JSON deck ready" : "JSON-Deck bereit")
+                    : (showEnglish
+                      ? `${(importJson.match(/^\d+x?\s+.+/gm) || []).length} card lines detected`
+                      : `${(importJson.match(/^\d+x?\s+.+/gm) || []).length} Kartenzeilen erkannt`)}
+                </Text>
+              </View>
+            )}
+
             {importError && (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Ionicons name="alert-circle-outline" size={15} color="#dc2626" />
@@ -2260,8 +2394,9 @@ export default function ManapoolScreen() {
               onPress={handleImportDeck}
               disabled={!importJson.trim()}
             >
+              <Ionicons name="download-outline" size={16} color="#fff" />
               <Text style={styles.modalCreateBtnText}>
-                {showEnglish ? "Import" : "Importieren"}
+                {showEnglish ? "Import Deck" : "Deck importieren"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -2364,7 +2499,8 @@ const styles = StyleSheet.create({
   modalSheet: { borderRadius: 16, padding: 20, width: "100%", gap: 14 },
   modalTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
   modalInput: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 11, fontSize: 16, fontFamily: "Inter_400Regular" },
-  modalCreateBtn: { borderRadius: 12, paddingVertical: 13, alignItems: "center" },
+  importFileBtn: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, borderWidth: 1.5, padding: 12 },
+  modalCreateBtn: { borderRadius: 12, paddingVertical: 13, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 },
   modalCreateBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
   // Typen-Übersicht
   typeBar: { height: 14, borderRadius: 7, flexDirection: "row", overflow: "hidden" },
