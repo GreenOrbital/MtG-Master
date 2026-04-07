@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -18,6 +18,8 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import Svg, { G, Line, Rect, Text as SvgText } from "react-native-svg";
 
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { type Deck, type DeckCard, useDecks } from "@/context/DeckContext";
@@ -208,6 +210,50 @@ function sumMana(cards: Deck["cards"]): ManaCounts {
     }
   }
   return total;
+}
+
+// ─── Draw-Simulation ─────────────────────────────────────────────────────────
+// Equivalent to the Python / matplotlib simulation — pure JS, runs in < 150 ms
+// for 50 000 iterations on modern devices.
+
+const SIM_RUNS    = 50_000;
+const SIM_MAX_T   = 14; // turns 0 (opening hand) … 14
+
+function runDrawSim(cardName: string, deckCards: DeckCard[]): number[] {
+  // Build flat deck array with duplicates
+  const deck: string[] = [];
+  for (const c of deckCards) {
+    for (let i = 0; i < c.count; i++) deck.push(c.name);
+  }
+  const deckSize = deck.length;
+  // buckets[0]        = found in opening hand
+  // buckets[1..14]    = found on turn N
+  // buckets[15]       = never drawn within SIM_MAX_T turns
+  const buckets = new Array(SIM_MAX_T + 2).fill(0);
+
+  const buf = [...deck]; // reused buffer
+  for (let s = 0; s < SIM_RUNS; s++) {
+    // Fisher-Yates shuffle (in-place on buf)
+    for (let i = deckSize - 1; i > 0; i--) {
+      const j = (Math.random() * (i + 1)) | 0;
+      const tmp = buf[i]; buf[i] = buf[j]; buf[j] = tmp;
+    }
+    // Opening hand (7 cards)
+    let found = -1;
+    for (let i = 0; i < Math.min(7, deckSize); i++) {
+      if (buf[i] === cardName) { found = 0; break; }
+    }
+    // Subsequent draws (1 per turn)
+    if (found === -1) {
+      for (let t = 1; t <= SIM_MAX_T; t++) {
+        const idx = 6 + t; // card drawn on turn t (0-indexed: pos 7, 8, …)
+        if (idx >= deckSize) break;
+        if (buf[idx] === cardName) { found = t; break; }
+      }
+    }
+    buckets[found === -1 ? SIM_MAX_T + 1 : found]++;
+  }
+  return buckets;
 }
 
 // ─── Deck-Analyse Hilfsfunktionen ────────────────────────────────────────────
@@ -655,6 +701,29 @@ export default function ManapoolScreen() {
   const [importError, setImportError] = useState<string | null>(null);
   const [exportFeedback, setExportFeedback] = useState<string | null>(null);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+
+  // ── Draw-Simulation state ───────────────────────────────────────────────────
+  const [simCardName, setSimCardName]     = useState<string | null>(null);
+  const [simBuckets, setSimBuckets]       = useState<number[] | null>(null);
+  const [simRunning, setSimRunning]       = useState(false);
+  const [simShowPicker, setSimShowPicker] = useState(false);
+  const simWorkerRef                      = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const runSimulation = useCallback((cardName: string, deckCards: DeckCard[]) => {
+    if (simWorkerRef.current) clearTimeout(simWorkerRef.current);
+    setSimRunning(true);
+    setSimBuckets(null);
+    simWorkerRef.current = setTimeout(() => {
+      const result = runDrawSim(cardName, deckCards);
+      setSimBuckets(result);
+      setSimRunning(false);
+    }, 20);
+  }, []);
+
+  useEffect(() => {
+    return () => { if (simWorkerRef.current) clearTimeout(simWorkerRef.current); };
+  }, []);
+
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 84 + 34 : insets.bottom + 84;
 
@@ -1828,6 +1897,194 @@ export default function ManapoolScreen() {
                           </Text>
                         )}
                       </>
+                    )}
+                  </View>
+                </>
+              );
+            })()}
+
+            {/* ── Ziehwahrscheinlichkeit / Draw Probability ── */}
+            {(() => {
+              const nonLandCards = activeDeck.cards.filter((c) => !isLand(c));
+              if (nonLandCards.length === 0) return null;
+
+              // ── Histogram renderer ───────────────────────────────────────
+              function SimHistogram({ buckets, cardCopies }: { buckets: number[]; cardCopies: number }) {
+                const W = 320;
+                const H = 160;
+                const padL = 32;
+                const padB = 40;
+                const padT = 10;
+                const padR = 10;
+                const chartW = W - padL - padR;
+                const chartH = H - padB - padT;
+
+                // Show turns 0..10 + "Nie"
+                const labels = ["Hand", "T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "Nie"];
+                const data = [
+                  buckets[0],  // opening hand
+                  buckets[1], buckets[2], buckets[3], buckets[4], buckets[5],
+                  buckets[6], buckets[7], buckets[8], buckets[9], buckets[10],
+                  buckets[SIM_MAX_T + 1], // never
+                ];
+                const maxVal = Math.max(...data, 1);
+                const barW   = chartW / data.length;
+                const BAR_COLOR  = "#7c3aed";
+                const NIE_COLOR  = "#d3202a";
+                const HAND_COLOR = "#16a34a";
+
+                // Cumulative % by turn 5
+                const cumBy5 = (buckets.slice(0, 6).reduce((a, b) => a + b, 0) / SIM_RUNS * 100).toFixed(1);
+
+                return (
+                  <View style={{ alignItems: "center", gap: 6 }}>
+                    <Svg width={W} height={H}>
+                      {/* Y-axis guide lines */}
+                      {[0.25, 0.5, 0.75, 1].map((frac) => {
+                        const y = padT + chartH * (1 - frac);
+                        return (
+                          <G key={frac}>
+                            <Line x1={padL} y1={y} x2={W - padR} y2={y} stroke="#ffffff18" strokeWidth={1} />
+                            <SvgText x={padL - 4} y={y + 4} fontSize={8} fill="#888" textAnchor="end">
+                              {Math.round(maxVal * frac / SIM_RUNS * 100)}%
+                            </SvgText>
+                          </G>
+                        );
+                      })}
+                      {/* Bars + X labels */}
+                      {data.map((val, i) => {
+                        const barH = val > 0 ? Math.max(2, (val / maxVal) * chartH) : 0;
+                        const x    = padL + i * barW + barW * 0.12;
+                        const bw   = barW * 0.76;
+                        const y    = padT + chartH - barH;
+                        const pct  = (val / SIM_RUNS * 100).toFixed(1);
+                        const color = i === 0 ? HAND_COLOR : i === data.length - 1 ? NIE_COLOR : BAR_COLOR;
+                        return (
+                          <G key={i}>
+                            <Rect x={x} y={y} width={bw} height={barH} fill={color} rx={2} />
+                            {val > 0 && (
+                              <SvgText
+                                x={x + bw / 2} y={y - 2}
+                                fontSize={7} fill={color} textAnchor="middle"
+                              >
+                                {pct}%
+                              </SvgText>
+                            )}
+                            <SvgText
+                              x={x + bw / 2} y={padT + chartH + 12}
+                              fontSize={8} fill="#888" textAnchor="middle"
+                            >
+                              {labels[i]}
+                            </SvgText>
+                          </G>
+                        );
+                      })}
+                      {/* X axis */}
+                      <Line x1={padL} y1={padT + chartH} x2={W - padR} y2={padT + chartH} stroke="#ffffff30" strokeWidth={1} />
+                    </Svg>
+                    <Text style={{ fontSize: 11, color: "#16a34a", fontFamily: "Inter_600SemiBold" }}>
+                      {showEnglish
+                        ? `≤ Turn 5: ${cumBy5}% · ${cardCopies}× in deck · ${SIM_RUNS.toLocaleString()} simulations`
+                        : `≤ Runde 5: ${cumBy5}% · ${cardCopies}× im Deck · ${SIM_RUNS.toLocaleString()} Simulationen`}
+                    </Text>
+                  </View>
+                );
+              }
+
+              const selCard  = nonLandCards.find((c) => c.name === simCardName) ?? null;
+              const cardCopies = selCard?.count ?? 0;
+
+              return (
+                <>
+                  <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                    {showEnglish ? "Draw Probability" : "Ziehwahrscheinlichkeit"}
+                  </Text>
+                  <View style={[styles.analysisBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+
+                    {/* Card picker */}
+                    <TouchableOpacity
+                      style={{ flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: colors.background, borderRadius: 10, borderWidth: 1, borderColor: colors.border, padding: 12 }}
+                      onPress={() => setSimShowPicker((v) => !v)}
+                      activeOpacity={0.75}
+                    >
+                      <Ionicons name="search-outline" size={16} color={colors.mutedForeground} />
+                      <Text style={{ flex: 1, color: simCardName ? colors.foreground : colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14 }} numberOfLines={1}>
+                        {simCardName ?? (showEnglish ? "Select a card…" : "Karte wählen…")}
+                      </Text>
+                      {simCardName && (
+                        <View style={{ backgroundColor: colors.primary + "22", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 }}>
+                          <Text style={{ color: colors.primary, fontSize: 11, fontFamily: "Inter_600SemiBold" }}>{cardCopies}×</Text>
+                        </View>
+                      )}
+                      <Ionicons name={simShowPicker ? "chevron-up" : "chevron-down"} size={14} color={colors.mutedForeground} />
+                    </TouchableOpacity>
+
+                    {simShowPicker && (
+                      <View style={{ borderRadius: 10, borderWidth: 1, borderColor: colors.border, overflow: "hidden", maxHeight: 220 }}>
+                        <ScrollView nestedScrollEnabled>
+                          {nonLandCards.map((c, i) => (
+                            <TouchableOpacity
+                              key={i}
+                              style={{ flexDirection: "row", alignItems: "center", padding: 10, gap: 10, backgroundColor: c.name === simCardName ? colors.primary + "18" : "transparent", borderBottomWidth: i < nonLandCards.length - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: colors.border }}
+                              onPress={() => {
+                                setSimCardName(c.name);
+                                setSimShowPicker(false);
+                                setSimBuckets(null);
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              <View style={{ width: 26, height: 26, borderRadius: 6, backgroundColor: colors.primary + "22", alignItems: "center", justifyContent: "center" }}>
+                                <Text style={{ fontSize: 11, color: colors.primary, fontFamily: "Inter_700Bold" }}>{c.count}×</Text>
+                              </View>
+                              <Text style={{ flex: 1, color: c.name === simCardName ? colors.primary : colors.foreground, fontFamily: "Inter_400Regular", fontSize: 13 }} numberOfLines={1}>{c.name}</Text>
+                              {c.name === simCardName && <Ionicons name="checkmark" size={14} color={colors.primary} />}
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    )}
+
+                    {/* Run button */}
+                    {simCardName && !simRunning && (
+                      <TouchableOpacity
+                        style={{ backgroundColor: colors.primary, borderRadius: 10, padding: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
+                        onPress={() => runSimulation(simCardName, activeDeck.cards)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="analytics-outline" size={16} color="#fff" />
+                        <Text style={{ color: "#fff", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>
+                          {showEnglish ? `Run ${SIM_RUNS.toLocaleString()} Simulations` : `${SIM_RUNS.toLocaleString()} Simulationen starten`}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {simRunning && (
+                      <View style={{ alignItems: "center", padding: 24, gap: 10 }}>
+                        <ActivityIndicator color={colors.primary} />
+                        <Text style={{ color: colors.mutedForeground, fontSize: 12, fontFamily: "Inter_400Regular" }}>
+                          {showEnglish ? "Running simulations…" : "Simulationen laufen…"}
+                        </Text>
+                      </View>
+                    )}
+
+                    {simBuckets && !simRunning && (
+                      <>
+                        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                        <SimHistogram buckets={simBuckets} cardCopies={cardCopies} />
+                        <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 16 }}>
+                          {showEnglish
+                            ? "Green = opening hand · Purple = drawn on turn N · Red = not drawn in 14 turns"
+                            : "Grün = Eröffnungshand · Lila = gezogen in Runde N · Rot = nicht in 14 Runden gezogen"}
+                        </Text>
+                      </>
+                    )}
+
+                    {!simCardName && (
+                      <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center" }}>
+                        {showEnglish
+                          ? "Select any non-land card to simulate when it first appears."
+                          : "Wähle eine Nicht-Land-Karte, um zu simulieren, wann du sie ziehst."}
+                      </Text>
                     )}
                   </View>
                 </>
