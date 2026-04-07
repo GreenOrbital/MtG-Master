@@ -226,6 +226,7 @@ export default function DeckIdeasScreen() {
   const [showCardDetail, setShowCardDetail] = useState(false);
 
   const [importFeedback, setImportFeedback] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // Load archetype list when format changes (synchronous — no network needed)
   useEffect(() => {
@@ -252,6 +253,7 @@ export default function DeckIdeasScreen() {
       const data = await getDeckSuggestion(key, selectedFormat);
       if (!data) throw new Error("not found");
       setSuggestion(data);
+      setLastUpdated(new Date());
     } catch {
       setSuggestionError(showEnglish ? "Deck could not be loaded." : "Deck konnte nicht geladen werden.");
     } finally {
@@ -415,16 +417,42 @@ export default function DeckIdeasScreen() {
         contentContainerStyle={[styles.detailContent, { paddingTop: topPad + 8 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Back button */}
-        <TouchableOpacity
-          style={[styles.backBtn, { borderColor: colors.border }]}
-          onPress={() => { setSelectedKey(null); setSuggestion(null); }}
-        >
-          <Ionicons name="arrow-back" size={18} color={colors.primary} />
-          <Text style={[styles.backBtnText, { color: colors.primary }]}>
-            {showEnglish ? "All Archetypes" : "Alle Archetypen"}
+        {/* Back + Refresh row */}
+        <View style={styles.detailNavRow}>
+          <TouchableOpacity
+            style={[styles.backBtn, { borderColor: colors.border }]}
+            onPress={() => { setSelectedKey(null); setSuggestion(null); setLastUpdated(null); }}
+          >
+            <Ionicons name="arrow-back" size={18} color={colors.primary} />
+            <Text style={[styles.backBtnText, { color: colors.primary }]}>
+              {showEnglish ? "All Archetypes" : "Alle Archetypen"}
+            </Text>
+          </TouchableOpacity>
+          {selectedKey && !loadingSuggestion && (
+            <TouchableOpacity
+              style={[styles.refreshBtn, { borderColor: colors.border }]}
+              onPress={() => loadSuggestion(selectedKey)}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="refresh-outline" size={18} color={colors.accent} />
+              <Text style={[styles.refreshBtnText, { color: colors.accent }]}>
+                {showEnglish ? "Update" : "Aktualisieren"}
+              </Text>
+            </TouchableOpacity>
+          )}
+          {selectedKey && loadingSuggestion && (
+            <View style={[styles.refreshBtn, { borderColor: colors.border, opacity: 0.5 }]}>
+              <ActivityIndicator size="small" color={colors.accent} />
+            </View>
+          )}
+        </View>
+        {lastUpdated && !loadingSuggestion && (
+          <Text style={[styles.lastUpdatedText, { color: colors.mutedForeground }]}>
+            {showEnglish
+              ? `Last updated: ${lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+              : `Aktualisiert um ${lastUpdated.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr`}
           </Text>
-        </TouchableOpacity>
+        )}
 
         {loadingSuggestion && (
           <View style={styles.loadingCenter}>
@@ -709,12 +737,26 @@ const styles = StyleSheet.create({
   tag: { borderRadius: 99, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2 },
   tagText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
 
+  detailNavRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    marginBottom: 2,
+  },
   backBtn: {
     flexDirection: "row", alignItems: "center", gap: 6,
-    alignSelf: "flex-start", borderRadius: 10, borderWidth: 1,
-    paddingHorizontal: 12, paddingVertical: 7, marginBottom: 2,
+    borderRadius: 10, borderWidth: 1,
+    paddingHorizontal: 12, paddingVertical: 7,
   },
   backBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  refreshBtn: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    borderRadius: 10, borderWidth: 1,
+    paddingHorizontal: 12, paddingVertical: 7,
+  },
+  refreshBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  lastUpdatedText: {
+    fontSize: 11, fontFamily: "Inter_400Regular",
+    textAlign: "right", marginBottom: 4,
+  },
 
   loadingCenter: { alignItems: "center", paddingTop: 50, gap: 12 },
   loadingText: { fontSize: 14, fontFamily: "Inter_400Regular" },

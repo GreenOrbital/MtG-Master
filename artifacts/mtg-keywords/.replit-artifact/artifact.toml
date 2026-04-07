@@ -1,6 +1,6 @@
 kind = "mobile"
 previewPath = "/"
-title = "MtG Schlüsselwörter"
+title = "MtG Masters"
 version = "1.0.0"
 id = "artifacts/mtg-keywords"
 router = "expo-domain"
