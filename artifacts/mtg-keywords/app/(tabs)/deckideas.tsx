@@ -24,42 +24,42 @@ import { getArchetypeList, getDeckSuggestion, type ArchetypeMeta, type DeckSugge
 
 // ─── Commander Precon Decks ───────────────────────────────────────────────────
 
-const COMMANDER_PRECONS: { name: string; set: string; year: string }[] = [
+const COMMANDER_PRECONS: { name: string; set: string; year: string; commander?: string }[] = [
   // Commander Masters 2023
-  { name: "Enduring Enchantments",  set: "Commander Masters", year: "2023" },
-  { name: "Planeswalker Party",     set: "Commander Masters", year: "2023" },
-  { name: "Sliver Swarm",           set: "Commander Masters", year: "2023" },
-  { name: "Eldrazi Unbound",        set: "Commander Masters", year: "2023" },
+  { name: "Enduring Enchantments",  set: "Commander Masters", year: "2023", commander: "Anikthea, Hand of Erebos" },
+  { name: "Planeswalker Party",     set: "Commander Masters", year: "2023", commander: "Commodore Guff" },
+  { name: "Sliver Swarm",           set: "Commander Masters", year: "2023", commander: "Sliver Gravemother" },
+  { name: "Eldrazi Unbound",        set: "Commander Masters", year: "2023", commander: "Zhulodok, Void Gorger" },
   // The Lost Caverns of Ixalan
-  { name: "Blood Rites",            set: "The Lost Caverns of Ixalan", year: "2023" },
-  { name: "Explorers of the Deep",  set: "The Lost Caverns of Ixalan", year: "2023" },
-  { name: "Ahoy Mateys",            set: "The Lost Caverns of Ixalan", year: "2023" },
-  { name: "Veloci-Ramp-Tor",        set: "The Lost Caverns of Ixalan", year: "2023" },
+  { name: "Blood Rites",            set: "The Lost Caverns of Ixalan", year: "2023", commander: "Clavileño, First of the Blessed" },
+  { name: "Explorers of the Deep",  set: "The Lost Caverns of Ixalan", year: "2023", commander: "Hakbal of the Surging Soul" },
+  { name: "Ahoy Mateys",            set: "The Lost Caverns of Ixalan", year: "2023", commander: "Admiral Brass, Unsinkable" },
+  { name: "Veloci-Ramp-Tor",        set: "The Lost Caverns of Ixalan", year: "2023", commander: "Pantlaza, Sun-Favored" },
   // Murders at Karlov Manor
-  { name: "Blame Game",             set: "Murders at Karlov Manor", year: "2024" },
-  { name: "Deep Clue Sea",          set: "Murders at Karlov Manor", year: "2024" },
-  { name: "Revenant Recon",         set: "Murders at Karlov Manor", year: "2024" },
-  { name: "Deadly Disguise",        set: "Murders at Karlov Manor", year: "2024" },
+  { name: "Blame Game",             set: "Murders at Karlov Manor", year: "2024", commander: "Miriam, Herd Whisperer" },
+  { name: "Deep Clue Sea",          set: "Murders at Karlov Manor", year: "2024", commander: "Morska, Undersea Sleuth" },
+  { name: "Revenant Recon",         set: "Murders at Karlov Manor", year: "2024", commander: "Kaya, Spirits' Justice" },
+  { name: "Deadly Disguise",        set: "Murders at Karlov Manor", year: "2024", commander: "Nelly Borca, Impulsive Accuser" },
   // Outlaws of Thunder Junction
-  { name: "Most Wanted",            set: "Outlaws of Thunder Junction", year: "2024" },
-  { name: "Desert Bloom",           set: "Outlaws of Thunder Junction", year: "2024" },
-  { name: "Quick Draw",             set: "Outlaws of Thunder Junction", year: "2024" },
-  { name: "Grand Larceny",          set: "Outlaws of Thunder Junction", year: "2024" },
+  { name: "Most Wanted",            set: "Outlaws of Thunder Junction", year: "2024", commander: "Olivia, Opulent Outlaw" },
+  { name: "Desert Bloom",           set: "Outlaws of Thunder Junction", year: "2024", commander: "Yuma, Proud Protector" },
+  { name: "Quick Draw",             set: "Outlaws of Thunder Junction", year: "2024", commander: "Stella Lee, Wild Card" },
+  { name: "Grand Larceny",          set: "Outlaws of Thunder Junction", year: "2024", commander: "Gonti, Canny Acquisitor" },
   // Bloomburrow
-  { name: "Peace Offering",         set: "Bloomburrow", year: "2024" },
-  { name: "Squirreled Away",        set: "Bloomburrow", year: "2024" },
-  { name: "Family Matters",         set: "Bloomburrow", year: "2024" },
-  { name: "Animated Army",          set: "Bloomburrow", year: "2024" },
+  { name: "Peace Offering",         set: "Bloomburrow", year: "2024", commander: "Gylwain, Casting Director" },
+  { name: "Squirreled Away",        set: "Bloomburrow", year: "2024", commander: "Ygra, Eater of All" },
+  { name: "Family Matters",         set: "Bloomburrow", year: "2024", commander: "Bello, Bard of the Brambles" },
+  { name: "Animated Army",          set: "Bloomburrow", year: "2024", commander: "Gev, Scaled Scorch" },
   // Duskmourn: House of Horror
-  { name: "Fear More Fears",        set: "Duskmourn: House of Horror", year: "2024" },
-  { name: "Jump Scare",             set: "Duskmourn: House of Horror", year: "2024" },
-  { name: "Enduring Victory",       set: "Duskmourn: House of Horror", year: "2024" },
-  { name: "Coven Counters",         set: "Duskmourn: House of Horror", year: "2024" },
+  { name: "Fear More Fears",        set: "Duskmourn: House of Horror", year: "2024", commander: "Ayara, Widow of the Realm" },
+  { name: "Jump Scare",             set: "Duskmourn: House of Horror", year: "2024", commander: "Zimone, All-Questions Answered" },
+  { name: "Enduring Victory",       set: "Duskmourn: House of Horror", year: "2024", commander: "Disa the Restless" },
+  { name: "Coven Counters",         set: "Duskmourn: House of Horror", year: "2024", commander: "Mirko, Obsessive Theorist" },
   // Aetherdrift
-  { name: "Cult Mechanix",          set: "Aetherdrift", year: "2025" },
-  { name: "Full Speed Ahead",       set: "Aetherdrift", year: "2025" },
-  { name: "Glory Days",             set: "Aetherdrift", year: "2025" },
-  { name: "Sprint to the Finish",   set: "Aetherdrift", year: "2025" },
+  { name: "Cult Mechanix",          set: "Aetherdrift", year: "2025", commander: "Lurrus of the Dream-Den" },
+  { name: "Full Speed Ahead",       set: "Aetherdrift", year: "2025", commander: "Atraxa, Praetors' Voice" },
+  { name: "Glory Days",             set: "Aetherdrift", year: "2025", commander: "Jetmir, Nexus of Revels" },
+  { name: "Sprint to the Finish",   set: "Aetherdrift", year: "2025", commander: "Kediss, Emberclaw Familiar" },
 ];
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -91,6 +91,54 @@ const COLOR_HEX: Record<string, string> = {
 const COLOR_TEXT: Record<string, string> = {
   W: "#1a1a1a", U: "#fff", B: "#e0e0e0", R: "#fff", G: "#fff",
 };
+
+// ─── PreconRow Component ──────────────────────────────────────────────────────
+
+function PreconRow({ deck, isLast, colors, showEnglish }: {
+  deck: { name: string; set: string; year: string; commander?: string };
+  isLast: boolean;
+  colors: ReturnType<typeof useColors>;
+  showEnglish: boolean;
+}) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const imageUri = deck.commander
+    ? `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(deck.commander)}&format=image&version=small`
+    : null;
+  return (
+    <View style={[styles.preconRow, { borderBottomColor: colors.border, borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth }]}>
+      <View style={{ width: 44, height: 61, borderRadius: 4, overflow: "hidden", marginRight: 8, backgroundColor: "#16a34a22" }}>
+        {imageUri && !imgFailed ? (
+          <Image
+            source={{ uri: imageUri }}
+            style={{ width: 44, height: 61 }}
+            onError={() => setImgFailed(true)}
+          />
+        ) : (
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+            <Text style={[styles.preconBadgeText, { color: "#16a34a" }]}>CMD</Text>
+          </View>
+        )}
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.preconName, { color: colors.foreground }]} numberOfLines={1}>{deck.name}</Text>
+        <Text style={[styles.preconSet, { color: colors.mutedForeground }]}>{deck.set} · {deck.year}</Text>
+        {deck.commander && (
+          <Text style={[styles.preconSet, { color: colors.mutedForeground, fontSize: 10 }]} numberOfLines={1}>{deck.commander}</Text>
+        )}
+      </View>
+      <View style={{ flexDirection: "row", gap: 6 }}>
+        <TouchableOpacity style={[styles.amazonSmallBtn, { borderColor: "#ff990066", backgroundColor: "#ff990022" }]}
+          onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent("Magic the Gathering " + deck.name + " Commander Deck")}&tag=masterofmtg-21`)}>
+          <Text style={[styles.amazonSmallBtnText, { color: "#ff9900" }]}>DE</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.amazonSmallBtn, { borderColor: "#3b82f666", backgroundColor: "#3b82f622" }]}
+          onPress={() => Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent("Magic the Gathering " + deck.name + " Commander Deck")}&tag=mtg08d-20`)}>
+          <Text style={[styles.amazonSmallBtnText, { color: "#3b82f6" }]}>COM</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
 
 function ColorPip({ c }: { c: string }) {
   return (
@@ -254,27 +302,6 @@ function CardDetailModal({
                 <Ionicons name="cart-outline" size={15} color="#3b82f6" />
                 <Text style={[styles.cardmarketBtnText, { color: "#3b82f6" }]}>Amazon.com</Text>
                 <Ionicons name="open-outline" size={13} color="#3b82f6" />
-              </TouchableOpacity>
-            </View>
-            {/* Amazon booster — DE + COM row */}
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              <TouchableOpacity
-                style={[styles.cardmarketBtn, { flex: 1, backgroundColor: "#f59e0b18", borderColor: "#f59e0b44" }]}
-                onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent("Magic the Gathering " + card.name + " Booster Pack")}&tag=masterofmtg-21`)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="gift-outline" size={15} color="#f59e0b" />
-                <Text style={[styles.cardmarketBtnText, { color: "#f59e0b" }]}>{showEnglish ? "Booster .de" : "Booster .de"}</Text>
-                <Ionicons name="open-outline" size={13} color="#f59e0b" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.cardmarketBtn, { flex: 1, backgroundColor: "#8b5cf618", borderColor: "#8b5cf644" }]}
-                onPress={() => Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent("Magic the Gathering " + card.name + " Booster Pack")}&tag=mtg08d-20`)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="gift-outline" size={15} color="#8b5cf6" />
-                <Text style={[styles.cardmarketBtnText, { color: "#8b5cf6" }]}>{showEnglish ? "Booster .com" : "Booster .com"}</Text>
-                <Ionicons name="open-outline" size={13} color="#8b5cf6" />
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -474,33 +501,15 @@ export default function DeckIdeasScreen() {
 
           {showPreconSection && (
             <View style={[styles.preconList, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              {COMMANDER_PRECONS.map((deck, i) => {
-                const isLast = i === COMMANDER_PRECONS.length - 1;
-                return (
-                  <View
-                    key={i}
-                    style={[styles.preconRow, { borderBottomColor: colors.border, borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth }]}
-                  >
-                    <View style={[styles.preconBadge, { backgroundColor: "#16a34a22" }]}>
-                      <Text style={[styles.preconBadgeText, { color: "#16a34a" }]}>CMD</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.preconName, { color: colors.foreground }]} numberOfLines={1}>{deck.name}</Text>
-                      <Text style={[styles.preconSet, { color: colors.mutedForeground }]}>{deck.set} · {deck.year}</Text>
-                    </View>
-                    <View style={{ flexDirection: "row", gap: 6 }}>
-                      <TouchableOpacity style={[styles.amazonSmallBtn, { borderColor: "#ff990066", backgroundColor: "#ff990022" }]}
-                        onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent("Magic the Gathering " + deck.name + " Commander Deck")}&tag=masterofmtg-21`)}>
-                        <Text style={[styles.amazonSmallBtnText, { color: "#ff9900" }]}>DE</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={[styles.amazonSmallBtn, { borderColor: "#3b82f666", backgroundColor: "#3b82f622" }]}
-                        onPress={() => Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent("Magic the Gathering " + deck.name + " Commander Deck")}&tag=mtg08d-20`)}>
-                        <Text style={[styles.amazonSmallBtnText, { color: "#3b82f6" }]}>COM</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                );
-              })}
+              {COMMANDER_PRECONS.map((deck, i) => (
+                <PreconRow
+                  key={i}
+                  deck={deck}
+                  isLast={i === COMMANDER_PRECONS.length - 1}
+                  colors={colors}
+                  showEnglish={showEnglish}
+                />
+              ))}
             </View>
           )}
 
