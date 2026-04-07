@@ -490,7 +490,7 @@ async function translateTextFree(text: string): Promise<string> {
   } catch { return text; }
 }
 
-type BoosterPrint = { setName: string; setCode: string; setType: string; releasedAt: string };
+type BoosterPrint = { setName: string; setCode: string; setType: string; releasedAt: string; imageUri?: string };
 
 type CardPrint = {
   id: string;
@@ -540,6 +540,7 @@ async function fetchBoosterPacks(cardName: string): Promise<BoosterPrint[]> {
         setCode: (c.set ?? "").toUpperCase(),
         setType: c.set_type ?? "",
         releasedAt: c.released_at ?? "",
+        imageUri: c.image_uris?.art_crop ?? c.card_faces?.[0]?.image_uris?.art_crop ?? undefined,
       }));
   } catch { return []; }
 }
@@ -1584,9 +1585,17 @@ export default function CardSearchScreen() {
                           onPress={() => {}}
                           activeOpacity={1}
                         >
-                          <View style={[styles.boosterSetCode, { backgroundColor: colors.primary + "22" }]}>
-                            <Text style={[styles.boosterSetCodeText, { color: colors.primary }]}>{bp.setCode}</Text>
-                          </View>
+                          {bp.imageUri ? (
+                            <Image
+                              source={{ uri: bp.imageUri }}
+                              style={{ width: 72, height: 52, borderRadius: 6, backgroundColor: colors.border }}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <View style={[styles.boosterSetCode, { backgroundColor: colors.primary + "22" }]}>
+                              <Text style={[styles.boosterSetCodeText, { color: colors.primary }]}>{bp.setCode}</Text>
+                            </View>
+                          )}
                           <View style={styles.boosterMeta}>
                             <Text style={[styles.boosterSetName, { color: colors.foreground }]} numberOfLines={1}>{bp.setName}</Text>
                             <Text style={[styles.boosterSetType, { color: colors.mutedForeground }]}>{typeLabel}{year ? ` · ${year}` : ""}</Text>

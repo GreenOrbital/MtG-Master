@@ -64,10 +64,25 @@ const COMMANDER_PRECONS: PreconDeck[] = [
   { name: "Enduring Victory",       set: "Duskmourn: House of Horror",  setDe: "Düstermorn: Haus des Grauens",       year: "2024", commander: "Disa the Restless" },
   { name: "Coven Counters",         set: "Duskmourn: House of Horror",  setDe: "Düstermorn: Haus des Grauens",       year: "2024", commander: "Mirko, Obsessive Theorist" },
   // Aetherdrift
-  { name: "Cult Mechanix",          set: "Aetherdrift",                 setDe: "Aetherdrift",                        year: "2025", commander: "Lurrus of the Dream-Den" },
-  { name: "Full Speed Ahead",       set: "Aetherdrift",                 setDe: "Aetherdrift",                        year: "2025", commander: "Atraxa, Praetors' Voice" },
-  { name: "Glory Days",             set: "Aetherdrift",                 setDe: "Aetherdrift",                        year: "2025", commander: "Jetmir, Nexus of Revels" },
-  { name: "Sprint to the Finish",   set: "Aetherdrift",                 setDe: "Aetherdrift",                        year: "2025", commander: "Kediss, Emberclaw Familiar" },
+  { name: "Cult Mechanix",          set: "Aetherdrift",                 setDe: "Aetherdrift",                        year: "2025", commander: "Aetherdrift Cult Mechanix" },
+  { name: "Full Speed Ahead",       set: "Aetherdrift",                 setDe: "Aetherdrift",                        year: "2025", commander: "Aetherdrift Full Speed Ahead" },
+  { name: "Glory Days",             set: "Aetherdrift",                 setDe: "Aetherdrift",                        year: "2025", commander: "Aetherdrift Glory Days" },
+  { name: "Sprint to the Finish",   set: "Aetherdrift",                 setDe: "Aetherdrift",                        year: "2025", commander: "Aetherdrift Sprint to the Finish" },
+  // Modern Horizons 3
+  { name: "Creative Energy",        set: "Modern Horizons 3",           setDe: "Modern Horizons 3",                  year: "2024", commander: "Satya, Aetherflux Engineer" },
+  { name: "Eldrazi Incursion",      set: "Modern Horizons 3",           setDe: "Modern Horizons 3",                  year: "2024", commander: "Ulalek, Fused Atrocity" },
+  { name: "Graveyard Overdrive",    set: "Modern Horizons 3",           setDe: "Modern Horizons 3",                  year: "2024", commander: "Omo, Queen of Vesuva" },
+  { name: "Tricky Terrain",         set: "Modern Horizons 3",           setDe: "Modern Horizons 3",                  year: "2024", commander: "Nadu, Winged Wisdom" },
+  // Universes Beyond: Teenage Mutant Ninja Turtles
+  { name: "Shell Shocked",          set: "Teenage Mutant Ninja Turtles", setDe: "Teenage Mutant Ninja Turtles",      year: "2024", commander: "Michelangelo, Party Dude" },
+  { name: "Fearless",               set: "Teenage Mutant Ninja Turtles", setDe: "Teenage Mutant Ninja Turtles",      year: "2024", commander: "Raphael, Fighting Feral" },
+  { name: "Think Twice",            set: "Teenage Mutant Ninja Turtles", setDe: "Teenage Mutant Ninja Turtles",      year: "2024", commander: "Donatello, Intellectual" },
+  { name: "Party Mode",             set: "Teenage Mutant Ninja Turtles", setDe: "Teenage Mutant Ninja Turtles",      year: "2024", commander: "Leonardo, Fearless Leader" },
+  // Tarkir: Dragonstorm
+  { name: "Draconic Dominance",     set: "Tarkir: Dragonstorm",         setDe: "Tarkir: Drachensturm",               year: "2025", commander: "Sarkhan, Soul Aflame" },
+  { name: "Ancestral Spirits",      set: "Tarkir: Dragonstorm",         setDe: "Tarkir: Drachensturm",               year: "2025", commander: "Zurgo, Khan of Mardu" },
+  { name: "Timeless Wisdom",        set: "Tarkir: Dragonstorm",         setDe: "Tarkir: Drachensturm",               year: "2025", commander: "Narset, Enlightened Exile" },
+  { name: "Shed No Blood",          set: "Tarkir: Dragonstorm",         setDe: "Tarkir: Drachensturm",               year: "2025", commander: "Anafenza, Kin-Tree Spirit" },
 ];
 
 // ─── Types ───────────────────────────────────────────────────────────────────
