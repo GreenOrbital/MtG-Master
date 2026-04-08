@@ -44,7 +44,8 @@ export default function KeywordsScreen() {
         kw.name.toLowerCase().includes(q) ||
         kw.nameEn.toLowerCase().includes(q) ||
         kw.shortDe.toLowerCase().includes(q) ||
-        kw.shortEn.toLowerCase().includes(q)
+        kw.shortEn.toLowerCase().includes(q) ||
+        (kw.crRule !== undefined && kw.crRule.includes(q))
       );
     });
   }, [search, category]);
