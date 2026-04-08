@@ -33,6 +33,13 @@ export default function Root({ children }: PropsWithChildren) {
             overflow: hidden;
           }
         `}</style>
+        {/* Google Analytics */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-JN3SH0Y1VB" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-JN3SH0Y1VB');`,
+          }}
+        />
       </head>
       <body>{children}</body>
     </html>
