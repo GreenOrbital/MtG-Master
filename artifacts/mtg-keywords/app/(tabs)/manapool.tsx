@@ -1413,6 +1413,9 @@ export default function ManapoolScreen() {
                   const lCols = land ? landColors(c) : [];
                   const isExpanded = expandedCardId === c.id;
                   const notLast = i < group.cards.length - 1;
+                  const cardScore = calculateCardScore(c);
+                  const cardScoreCol = scoreColor(cardScore.total);
+                  const cardScoreLbl = scoreLabel(cardScore.total, showEnglish);
                   return (
                     <View key={c.id}>
                       {/* ── Collapsed row (always visible) ── */}
@@ -1492,25 +1495,19 @@ export default function ManapoolScreen() {
                           </View>
                         </View>
                         {/* Score badge + Count badge + expand indicator */}
-                        {(() => {
-                          const cs = calculateCardScore(c);
-                          const col = scoreColor(cs.total);
-                          return (
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                              <View style={{ paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6, backgroundColor: col + "22", borderWidth: 1, borderColor: col + "55", alignItems: "center", minWidth: 32 }}>
-                                <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: col }}>{cs.total}</Text>
-                              </View>
-                              <View style={[styles.cardCountBadge, { backgroundColor: colors.primary + "33" }]}>
-                                <Text style={[styles.cardCountBadgeText, { color: colors.primary }]}>{c.count}×</Text>
-                              </View>
-                              <Ionicons
-                                name={isExpanded ? "chevron-up" : "create-outline"}
-                                size={15}
-                                color={isExpanded ? colors.primary : colors.mutedForeground}
-                              />
-                            </View>
-                          );
-                        })()}
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <View style={{ paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6, backgroundColor: cardScoreCol + "22", borderWidth: 1, borderColor: cardScoreCol + "55", alignItems: "center", minWidth: 32 }}>
+                            <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: cardScoreCol }}>{cardScore.total}</Text>
+                          </View>
+                          <View style={[styles.cardCountBadge, { backgroundColor: colors.primary + "33" }]}>
+                            <Text style={[styles.cardCountBadgeText, { color: colors.primary }]}>{c.count}×</Text>
+                          </View>
+                          <Ionicons
+                            name={isExpanded ? "chevron-up" : "create-outline"}
+                            size={15}
+                            color={isExpanded ? colors.primary : colors.mutedForeground}
+                          />
+                        </View>
                       </TouchableOpacity>
 
                       {/* ── Expanded controls ── */}
@@ -1551,46 +1548,39 @@ export default function ManapoolScreen() {
                         </View>
 
                         {/* ── Kartenbewertung (ausgeklappt) ── */}
-                        {(() => {
-                          const cs  = calculateCardScore(c);
-                          const col = scoreColor(cs.total);
-                          const lbl = scoreLabel(cs.total, showEnglish);
-                          return (
-                            <View style={{ marginHorizontal: 10, marginBottom: 10, borderRadius: 10, borderWidth: 1, borderColor: col + "44", backgroundColor: col + "0d", padding: 10, gap: 8 }}>
-                              {/* Headline */}
-                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                                <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 7, backgroundColor: col + "22", borderWidth: 1, borderColor: col + "55" }}>
-                                  <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: col }}>{cs.total}</Text>
-                                </View>
-                                <View>
-                                  <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: col }}>{lbl}</Text>
-                                  <Text style={{ fontSize: 10, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
-                                    {showEnglish ? "Card value (0–100)" : "Kartenwert (0–100)"}
-                                  </Text>
-                                </View>
-                              </View>
-                              {/* Breakdown */}
-                              <View style={{ gap: 5 }}>
-                                {[
-                                  { label: showEnglish ? "Mana efficiency" : "Mana-Effizienz", val: cs.mana,  max: 40, desc: showEnglish ? "Cost vs. power of the card" : "Kosten im Verhältnis zur Stärke" },
-                                  { label: showEnglish ? "Flexibility"     : "Flexibilität",   val: cs.flex,  max: 35, desc: showEnglish ? "Usable early and late game" : "Early & Late Game einsetzbar" },
-                                  { label: showEnglish ? "Card type"       : "Kartentyp",      val: cs.type_, max: 25, desc: showEnglish ? "Bonus by card type" : "Bonus nach Kartentyp" },
-                                ].map((row) => (
-                                  <View key={row.label} style={{ gap: 3 }}>
-                                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                                      <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.foreground }}>{row.label}</Text>
-                                      <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{row.val} / {row.max}</Text>
-                                    </View>
-                                    <View style={{ height: 4, borderRadius: 3, backgroundColor: colors.border, overflow: "hidden" }}>
-                                      <View style={{ height: 4, borderRadius: 3, backgroundColor: col, width: `${(row.val / row.max) * 100}%` as any }} />
-                                    </View>
-                                    <Text style={{ fontSize: 10, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>{row.desc}</Text>
-                                  </View>
-                                ))}
-                              </View>
+                        <View style={{ marginHorizontal: 10, marginBottom: 10, borderRadius: 10, borderWidth: 1, borderColor: cardScoreCol + "44", backgroundColor: cardScoreCol + "0d", padding: 10, gap: 8 }}>
+                          {/* Headline */}
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                            <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 7, backgroundColor: cardScoreCol + "22", borderWidth: 1, borderColor: cardScoreCol + "55" }}>
+                              <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: cardScoreCol }}>{cardScore.total}</Text>
                             </View>
-                          );
-                        })()}
+                            <View>
+                              <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: cardScoreCol }}>{cardScoreLbl}</Text>
+                              <Text style={{ fontSize: 10, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                                {showEnglish ? "Card value (0–100)" : "Kartenwert (0–100)"}
+                              </Text>
+                            </View>
+                          </View>
+                          {/* Breakdown */}
+                          <View style={{ gap: 5 }}>
+                            {([
+                              { label: showEnglish ? "Mana efficiency" : "Mana-Effizienz", val: cardScore.mana,  max: 40, desc: showEnglish ? "Cost vs. power of the card" : "Kosten im Verhältnis zur Stärke" },
+                              { label: showEnglish ? "Flexibility"     : "Flexibilität",   val: cardScore.flex,  max: 35, desc: showEnglish ? "Usable early and late game" : "Early & Late Game einsetzbar" },
+                              { label: showEnglish ? "Card type"       : "Kartentyp",      val: cardScore.type_, max: 25, desc: showEnglish ? "Bonus by card type" : "Bonus nach Kartentyp" },
+                            ] as { label: string; val: number; max: number; desc: string }[]).map((row) => (
+                              <View key={row.label} style={{ gap: 3 }}>
+                                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                                  <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.foreground }}>{row.label}</Text>
+                                  <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{row.val} / {row.max}</Text>
+                                </View>
+                                <View style={{ height: 4, borderRadius: 3, backgroundColor: colors.border }}>
+                                  <View style={{ height: 4, borderRadius: 3, backgroundColor: cardScoreCol, width: Math.round((row.val / row.max) * 100) + "%" as any }} />
+                                </View>
+                                <Text style={{ fontSize: 10, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>{row.desc}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        </View>
                         </>
                       )}
                     </View>
