@@ -25,6 +25,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { type Deck, type DeckCard, type GameFormat, useDecks } from "@/context/DeckContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useColors } from "@/hooks/useColors";
+import { calculateCardScore, deckScore, scoreColor, scoreLabel } from "@/utils/cardScore";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -380,73 +381,6 @@ function classifySpeed(cards: DeckCard[]): SpeedResult | null {
     tips: ["Ramp stark erhöhen (Signets, Mana-Fels, Elfen)", "Frühe Schutzmaßnahmen einbauen", "Kombo-Linien klar definieren"],
     tipsEn: ["Increase ramp significantly (Signets, Sol Ring, dorks)", "Add early protection pieces", "Define clear combo lines"],
   };
-}
-
-// ─── Kartenbewertung (0–100) ──────────────────────────────────────────────────
-
-type CardScoreResult = { total: number; mana: number; flex: number; type_: number };
-
-function calculateCardScore(card: DeckCard): CardScoreResult {
-  const typeLine = (card.type_line ?? "").toLowerCase();
-  const oracle   = (card.oracle_text ?? "").toLowerCase();
-  const kws      = (card.keywords ?? []).map(k => k.toLowerCase()).join(" ");
-  const allText  = oracle + " " + kws;
-  const cmc      = card.cmc ?? 0;
-
-  // ── Mana-Effizienz (0–40) ──────────────────────────────────────
-  let mana = 0;
-  if (typeLine.includes("land")) {
-    mana = 30;
-  } else if (cmc === 0) {
-    mana = 40;
-  } else if (typeLine.includes("instant")) {
-    mana = cmc <= 1 ? 38 : cmc <= 2 ? 30 : cmc <= 3 ? 22 : Math.max(5, 40 - cmc * 5);
-  } else if (typeLine.includes("sorcery")) {
-    mana = cmc <= 2 ? 28 : cmc <= 4 ? 20 : Math.max(5, 35 - cmc * 4);
-  } else if (typeLine.includes("planeswalker")) {
-    mana = Math.min(40, Math.max(5, 40 - cmc * 4));
-  } else {
-    // Kreatur, Artefakt, Verzauberung
-    mana = Math.max(5, 30 - cmc * 3);
-  }
-
-  // ── Flexibilität (0–35) ────────────────────────────────────────
-  const highFlex = ["flash", "cycling", "kicker", "flashback", "modal", "adventure",
-                    "foretell", "escape", "mutate", "buyback", "replicate", "overload"];
-  const medFlex  = ["flying", "haste", "deathtouch", "lifelink", "trample",
-                    "hexproof", "indestructible", "ward", "vigilance", "first strike", "double strike"];
-  let flex = 0;
-  for (const kw of highFlex) { if (allText.includes(kw)) flex += 10; }
-  for (const kw of medFlex)  { if (allText.includes(kw)) flex += 3; }
-  if (cmc <= 2 && !typeLine.includes("land")) flex += 5;
-  flex = Math.min(35, flex);
-
-  // ── Kartentyp-Bonus (0–25) ─────────────────────────────────────
-  let type_ = 10;
-  if (typeLine.includes("land"))        type_ = 20;
-  else if (typeLine.includes("instant"))     type_ = 22;
-  else if (typeLine.includes("planeswalker")) type_ = 20;
-  else if (typeLine.includes("creature"))    type_ = 18;
-  else if (typeLine.includes("artifact"))    type_ = 16;
-  else if (typeLine.includes("sorcery"))     type_ = 15;
-  else if (typeLine.includes("enchantment")) type_ = 14;
-
-  const total = Math.min(100, Math.round(mana + flex + type_));
-  return { total, mana: Math.round(mana), flex: Math.round(flex), type_: Math.round(type_) };
-}
-
-function scoreColor(total: number): string {
-  if (total >= 75) return "#7c3aed"; // Stark — Lila
-  if (total >= 50) return "#16a34a"; // Gut — Grün
-  if (total >= 25) return "#f59e0b"; // Mittel — Amber
-  return "#6b7280";                  // Schwach — Grau
-}
-
-function scoreLabel(total: number, en: boolean): string {
-  if (total >= 75) return en ? "Strong" : "Stark";
-  if (total >= 50) return en ? "Good"   : "Gut";
-  if (total >= 25) return en ? "Fair"   : "Mittel";
-  return en ? "Weak" : "Schwach";
 }
 
 function detectCardDraw(cards: DeckCard[]): { count: number; names: string[] } {
@@ -1618,6 +1552,55 @@ export default function ManapoolScreen() {
                             {g.count} {showEnglish ? g.labelEn : g.labelDe}
                           </Text>
                         </View>
+                      ))}
+                    </View>
+                  </View>
+                </>
+              );
+            })()}
+
+            {/* ── Gesamtbewertung ── */}
+            {activeDeck.cards.length > 0 && (() => {
+              const ds = deckScore(activeDeck.cards);
+              const col = scoreColor(ds);
+              const lbl = scoreLabel(ds, showEnglish);
+              const totalCards = activeDeck.cards.reduce((a, c) => a + c.count, 0);
+              return (
+                <>
+                  <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                    {showEnglish ? "Deck Score" : "Deck-Bewertung"}
+                  </Text>
+                  <View style={[styles.analysisBox, { backgroundColor: colors.card, borderColor: col + "55", borderWidth: 1.5 }]}>
+                    {/* Score ring + label */}
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginBottom: 10 }}>
+                      <View style={{ width: 64, height: 64, borderRadius: 32, borderWidth: 3, borderColor: col, backgroundColor: col + "15", alignItems: "center", justifyContent: "center" }}>
+                        <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: col }}>{ds}</Text>
+                        <Text style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: col }}>/ 100</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: col }}>{lbl}</Text>
+                        <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                          {showEnglish
+                            ? `Weighted average across ${totalCards} cards`
+                            : `Gewichteter Schnitt über ${totalCards} Karten`}
+                        </Text>
+                      </View>
+                    </View>
+                    {/* Score bar */}
+                    <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.border }}>
+                      <View style={{ height: 8, borderRadius: 4, backgroundColor: col, width: ds + "%" as any }} />
+                    </View>
+                    {/* Tier labels */}
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
+                      {[
+                        { label: showEnglish ? "Weak" : "Schwach", min: 0,  col: "#6b7280" },
+                        { label: showEnglish ? "Fair"   : "Mittel", min: 25, col: "#f59e0b" },
+                        { label: showEnglish ? "Good"   : "Gut",    min: 50, col: "#16a34a" },
+                        { label: showEnglish ? "Strong" : "Stark",  min: 75, col: "#7c3aed" },
+                      ].map((t) => (
+                        <Text key={t.label} style={{ fontSize: 9, fontFamily: ds >= t.min ? "Inter_700Bold" : "Inter_400Regular", color: ds >= t.min ? t.col : colors.mutedForeground }}>
+                          {t.label}
+                        </Text>
                       ))}
                     </View>
                   </View>

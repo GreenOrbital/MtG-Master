@@ -28,6 +28,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { type CompactCard, useCardHistory } from "@/context/CardHistoryContext";
 import { useDecks } from "@/context/DeckContext";
 import { useSettings } from "@/context/SettingsContext";
+import { calculateCardScore, scoreColor, scoreLabel } from "@/utils/cardScore";
 import { MTG_KEYWORDS, type MtgKeyword } from "@/data/keywords";
 import { useColors } from "@/hooks/useColors";
 
@@ -1071,6 +1072,49 @@ export default function CardSearchScreen() {
                       </View>
                     ) : null}
                   </View>
+                  {/* ── Kartenbewertung ── */}
+                  {card && (() => {
+                    const cs = calculateCardScore({
+                      type_line: card.type_line,
+                      oracle_text: card.oracle_text,
+                      keywords: card.keywords,
+                      cmc: card.cmc,
+                    });
+                    const col = scoreColor(cs.total);
+                    const lbl = scoreLabel(cs.total, showEnglish);
+                    return (
+                      <View style={{ marginTop: 10, borderRadius: 10, borderWidth: 1, borderColor: col + "44", backgroundColor: col + "0d", padding: 10, gap: 8 }}>
+                        {/* Header row */}
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                          <View style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 2.5, borderColor: col, backgroundColor: col + "18", alignItems: "center", justifyContent: "center" }}>
+                            <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: col }}>{cs.total}</Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: col }}>{lbl}</Text>
+                            <Text style={{ fontSize: 10, color: "#888", fontFamily: "Inter_400Regular" }}>
+                              {showEnglish ? "Card score (0–100)" : "Kartenwert (0–100)"}
+                            </Text>
+                          </View>
+                        </View>
+                        {/* Sub-scores */}
+                        {([
+                          { label: showEnglish ? "Mana efficiency" : "Mana-Effizienz", val: cs.mana,  max: 40 },
+                          { label: showEnglish ? "Flexibility"     : "Flexibilität",   val: cs.flex,  max: 35 },
+                          { label: showEnglish ? "Card type"       : "Kartentyp",      val: cs.type_, max: 25 },
+                        ] as { label: string; val: number; max: number }[]).map((row) => (
+                          <View key={row.label} style={{ gap: 2 }}>
+                            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                              <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: "#ccc" }}>{row.label}</Text>
+                              <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#888" }}>{row.val}/{row.max}</Text>
+                            </View>
+                            <View style={{ height: 4, borderRadius: 3, backgroundColor: "#333" }}>
+                              <View style={{ height: 4, borderRadius: 3, backgroundColor: col, width: Math.round((row.val / row.max) * 100) + "%" as any }} />
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    );
+                  })()}
                 </View>
                 {/* No thumbnail — image is now the hero above */}
               </View>
