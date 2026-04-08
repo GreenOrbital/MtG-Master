@@ -2184,115 +2184,129 @@ export default function ManapoolScreen() {
                       </View>
                     </View>
 
-                    {/* 3. Card picker — grouped by category */}
-                    <View style={{ gap: 6 }}>
-                      <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
-                        {showEnglish ? "Select Card" : "Karte auswählen"}
-                      </Text>
-
-                      {simCardsByCategory.length === 0 ? (
-                        <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center" }}>
-                          {showEnglish ? "No non-land cards in deck." : "Keine Nicht-Land-Karten im Deck."}
+                    {/* 3. Card picker — only for formats that allow multiple copies */}
+                    {maxCopiesForFormat > 1 && (
+                      <View style={{ gap: 6 }}>
+                        <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
+                          {showEnglish ? "Select Card" : "Karte auswählen"}
                         </Text>
-                      ) : (
-                        <View style={{ gap: 4, borderRadius: 10, borderWidth: 1, borderColor: colors.border, overflow: "hidden" }}>
-                          {simCardsByCategory.map((cat, catIdx) => {
-                            const isExpanded = simExpandedCat === cat.key;
-                            const hasSelected = cat.cards.some((c) => c.name === simCardName);
-                            return (
-                              <View key={cat.key}>
-                                {/* Category header */}
-                                <TouchableOpacity
-                                  style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 10, backgroundColor: hasSelected ? cat.color + "15" : catIdx % 2 === 0 ? colors.background : colors.card, borderBottomWidth: isExpanded ? StyleSheet.hairlineWidth : 0, borderBottomColor: colors.border }}
-                                  onPress={() => setSimExpandedCat(isExpanded ? null : cat.key)}
-                                  activeOpacity={0.7}
-                                >
-                                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: cat.color }} />
-                                  <Text style={{ flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold", color: hasSelected ? cat.color : colors.foreground }}>
-                                    {showEnglish ? cat.labelEn : cat.labelDe}
-                                  </Text>
-                                  <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
-                                    {cat.cards.length}
-                                  </Text>
-                                  {hasSelected && <Ionicons name="checkmark-circle" size={14} color={cat.color} />}
-                                  <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={13} color={colors.mutedForeground} />
-                                </TouchableOpacity>
 
-                                {/* Cards in category */}
-                                {isExpanded && cat.cards.map((c, ci) => {
-                                  const cardSel = c.name === simCardName;
-                                  return (
-                                    <TouchableOpacity
-                                      key={c.id}
-                                      style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 9, backgroundColor: cardSel ? cat.color + "18" : colors.background, borderTopWidth: ci === 0 ? 0 : StyleSheet.hairlineWidth, borderTopColor: colors.border }}
-                                      onPress={() => {
-                                        setSimCardName(c.name);
-                                        setSimCopies(Math.min(c.count, maxCopiesForFormat));
-                                        setSimBuckets(null);
-                                        setSimExpandedCat(null);
-                                      }}
-                                      activeOpacity={0.7}
-                                    >
-                                      <View style={{ width: 28, height: 22, borderRadius: 5, backgroundColor: cat.color + "22", alignItems: "center", justifyContent: "center" }}>
-                                        <Text style={{ fontSize: 11, color: cat.color, fontFamily: "Inter_700Bold" }}>{c.count}×</Text>
-                                      </View>
-                                      <Text style={{ flex: 1, fontSize: 13, fontFamily: cardSel ? "Inter_600SemiBold" : "Inter_400Regular", color: cardSel ? cat.color : colors.foreground }} numberOfLines={1}>
-                                        {c.name}
-                                      </Text>
-                                      {cardSel && <Ionicons name="checkmark" size={14} color={cat.color} />}
-                                    </TouchableOpacity>
-                                  );
-                                })}
-                              </View>
-                            );
-                          })}
-                        </View>
-                      )}
-
-                      {/* Selected card info + copies override */}
-                      {selectedCard && (
-                        <View style={{ gap: 6 }}>
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: 8, backgroundColor: colors.primary + "12", borderWidth: 1, borderColor: colors.primary + "33" }}>
-                            <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
-                            <Text style={{ flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.primary }} numberOfLines={1}>
-                              {selectedCard.name}
-                            </Text>
-                            <TouchableOpacity onPress={() => { setSimCardName(null); setSimBuckets(null); }}>
-                              <Ionicons name="close-circle" size={16} color={colors.mutedForeground} />
-                            </TouchableOpacity>
-                          </View>
-
-                          {/* Copies override */}
-                          <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
-                            {showEnglish ? "Copies (adjust for what-if)" : "Kopien (anpassbar für Was-wäre-wenn)"}
+                        {simCardsByCategory.length === 0 ? (
+                          <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center" }}>
+                            {showEnglish ? "No non-land cards in deck." : "Keine Nicht-Land-Karten im Deck."}
                           </Text>
-                          <View style={{ flexDirection: "row", gap: 6 }}>
-                            {[1, 2, 3, 4].map((n) => {
-                              const disabled = n > maxCopiesForFormat;
-                              const isActual = n === selectedCard.count;
-                              const sel = cappedCopies === n && !disabled;
+                        ) : (
+                          <View style={{ gap: 4, borderRadius: 10, borderWidth: 1, borderColor: colors.border, overflow: "hidden" }}>
+                            {simCardsByCategory.map((cat, catIdx) => {
+                              const isExpanded = simExpandedCat === cat.key;
+                              const hasSelected = cat.cards.some((c) => c.name === simCardName);
                               return (
-                                <TouchableOpacity
-                                  key={n}
-                                  style={{ flex: 1, paddingVertical: 9, borderRadius: 8, alignItems: "center", backgroundColor: sel ? colors.accent : colors.background, borderWidth: isActual ? 2 : 1, borderColor: sel ? colors.accent : isActual ? colors.accent + "88" : disabled ? colors.border + "44" : colors.border, opacity: disabled ? 0.35 : 1 }}
-                                  onPress={() => { if (!disabled) { setSimCopies(n); setSimBuckets(null); } }}
-                                  activeOpacity={disabled ? 1 : 0.75}
-                                >
-                                  <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: sel ? "#fff" : colors.mutedForeground }}>{n}×</Text>
-                                  {isActual && <Text style={{ fontSize: 8, color: sel ? "#ffffffaa" : colors.accent, fontFamily: "Inter_400Regular" }}>{showEnglish ? "deck" : "Deck"}</Text>}
-                                </TouchableOpacity>
+                                <View key={cat.key}>
+                                  {/* Category header */}
+                                  <TouchableOpacity
+                                    style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 10, backgroundColor: hasSelected ? cat.color + "15" : catIdx % 2 === 0 ? colors.background : colors.card, borderBottomWidth: isExpanded ? StyleSheet.hairlineWidth : 0, borderBottomColor: colors.border }}
+                                    onPress={() => setSimExpandedCat(isExpanded ? null : cat.key)}
+                                    activeOpacity={0.7}
+                                  >
+                                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: cat.color }} />
+                                    <Text style={{ flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold", color: hasSelected ? cat.color : colors.foreground }}>
+                                      {showEnglish ? cat.labelEn : cat.labelDe}
+                                    </Text>
+                                    <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                                      {cat.cards.length}
+                                    </Text>
+                                    {hasSelected && <Ionicons name="checkmark-circle" size={14} color={cat.color} />}
+                                    <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={13} color={colors.mutedForeground} />
+                                  </TouchableOpacity>
+
+                                  {/* Cards in category */}
+                                  {isExpanded && cat.cards.map((c, ci) => {
+                                    const cardSel = c.name === simCardName;
+                                    return (
+                                      <TouchableOpacity
+                                        key={c.id}
+                                        style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 9, backgroundColor: cardSel ? cat.color + "18" : colors.background, borderTopWidth: ci === 0 ? 0 : StyleSheet.hairlineWidth, borderTopColor: colors.border }}
+                                        onPress={() => {
+                                          setSimCardName(c.name);
+                                          setSimCopies(Math.min(c.count, maxCopiesForFormat));
+                                          setSimBuckets(null);
+                                          setSimExpandedCat(null);
+                                        }}
+                                        activeOpacity={0.7}
+                                      >
+                                        <View style={{ width: 28, height: 22, borderRadius: 5, backgroundColor: cat.color + "22", alignItems: "center", justifyContent: "center" }}>
+                                          <Text style={{ fontSize: 11, color: cat.color, fontFamily: "Inter_700Bold" }}>{c.count}×</Text>
+                                        </View>
+                                        <Text style={{ flex: 1, fontSize: 13, fontFamily: cardSel ? "Inter_600SemiBold" : "Inter_400Regular", color: cardSel ? cat.color : colors.foreground }} numberOfLines={1}>
+                                          {c.name}
+                                        </Text>
+                                        {cardSel && <Ionicons name="checkmark" size={14} color={cat.color} />}
+                                      </TouchableOpacity>
+                                    );
+                                  })}
+                                </View>
                               );
                             })}
                           </View>
-                        </View>
-                      )}
-                    </View>
+                        )}
+
+                        {/* Selected card info + copies override */}
+                        {selectedCard && (
+                          <View style={{ gap: 6 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: 8, backgroundColor: colors.primary + "12", borderWidth: 1, borderColor: colors.primary + "33" }}>
+                              <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+                              <Text style={{ flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.primary }} numberOfLines={1}>
+                                {selectedCard.name}
+                              </Text>
+                              <TouchableOpacity onPress={() => { setSimCardName(null); setSimBuckets(null); }}>
+                                <Ionicons name="close-circle" size={16} color={colors.mutedForeground} />
+                              </TouchableOpacity>
+                            </View>
+
+                            {/* Copies override */}
+                            <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
+                              {showEnglish ? "Copies (adjust for what-if)" : "Kopien (anpassbar für Was-wäre-wenn)"}
+                            </Text>
+                            <View style={{ flexDirection: "row", gap: 6 }}>
+                              {[1, 2, 3, 4].map((n) => {
+                                const disabled = n > maxCopiesForFormat;
+                                const isActual = n === selectedCard.count;
+                                const sel = cappedCopies === n && !disabled;
+                                return (
+                                  <TouchableOpacity
+                                    key={n}
+                                    style={{ flex: 1, paddingVertical: 9, borderRadius: 8, alignItems: "center", backgroundColor: sel ? colors.accent : colors.background, borderWidth: isActual ? 2 : 1, borderColor: sel ? colors.accent : isActual ? colors.accent + "88" : disabled ? colors.border + "44" : colors.border, opacity: disabled ? 0.35 : 1 }}
+                                    onPress={() => { if (!disabled) { setSimCopies(n); setSimBuckets(null); } }}
+                                    activeOpacity={disabled ? 1 : 0.75}
+                                  >
+                                    <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: sel ? "#fff" : colors.mutedForeground }}>{n}×</Text>
+                                    {isActual && <Text style={{ fontSize: 8, color: sel ? "#ffffffaa" : colors.accent, fontFamily: "Inter_400Regular" }}>{showEnglish ? "deck" : "Deck"}</Text>}
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </View>
+                          </View>
+                        )}
+                      </View>
+                    )}
+
+                    {/* Commander/Brawl: info that all cards are unique (1×) */}
+                    {maxCopiesForFormat === 1 && (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: 8, backgroundColor: colors.primary + "10", borderWidth: 1, borderColor: colors.primary + "30" }}>
+                        <Ionicons name="information-circle-outline" size={15} color={colors.primary} />
+                        <Text style={{ flex: 1, fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                          {showEnglish
+                            ? "Every card is unique (1×). Probability calculated for any specific card."
+                            : "Jede Karte ist einmalig (1×). Wahrscheinlichkeit gilt für jede beliebige Karte im Deck."}
+                        </Text>
+                      </View>
+                    )}
 
                     {/* Run button */}
-                    {simCardName && !simRunning && (
+                    {(maxCopiesForFormat === 1 || simCardName) && !simRunning && (
                       <TouchableOpacity
                         style={{ backgroundColor: colors.primary, borderRadius: 10, padding: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
-                        onPress={() => runSimulation(actualDeckSize, cappedCopies, simHandSize)}
+                        onPress={() => runSimulation(actualDeckSize, maxCopiesForFormat === 1 ? 1 : cappedCopies, simHandSize)}
                         activeOpacity={0.8}
                       >
                         <Ionicons name="analytics-outline" size={16} color="#fff" />
@@ -2320,7 +2334,7 @@ export default function ManapoolScreen() {
                     {simBuckets && !simRunning && (
                       <>
                         <View style={[styles.divider, { backgroundColor: colors.border }]} />
-                        <SimResults buckets={simBuckets} cardCopies={selectedCard?.count ?? cappedCopies} copiesOverride={cappedCopies} handSize={simHandSize} />
+                        <SimResults buckets={simBuckets} cardCopies={maxCopiesForFormat === 1 ? 1 : (selectedCard?.count ?? cappedCopies)} copiesOverride={maxCopiesForFormat === 1 ? 1 : cappedCopies} handSize={simHandSize} />
                       </>
                     )}
                   </View>
