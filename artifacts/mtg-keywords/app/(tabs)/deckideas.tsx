@@ -16,11 +16,14 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { KeywordCard } from "@/components/KeywordCard";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { type Deck, type DeckCard, useDecks } from "@/context/DeckContext";
 import { useSettings } from "@/context/SettingsContext";
+import { MTG_KEYWORDS } from "@/data/keywords";
 import { useColors } from "@/hooks/useColors";
 import { getArchetypeList, getDeckSuggestion, type ArchetypeMeta, type DeckSuggestion, type SuggestedCard } from "@/lib/deckSuggestionService";
+import { calculateCardScore, scoreColor, scoreLabel } from "@/utils/cardScore";
 
 // ─── Commander Precon Decks ───────────────────────────────────────────────────
 
@@ -225,6 +228,31 @@ function SuggestedCardRow({
   );
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const COLOR_NAME_DE: Record<string, string> = { W: "Weiß", U: "Blau", B: "Schwarz", R: "Rot", G: "Grün", C: "Farblos" };
+const COLOR_NAME_EN: Record<string, string> = { W: "White", U: "Blue", B: "Black", R: "Red", G: "Green", C: "Colorless" };
+const RARITY_COLOR: Record<string, string> = { common: "#9ca3af", uncommon: "#94a3b8", rare: "#f59e0b", mythic: "#f97316", special: "#7c3aed" };
+const LEGALITY_FORMATS = ["standard", "pioneer", "modern", "legacy", "vintage", "commander", "pauper", "brawl"] as const;
+
+function matchKeywordsLocal(kws: string[], oracle: string) {
+  const found = new Map();
+  for (const kw of MTG_KEYWORDS) {
+    const en = kw.nameEn.toLowerCase();
+    const de = kw.name.toLowerCase();
+    for (const sk of kws) {
+      if (sk.toLowerCase() === en || sk.toLowerCase() === de) found.set(kw.id, kw);
+    }
+    const o = oracle.toLowerCase();
+    if (kw.matchPattern) {
+      if (new RegExp(kw.matchPattern, "i").test(oracle)) found.set(kw.id, kw);
+    } else if (o.includes(en) || o.includes(de)) {
+      found.set(kw.id, kw);
+    }
+  }
+  return Array.from(found.values());
+}
+
 // ─── Card Detail Modal ───────────────────────────────────────────────────────
 
 function CardDetailModal({
@@ -236,28 +264,45 @@ function CardDetailModal({
   showEnglish: boolean;
   colors: ReturnType<typeof useColors>;
 }) {
+  const [expandedKwId, setExpandedKwId] = React.useState<string | null>(null);
+
   if (!card) return null;
+
+  const cs = calculateCardScore({ type_line: card.type_line, oracle_text: card.oracle_text, keywords: card.keywords, cmc: card.cmc });
+  const scCol = scoreColor(cs.total);
+  const scLbl = scoreLabel(cs.total, showEnglish);
+  const matchedKws = matchKeywordsLocal(card.keywords, card.oracle_text);
+  const cardColors = card.color_identity?.length ? card.color_identity : (card.colors ?? []);
+
+  const rarityCol = RARITY_COLOR[card.rarity] ?? "#9ca3af";
+  const rarityLabel = card.rarity ? card.rarity.charAt(0).toUpperCase() + card.rarity.slice(1) : "";
+
   return (
     <Modal visible={visible} animationType="slide" transparent>
       <View style={[styles.modalOverlay, { backgroundColor: "#00000088" }]}>
         <View style={[styles.cardDetailModal, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {/* Header */}
           <View style={[styles.cardDetailHeader, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.cardDetailName, { color: colors.foreground }]} numberOfLines={1}>
-              {showEnglish ? card.name : (card.nameDe ?? card.name)}
-            </Text>
-            <TouchableOpacity onPress={onClose}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={[styles.cardDetailName, { color: colors.foreground }]} numberOfLines={1}>
+                {showEnglish ? card.name : (card.nameDe ?? card.name)}
+              </Text>
+              {card.set_name ? (
+                <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>{card.set_name}</Text>
+              ) : null}
+            </View>
+            <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
               <Ionicons name="close" size={22} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>
+
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 14 }}>
+            {/* Card image */}
             {card.imageUri && (
-              <Image
-                source={{ uri: card.imageUri }}
-                style={styles.cardDetailImage}
-                resizeMode="contain"
-              />
+              <Image source={{ uri: card.imageUri }} style={styles.cardDetailImage} resizeMode="contain" />
             )}
-            {/* Rolle */}
+
+            {/* Role in deck */}
             <View style={[styles.roleCard, { backgroundColor: colors.accent + "18", borderColor: colors.accent + "44" }]}>
               <Ionicons name="information-circle-outline" size={16} color={colors.accent} />
               <View style={{ flex: 1 }}>
@@ -269,75 +314,172 @@ function CardDetailModal({
                 </Text>
               </View>
             </View>
-            {/* Type + mana */}
-            <View style={{ gap: 5 }}>
+
+            {/* Meta badges: type, mana, rarity, price */}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
               {card.type_line ? (
-                <Text style={[styles.cardDetailMeta, { color: colors.mutedForeground }]}>
-                  {card.type_line}
-                </Text>
+                <View style={[styles.metaBadge, { backgroundColor: colors.secondary, borderColor: colors.border, borderWidth: 1 }]}>
+                  <Text style={[styles.metaBadgeText, { color: colors.mutedForeground }]}>{card.type_line}</Text>
+                </View>
               ) : null}
               {card.mana_cost ? (
-                <Text style={[styles.cardDetailMeta, { color: colors.mutedForeground }]}>
-                  {card.mana_cost}
-                </Text>
+                <View style={[styles.metaBadge, { backgroundColor: "#7c3aed18", borderColor: "#7c3aed55", borderWidth: 1 }]}>
+                  <Text style={[styles.metaBadgeText, { color: "#a78bfa" }]}>{card.mana_cost} · CMC {card.cmc}</Text>
+                </View>
               ) : null}
+              {rarityLabel ? (
+                <View style={[styles.metaBadge, { backgroundColor: rarityCol + "20", borderColor: rarityCol + "55", borderWidth: 1 }]}>
+                  <Text style={[styles.metaBadgeText, { color: rarityCol }]}>{rarityLabel}</Text>
+                </View>
+              ) : null}
+              {card.priceEur != null && (
+                <View style={[styles.metaBadge, { backgroundColor: "#16a34a18", borderColor: "#16a34a55", borderWidth: 1 }]}>
+                  <Text style={[styles.metaBadgeText, { color: "#16a34a" }]}>€ {card.priceEur.toFixed(2)}</Text>
+                </View>
+              )}
+              {card.priceUsd != null && card.priceEur == null && (
+                <View style={[styles.metaBadge, { backgroundColor: "#16a34a18", borderColor: "#16a34a55", borderWidth: 1 }]}>
+                  <Text style={[styles.metaBadgeText, { color: "#16a34a" }]}>$ {card.priceUsd.toFixed(2)}</Text>
+                </View>
+              )}
             </View>
+
+            {/* Card score */}
+            <View style={{ borderRadius: 10, borderWidth: 1, borderColor: scCol + "44", backgroundColor: scCol + "0d", padding: 10, gap: 8 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <View style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 2.5, borderColor: scCol, backgroundColor: scCol + "18", alignItems: "center", justifyContent: "center" }}>
+                  <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: scCol }}>{cs.total}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: scCol }}>{scLbl}</Text>
+                  <Text style={{ fontSize: 10, color: "#888", fontFamily: "Inter_400Regular" }}>
+                    {showEnglish ? "Card score (0–100)" : "Kartenwert (0–100)"}
+                  </Text>
+                </View>
+              </View>
+              {([
+                { label: showEnglish ? "Mana efficiency" : "Mana-Effizienz", val: cs.mana, max: 40 },
+                { label: showEnglish ? "Flexibility" : "Flexibilität", val: cs.flex, max: 35 },
+                { label: showEnglish ? "Card type" : "Kartentyp", val: cs.type_, max: 25 },
+              ] as { label: string; val: number; max: number }[]).map((row) => (
+                <View key={row.label} style={{ gap: 2 }}>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                    <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: "#ccc" }}>{row.label}</Text>
+                    <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#888" }}>{row.val}/{row.max}</Text>
+                  </View>
+                  <View style={{ height: 4, borderRadius: 3, backgroundColor: "#333" }}>
+                    <View style={{ height: 4, borderRadius: 3, backgroundColor: scCol, width: Math.round((row.val / row.max) * 100) + "%" as any }} />
+                  </View>
+                </View>
+              ))}
+            </View>
+
             {/* Oracle text */}
             {(card.oracle_text || card.oracle_text_de) ? (
-              <Text style={[styles.cardDetailOracle, { color: colors.foreground }]}>
-                {showEnglish ? card.oracle_text : (card.oracle_text_de || card.oracle_text)}
-              </Text>
+              <View style={{ backgroundColor: colors.secondary, borderRadius: 8, padding: 12 }}>
+                <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.foreground, lineHeight: 20, fontStyle: "italic" }}>
+                  {showEnglish ? card.oracle_text : (card.oracle_text_de || card.oracle_text)}
+                </Text>
+              </View>
             ) : null}
-            {/* Price + Cardmarket */}
-            {(card.priceEur != null || card.priceUsd != null) && (
-              <View style={styles.priceRow}>
-                {card.priceEur != null && (
-                  <View style={[styles.pricePill, { backgroundColor: colors.secondary }]}>
-                    <Text style={[styles.pricePillText, { color: colors.foreground }]}>
-                      € {card.priceEur.toFixed(2)}
-                    </Text>
-                  </View>
-                )}
-                {card.priceUsd != null && (
-                  <View style={[styles.pricePill, { backgroundColor: colors.secondary }]}>
-                    <Text style={[styles.pricePillText, { color: colors.foreground }]}>
-                      $ {card.priceUsd.toFixed(2)}
-                    </Text>
-                  </View>
-                )}
+
+            {/* Mana colors */}
+            {cardColors.length > 0 && (
+              <View style={{ gap: 6 }}>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  {showEnglish ? "Mana Colors" : "Manafarben"}
+                </Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                  {cardColors.map((c) => (
+                    <View key={c} style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: (COLOR_HEX[c] ?? "#888") + "22", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: (COLOR_HEX[c] ?? "#888") + "55" }}>
+                      <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: COLOR_HEX[c] ?? "#888" }} />
+                      <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: colors.foreground }}>
+                        {showEnglish ? (COLOR_NAME_EN[c] ?? c) : (COLOR_NAME_DE[c] ?? c)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
               </View>
             )}
-            <TouchableOpacity
-              style={[styles.cardmarketBtn, { backgroundColor: "#1da46218", borderColor: "#1da46244" }]}
-              onPress={() => Linking.openURL(`https://www.cardmarket.com/de/Magic/Products/Search?searchString=${encodeURIComponent(card.name)}`)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="cart-outline" size={16} color="#1da462" />
-              <Text style={[styles.cardmarketBtnText, { color: "#1da462" }]}>
-                {showEnglish ? "Buy on Cardmarket" : "Bei Cardmarket kaufen"}
+
+            {/* Format legality */}
+            {Object.keys(card.legalities ?? {}).length > 0 && (
+              <View style={{ gap: 6 }}>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  {showEnglish ? "Format Legality" : "Format-Legalität"}
+                </Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 5 }}>
+                  {LEGALITY_FORMATS.filter((f) => card.legalities?.[f]).map((f) => {
+                    const legal = card.legalities[f];
+                    const isLegal = legal === "legal";
+                    const isRestricted = legal === "restricted";
+                    const col = isLegal ? "#16a34a" : isRestricted ? "#f59e0b" : "#6b7280";
+                    const label = f.charAt(0).toUpperCase() + f.slice(1);
+                    return (
+                      <View key={f} style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: col + "18", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, borderWidth: 1, borderColor: col + "44" }}>
+                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: col }} />
+                        <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: col }}>{label}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            {/* Keywords explained */}
+            {matchedKws.length > 0 && (
+              <View style={{ gap: 6 }}>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  {showEnglish ? `${matchedKws.length} Keyword(s) Explained` : `${matchedKws.length} Schlüsselwort/e erklärt`}
+                </Text>
+                {matchedKws.map((kw) => (
+                  <KeywordCard
+                    key={kw.id}
+                    keyword={kw}
+                    showEnglish={showEnglish}
+                    expanded={expandedKwId === kw.id}
+                    onPress={() => setExpandedKwId((p) => (p === kw.id ? null : kw.id))}
+                  />
+                ))}
+              </View>
+            )}
+
+            {/* Purchase links */}
+            <View style={{ gap: 8 }}>
+              <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                {showEnglish ? "Buy this card" : "Karte kaufen"}
               </Text>
-              <Ionicons name="open-outline" size={14} color="#1da462" />
-            </TouchableOpacity>
-            {/* Amazon card — DE + COM row */}
-            <View style={{ flexDirection: "row", gap: 8 }}>
               <TouchableOpacity
-                style={[styles.cardmarketBtn, { flex: 1, backgroundColor: "#ff990018", borderColor: "#ff990044" }]}
-                onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent(card.name + " Magic the Gathering Karte")}&tag=masterofmtg-21`)}
+                style={[styles.cardmarketBtn, { backgroundColor: "#1da46218", borderColor: "#1da46244" }]}
+                onPress={() => Linking.openURL(`https://www.cardmarket.com/de/Magic/Products/Search?searchString=${encodeURIComponent(card.name)}`)}
                 activeOpacity={0.7}
               >
-                <Ionicons name="cart-outline" size={15} color="#ff9900" />
-                <Text style={[styles.cardmarketBtnText, { color: "#ff9900" }]}>Amazon.de</Text>
-                <Ionicons name="open-outline" size={13} color="#ff9900" />
+                <Ionicons name="cart-outline" size={16} color="#1da462" />
+                <Text style={[styles.cardmarketBtnText, { color: "#1da462" }]}>
+                  {showEnglish ? "Buy on Cardmarket" : "Bei Cardmarket kaufen"}
+                </Text>
+                <Ionicons name="open-outline" size={14} color="#1da462" />
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.cardmarketBtn, { flex: 1, backgroundColor: "#3b82f618", borderColor: "#3b82f644" }]}
-                onPress={() => Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent(card.name + " Magic the Gathering Card")}&tag=mtg08d-20`)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="cart-outline" size={15} color="#3b82f6" />
-                <Text style={[styles.cardmarketBtnText, { color: "#3b82f6" }]}>Amazon.com</Text>
-                <Ionicons name="open-outline" size={13} color="#3b82f6" />
-              </TouchableOpacity>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <TouchableOpacity
+                  style={[styles.cardmarketBtn, { flex: 1, backgroundColor: "#ff990018", borderColor: "#ff990044" }]}
+                  onPress={() => Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent(card.name + " Magic the Gathering Karte")}&tag=masterofmtg-21`)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="cart-outline" size={15} color="#ff9900" />
+                  <Text style={[styles.cardmarketBtnText, { color: "#ff9900" }]}>Amazon.de</Text>
+                  <Ionicons name="open-outline" size={13} color="#ff9900" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.cardmarketBtn, { flex: 1, backgroundColor: "#3b82f618", borderColor: "#3b82f644" }]}
+                  onPress={() => Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent(card.name + " Magic the Gathering Card")}&tag=mtg08d-20`)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="cart-outline" size={15} color="#3b82f6" />
+                  <Text style={[styles.cardmarketBtnText, { color: "#3b82f6" }]}>Amazon.com</Text>
+                  <Ionicons name="open-outline" size={13} color="#3b82f6" />
+                </TouchableOpacity>
+              </View>
             </View>
           </ScrollView>
         </View>
@@ -1006,6 +1148,8 @@ const styles = StyleSheet.create({
   priceRow: { flexDirection: "row", gap: 8, padding: 12, paddingTop: 0, flexWrap: "wrap" },
   pricePill: { borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4 },
   pricePillText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  metaBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  metaBadgeText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   priceDisclaimer: { fontSize: 11, fontFamily: "Inter_400Regular", paddingHorizontal: 12, paddingBottom: 10 },
 
   // Card detail modal

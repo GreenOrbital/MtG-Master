@@ -15,6 +15,11 @@ export type ScryfallCard = {
   imageUri: string | null;
   priceEur: number | null;
   priceUsd: number | null;
+  colors: string[];
+  color_identity: string[];
+  rarity: string;
+  set_name: string;
+  legalities: Record<string, string>;
 };
 
 export type SuggestedCard = ScryfallCard & {
@@ -98,6 +103,11 @@ async function fetchCard(name: string): Promise<ScryfallCard | null> {
       imageUri: data.image_uris?.normal ?? data.card_faces?.[0]?.image_uris?.normal ?? null,
       priceEur: data.prices?.eur ? parseFloat(data.prices.eur) : null,
       priceUsd: data.prices?.usd ? parseFloat(data.prices.usd) : null,
+      colors: data.colors ?? [],
+      color_identity: data.color_identity ?? [],
+      rarity: data.rarity ?? "",
+      set_name: data.set_name ?? "",
+      legalities: data.legalities ?? {},
     };
   } catch {
     return null;
@@ -159,6 +169,11 @@ export async function getDeckSuggestion(key: string, format: string): Promise<De
       keywords: card?.keywords ?? [],
       priceEur: card?.priceEur ?? null,
       priceUsd: card?.priceUsd ?? null,
+      colors: card?.colors ?? [],
+      color_identity: card?.color_identity ?? [],
+      rarity: card?.rarity ?? "",
+      set_name: card?.set_name ?? "",
+      legalities: card?.legalities ?? {},
     };
   }
 
