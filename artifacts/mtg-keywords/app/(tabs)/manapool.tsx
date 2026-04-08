@@ -382,6 +382,73 @@ function classifySpeed(cards: DeckCard[]): SpeedResult | null {
   };
 }
 
+// ─── Kartenbewertung (0–100) ──────────────────────────────────────────────────
+
+type CardScoreResult = { total: number; mana: number; flex: number; type_: number };
+
+function calculateCardScore(card: DeckCard): CardScoreResult {
+  const typeLine = (card.type_line ?? "").toLowerCase();
+  const oracle   = (card.oracle_text ?? "").toLowerCase();
+  const kws      = (card.keywords ?? []).map(k => k.toLowerCase()).join(" ");
+  const allText  = oracle + " " + kws;
+  const cmc      = card.cmc ?? 0;
+
+  // ── Mana-Effizienz (0–40) ──────────────────────────────────────
+  let mana = 0;
+  if (typeLine.includes("land")) {
+    mana = 30;
+  } else if (cmc === 0) {
+    mana = 40;
+  } else if (typeLine.includes("instant")) {
+    mana = cmc <= 1 ? 38 : cmc <= 2 ? 30 : cmc <= 3 ? 22 : Math.max(5, 40 - cmc * 5);
+  } else if (typeLine.includes("sorcery")) {
+    mana = cmc <= 2 ? 28 : cmc <= 4 ? 20 : Math.max(5, 35 - cmc * 4);
+  } else if (typeLine.includes("planeswalker")) {
+    mana = Math.min(40, Math.max(5, 40 - cmc * 4));
+  } else {
+    // Kreatur, Artefakt, Verzauberung
+    mana = Math.max(5, 30 - cmc * 3);
+  }
+
+  // ── Flexibilität (0–35) ────────────────────────────────────────
+  const highFlex = ["flash", "cycling", "kicker", "flashback", "modal", "adventure",
+                    "foretell", "escape", "mutate", "buyback", "replicate", "overload"];
+  const medFlex  = ["flying", "haste", "deathtouch", "lifelink", "trample",
+                    "hexproof", "indestructible", "ward", "vigilance", "first strike", "double strike"];
+  let flex = 0;
+  for (const kw of highFlex) { if (allText.includes(kw)) flex += 10; }
+  for (const kw of medFlex)  { if (allText.includes(kw)) flex += 3; }
+  if (cmc <= 2 && !typeLine.includes("land")) flex += 5;
+  flex = Math.min(35, flex);
+
+  // ── Kartentyp-Bonus (0–25) ─────────────────────────────────────
+  let type_ = 10;
+  if (typeLine.includes("land"))        type_ = 20;
+  else if (typeLine.includes("instant"))     type_ = 22;
+  else if (typeLine.includes("planeswalker")) type_ = 20;
+  else if (typeLine.includes("creature"))    type_ = 18;
+  else if (typeLine.includes("artifact"))    type_ = 16;
+  else if (typeLine.includes("sorcery"))     type_ = 15;
+  else if (typeLine.includes("enchantment")) type_ = 14;
+
+  const total = Math.min(100, Math.round(mana + flex + type_));
+  return { total, mana: Math.round(mana), flex: Math.round(flex), type_: Math.round(type_) };
+}
+
+function scoreColor(total: number): string {
+  if (total >= 75) return "#7c3aed"; // Stark — Lila
+  if (total >= 50) return "#16a34a"; // Gut — Grün
+  if (total >= 25) return "#f59e0b"; // Mittel — Amber
+  return "#6b7280";                  // Schwach — Grau
+}
+
+function scoreLabel(total: number, en: boolean): string {
+  if (total >= 75) return en ? "Strong" : "Stark";
+  if (total >= 50) return en ? "Good"   : "Gut";
+  if (total >= 25) return en ? "Fair"   : "Mittel";
+  return en ? "Weak" : "Schwach";
+}
+
 function detectCardDraw(cards: DeckCard[]): { count: number; names: string[] } {
   const DRAW_RE = /\bdraw(?:s)?\s+(?:a|\d+|two|three|four|five|x)\s+card/i;
   const KEYWORD_DRAW = /\bcycling\b|\bscry\b|\bdraw\b/i;
@@ -777,6 +844,7 @@ export default function ManapoolScreen() {
   // ── Shared simulation controls (format + mulligans) ─────────────────────────
   const [simFormat, setSimFormat]         = useState<GameFormat>("standard");
   const [simMulligans, setSimMulligans]   = useState<0 | 1 | 2 | 3>(0);
+  const [showMCFormatPicker, setShowMCFormatPicker] = useState(false);
   // London Mulligan: first mulligan is free (no card loss), each further costs 1
   // 0→7, 1→7, 2→6, 3→5
   const simHandSize = (simMulligans === 0 ? 7 : 8 - simMulligans) as 5 | 6 | 7;
@@ -1422,21 +1490,31 @@ export default function ManapoolScreen() {
                             )}
                           </View>
                         </View>
-                        {/* Count badge + expand indicator */}
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                          <View style={[styles.cardCountBadge, { backgroundColor: colors.primary + "33" }]}>
-                            <Text style={[styles.cardCountBadgeText, { color: colors.primary }]}>{c.count}×</Text>
-                          </View>
-                          <Ionicons
-                            name={isExpanded ? "chevron-up" : "create-outline"}
-                            size={15}
-                            color={isExpanded ? colors.primary : colors.mutedForeground}
-                          />
-                        </View>
+                        {/* Score badge + Count badge + expand indicator */}
+                        {(() => {
+                          const cs = calculateCardScore(c);
+                          const col = scoreColor(cs.total);
+                          return (
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                              <View style={{ paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6, backgroundColor: col + "22", borderWidth: 1, borderColor: col + "55", alignItems: "center", minWidth: 32 }}>
+                                <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: col }}>{cs.total}</Text>
+                              </View>
+                              <View style={[styles.cardCountBadge, { backgroundColor: colors.primary + "33" }]}>
+                                <Text style={[styles.cardCountBadgeText, { color: colors.primary }]}>{c.count}×</Text>
+                              </View>
+                              <Ionicons
+                                name={isExpanded ? "chevron-up" : "create-outline"}
+                                size={15}
+                                color={isExpanded ? colors.primary : colors.mutedForeground}
+                              />
+                            </View>
+                          );
+                        })()}
                       </TouchableOpacity>
 
                       {/* ── Expanded controls ── */}
                       {isExpanded && (
+                        <>
                         <View style={[styles.cardExpandedRow, {
                           backgroundColor: colors.primary + "11",
                           borderBottomColor: colors.border,
@@ -1470,6 +1548,49 @@ export default function ManapoolScreen() {
                             </Text>
                           </TouchableOpacity>
                         </View>
+
+                        {/* ── Kartenbewertung (ausgeklappt) ── */}
+                        {(() => {
+                          const cs  = calculateCardScore(c);
+                          const col = scoreColor(cs.total);
+                          const lbl = scoreLabel(cs.total, showEnglish);
+                          return (
+                            <View style={{ marginHorizontal: 10, marginBottom: 10, borderRadius: 10, borderWidth: 1, borderColor: col + "44", backgroundColor: col + "0d", padding: 10, gap: 8 }}>
+                              {/* Headline */}
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 7, backgroundColor: col + "22", borderWidth: 1, borderColor: col + "55" }}>
+                                  <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: col }}>{cs.total}</Text>
+                                </View>
+                                <View>
+                                  <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: col }}>{lbl}</Text>
+                                  <Text style={{ fontSize: 10, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                                    {showEnglish ? "Card value (0–100)" : "Kartenwert (0–100)"}
+                                  </Text>
+                                </View>
+                              </View>
+                              {/* Breakdown */}
+                              <View style={{ gap: 5 }}>
+                                {[
+                                  { label: showEnglish ? "Mana efficiency" : "Mana-Effizienz", val: cs.mana,  max: 40, desc: showEnglish ? "Cost vs. power of the card" : "Kosten im Verhältnis zur Stärke" },
+                                  { label: showEnglish ? "Flexibility"     : "Flexibilität",   val: cs.flex,  max: 35, desc: showEnglish ? "Usable early and late game" : "Early & Late Game einsetzbar" },
+                                  { label: showEnglish ? "Card type"       : "Kartentyp",      val: cs.type_, max: 25, desc: showEnglish ? "Bonus by card type" : "Bonus nach Kartentyp" },
+                                ].map((row) => (
+                                  <View key={row.label} style={{ gap: 3 }}>
+                                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                                      <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.foreground }}>{row.label}</Text>
+                                      <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{row.val} / {row.max}</Text>
+                                    </View>
+                                    <View style={{ height: 4, borderRadius: 3, backgroundColor: colors.border, overflow: "hidden" }}>
+                                      <View style={{ height: 4, borderRadius: 3, backgroundColor: col, width: `${(row.val / row.max) * 100}%` as any }} />
+                                    </View>
+                                    <Text style={{ fontSize: 10, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>{row.desc}</Text>
+                                  </View>
+                                ))}
+                              </View>
+                            </View>
+                          );
+                        })()}
+                        </>
                       )}
                     </View>
                   );
@@ -2585,6 +2706,49 @@ export default function ManapoolScreen() {
                             ? `${MC_RUNS.toLocaleString()} games · ${mcResult.totalLands}/${mcResult.totalCards} lands · hand size ${simHandSize}`
                             : `${MC_RUNS.toLocaleString()} Spiele · ${mcResult.totalLands}/${mcResult.totalCards} Länder · Handgröße ${simHandSize}`}
                         </Text>
+
+                        {/* ── Format-Button unter MC ── */}
+                        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                        <TouchableOpacity
+                          onPress={() => setShowMCFormatPicker(p => !p)}
+                          style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: colors.secondary, borderRadius: 10, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 14, paddingVertical: 10 }}
+                          activeOpacity={0.75}
+                        >
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                            <Ionicons name="game-controller-outline" size={17} color={colors.primary} />
+                            <View>
+                              <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                                {showEnglish ? "Simulation format" : "Simulationsformat"}
+                              </Text>
+                              <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: colors.foreground }}>
+                                {actualFormat.charAt(0).toUpperCase() + actualFormat.slice(1)}
+                                {isAutoFormat ? (showEnglish ? " (auto)" : " (auto)") : ""}
+                              </Text>
+                            </View>
+                          </View>
+                          <Ionicons name={showMCFormatPicker ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} />
+                        </TouchableOpacity>
+
+                        {showMCFormatPicker && (
+                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                            {(Object.keys(GAME_FORMATS) as GameFormat[]).map((fmt) => {
+                              const isSelected = actualFormat === fmt;
+                              return (
+                                <TouchableOpacity
+                                  key={fmt}
+                                  onPress={() => { setSimFormat(fmt); setMcResult(null); setShowMCFormatPicker(false); }}
+                                  style={{ flex: 1, minWidth: "40%", flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1.5, borderColor: isSelected ? colors.primary : colors.border, backgroundColor: isSelected ? colors.primary + "22" : colors.secondary }}
+                                  activeOpacity={0.75}
+                                >
+                                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: isSelected ? colors.primary : colors.border }} />
+                                  <Text style={{ fontSize: 13, fontFamily: isSelected ? "Inter_700Bold" : "Inter_400Regular", color: isSelected ? colors.primary : colors.foreground }}>
+                                    {fmt.charAt(0).toUpperCase() + fmt.slice(1)}
+                                  </Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        )}
                       </>
                     )}
                   </View>
