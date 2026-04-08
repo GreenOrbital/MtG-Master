@@ -2420,6 +2420,24 @@ export default function ManapoolScreen() {
                   </Text>
                   <View style={[styles.analysisBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
 
+                    {/* Active format badge */}
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: colors.primary + "18", borderWidth: 1, borderColor: colors.primary + "44" }}>
+                        <Ionicons name="game-controller-outline" size={13} color={colors.primary} />
+                        <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.primary }}>
+                          {showEnglish ? GAME_FORMATS[simFormat].labelEn : GAME_FORMATS[simFormat].labelDe}
+                        </Text>
+                        {isAutoFormat && (
+                          <View style={{ paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, backgroundColor: "#06b6d4" + "22" }}>
+                            <Text style={{ fontSize: 9, color: "#06b6d4", fontFamily: "Inter_600SemiBold" }}>auto</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                        {actualDeckSize} {showEnglish ? "cards" : "Ktn."}
+                      </Text>
+                    </View>
+
                     {/* Deck composition row */}
                     <View style={{ flexDirection: "row", gap: 8 }}>
                       {[
@@ -2995,8 +3013,9 @@ export default function ManapoolScreen() {
 
       {/* ── Synergy Detail Modal ── */}
       <Modal visible={!!selectedSynergy} transparent animationType="slide">
-        <View style={[styles.modalOverlay, { backgroundColor: "#00000088", justifyContent: "flex-end" }]}>
-          <View style={[styles.synergyDetailModal, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: "#00000088", justifyContent: "flex-end" }} activeOpacity={1} onPress={() => setSelectedSynergy(null)}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+          <View style={[styles.synergyDetailModal, { backgroundColor: colors.card, borderColor: colors.border, maxHeight: "92%", paddingBottom: insets.bottom }]}>
             {/* Header */}
             {selectedSynergy && (
               <>
@@ -3102,7 +3121,8 @@ export default function ManapoolScreen() {
               </>
             )}
           </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* ── Import Modal ── */}
@@ -3379,7 +3399,7 @@ const styles = StyleSheet.create({
   synergyDetailBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", flex: 1 },
   // Synergy detail modal
   synergyDetailModal: {
-    height: "85%", borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
     borderWidth: 1, borderBottomWidth: 0,
   },
   synergyDetailModalHeader: {
