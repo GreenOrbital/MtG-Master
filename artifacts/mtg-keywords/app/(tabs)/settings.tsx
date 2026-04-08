@@ -225,6 +225,28 @@ export default function SettingsScreen() {
           />
         </View>
 
+        {/* GoFundMe Support */}
+        <TouchableOpacity
+          style={[styles.supportBtn, { borderColor: "#f59e0b" }]}
+          activeOpacity={0.78}
+          onPress={() => Linking.openURL("https://gofund.me/edffb012a")}
+        >
+          <View style={styles.supportLeft}>
+            <Ionicons name="heart" size={22} color="#f59e0b" />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.supportTitle, { color: "#f59e0b" }]}>
+                {showEnglish ? "Support this App" : "App unterstützen"}
+              </Text>
+              <Text style={[styles.supportSub, { color: colors.mutedForeground }]}>
+                {showEnglish
+                  ? "Help keep Master of MtG free & ad-free via GoFundMe"
+                  : "Master of MtG werbefrei halten — per GoFundMe unterstützen"}
+              </Text>
+            </View>
+          </View>
+          <Ionicons name="open-outline" size={18} color="#f59e0b" />
+        </TouchableOpacity>
+
         {/* Impressum & Datenschutz */}
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
@@ -456,6 +478,34 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
   },
   feedbackSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+  },
+  supportBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 14,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: "rgba(245,158,11,0.08)",
+  },
+  supportLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  supportTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+  },
+  supportSub: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     marginTop: 2,
