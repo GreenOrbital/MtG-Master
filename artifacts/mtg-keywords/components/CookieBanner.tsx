@@ -10,27 +10,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { grantAnalytics, denyAnalytics } from "@/utils/analytics";
 
 const STORAGE_KEY = "cookie_consent_v2";
-
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-  }
-}
-
-function grantAnalytics() {
-  if (Platform.OS === "web" && typeof window !== "undefined" && window.gtag) {
-    window.gtag("consent", "update", { analytics_storage: "granted" });
-    window.gtag("config", "G-JN3SH0Y1VB", { send_page_view: true });
-  }
-}
-
-function denyAnalytics() {
-  if (Platform.OS === "web" && typeof window !== "undefined" && window.gtag) {
-    window.gtag("consent", "update", { analytics_storage: "denied" });
-  }
-}
 
 export function CookieBanner({ showEnglish }: { showEnglish: boolean }) {
   const [visible, setVisible] = useState(false);
