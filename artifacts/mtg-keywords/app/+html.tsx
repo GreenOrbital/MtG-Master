@@ -33,11 +33,17 @@ export default function Root({ children }: PropsWithChildren) {
             overflow: hidden;
           }
         `}</style>
-        {/* Google Analytics */}
+        {/* Google Analytics — Consent Mode v2: default denied until user accepts */}
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-JN3SH0Y1VB" />
         <script
           dangerouslySetInnerHTML={{
-            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-JN3SH0Y1VB');`,
+            __html: [
+              "window.dataLayer=window.dataLayer||[];",
+              "function gtag(){dataLayer.push(arguments);}",
+              "gtag('consent','default',{analytics_storage:'denied',ad_storage:'denied',wait_for_update:500});",
+              "gtag('js',new Date());",
+              "gtag('config','G-JN3SH0Y1VB',{send_page_view:false});",
+            ].join(""),
           }}
         />
       </head>
