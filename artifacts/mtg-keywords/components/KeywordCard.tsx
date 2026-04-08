@@ -145,7 +145,7 @@ export function KeywordCard({ keyword, showEnglish, expanded, onPress }: Props) 
                   <Text style={[styles.crLabel, { color: colors.mutedForeground }]}>
                     {showEnglish ? "Comprehensive Rules" : "Umfassende Regeln"}
                   </Text>
-                  <Text style={[styles.crRule, { color: accentColor }]}>CR {keyword.crRule}</Text>
+                  <Text style={[styles.crRuleText, { color: accentColor }]}>CR {keyword.crRule}</Text>
                 </View>
               )}
             </View>
@@ -253,11 +253,13 @@ const styles = StyleSheet.create({
   crLabel: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
-    flex: 1,
+    flexShrink: 1,
+    flexGrow: 1,
   },
-  crRule: {
+  crRuleText: {
     fontSize: 11,
     fontFamily: "Inter_700Bold",
     letterSpacing: 0.3,
+    flexShrink: 0,
   },
 });

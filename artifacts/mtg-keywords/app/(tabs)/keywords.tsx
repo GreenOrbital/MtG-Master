@@ -45,7 +45,7 @@ export default function KeywordsScreen() {
         kw.nameEn.toLowerCase().includes(q) ||
         kw.shortDe.toLowerCase().includes(q) ||
         kw.shortEn.toLowerCase().includes(q) ||
-        (kw.crRule !== undefined && kw.crRule.includes(q))
+        (kw.crRule !== undefined && (`cr ${kw.crRule}`.includes(q) || kw.crRule.includes(q.replace(/^cr\s*/i, ""))))
       );
     });
   }, [search, category]);
