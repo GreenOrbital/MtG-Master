@@ -107,7 +107,7 @@ export function CookieBanner({ showEnglish }: { showEnglish: boolean }) {
         </View>
 
         <TouchableOpacity
-          onPress={() => Linking.openURL("https://masterofmtg.replit.app/datenschutz")}
+          onPress={() => Linking.openURL("https://magic-keyword-explainer.replit.app/datenschutz")}
           style={styles.link}
         >
           <Text style={styles.linkText}>
