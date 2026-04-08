@@ -2421,40 +2421,6 @@ export default function ManapoolScreen() {
                       ))}
                     </View>
 
-                    {/* Shared controls (same game mode + mulligans as Draw Probability above) */}
-                    <View style={{ gap: 6 }}>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
-                          {showEnglish ? "Game Mode" : "Spielmodus"}
-                        </Text>
-                        {isAutoFormat && (
-                          <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5, backgroundColor: "#06b6d4" + "22", borderWidth: 1, borderColor: "#06b6d4" + "55" }}>
-                            <Text style={{ fontSize: 9, color: "#06b6d4", fontFamily: "Inter_600SemiBold" }}>auto</Text>
-                          </View>
-                        )}
-                        <Text style={{ fontSize: 10, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
-                          {actualDeckSize} {showEnglish ? "cards in deck" : "Ktn. im Deck"}
-                        </Text>
-                      </View>
-                      <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
-                        {FORMAT_KEYS.map((fk) => {
-                          const fi = GAME_FORMATS[fk];
-                          const sel = simFormat === fk;
-                          return (
-                            <TouchableOpacity
-                              key={fk}
-                              style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, alignItems: "center", backgroundColor: sel ? colors.primary : colors.background, borderWidth: 1, borderColor: sel ? colors.primary : colors.border, minWidth: 80 }}
-                              onPress={() => { setSimFormat(fk); setMcResult(null); }}
-                              activeOpacity={0.75}
-                            >
-                              <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: sel ? "#fff" : colors.mutedForeground }}>{showEnglish ? fi.labelEn : fi.labelDe}</Text>
-                              <Text style={{ fontSize: 9, color: sel ? "#ffffffaa" : colors.mutedForeground, fontFamily: "Inter_400Regular" }}>max. {fi.maxCopies}×</Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    </View>
-
                     <View style={{ gap: 6 }}>
                       <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" }}>
                         {showEnglish ? "Starting Hand" : "Starthand"}
