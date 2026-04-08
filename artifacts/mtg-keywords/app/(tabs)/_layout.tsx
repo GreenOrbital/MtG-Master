@@ -128,15 +128,16 @@ function WebSidebar() {
 // ─── Native Tab Layout ────────────────────────────────────────────────────────
 
 function NativeTabLayout() {
+  const { showEnglish } = useSettings();
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="scan">
         <Icon sf={{ default: "magnifyingglass.circle", selected: "magnifyingglass.circle.fill" }} />
-        <Label>Karte suchen</Label>
+        <Label>{showEnglish ? "Card Search" : "Karte suchen"}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="keywords">
         <Icon sf={{ default: "list.bullet", selected: "list.bullet" }} />
-        <Label>Schlüsselwörter</Label>
+        <Label>{showEnglish ? "Keywords" : "Schlüsselwörter"}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="manapool">
         <Icon sf={{ default: "rectangle.stack", selected: "rectangle.stack.fill" }} />
@@ -144,11 +145,11 @@ function NativeTabLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="deckideas">
         <Icon sf={{ default: "lightbulb", selected: "lightbulb.fill" }} />
-        <Label>Ideen</Label>
+        <Label>{showEnglish ? "Deck Ideas" : "Ideen"}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
         <Icon sf={{ default: "gear", selected: "gear" }} />
-        <Label>Einstellungen</Label>
+        <Label>{showEnglish ? "Settings" : "Einstellungen"}</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -164,6 +165,7 @@ function ClassicTabLayout() {
   const isWeb = Platform.OS === "web";
   const { width } = useWindowDimensions();
   const isDesktop = isWeb && width >= DESKTOP_BREAKPOINT;
+  const { showEnglish } = useSettings();
 
   const tabs = (
     <Tabs
@@ -195,7 +197,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="scan"
         options={{
-          title: "Karte suchen",
+          title: showEnglish ? "Card Search" : "Karte suchen",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="magnifyingglass.circle" tintColor={color} size={24} />
@@ -207,7 +209,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="keywords"
         options={{
-          title: "Schlüsselwörter",
+          title: showEnglish ? "Keywords" : "Schlüsselwörter",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="list.bullet" tintColor={color} size={24} />
@@ -231,7 +233,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="deckideas"
         options={{
-          title: "Deck-Ideen",
+          title: showEnglish ? "Deck Ideas" : "Deck-Ideen",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="lightbulb" tintColor={color} size={24} />
@@ -243,7 +245,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Einstellungen",
+          title: showEnglish ? "Settings" : "Einstellungen",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="gear" tintColor={color} size={24} />
