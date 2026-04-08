@@ -7,7 +7,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   ActivityIndicator,
-  Easing,
   Image,
   LayoutAnimation,
   Linking,
@@ -23,6 +22,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AnimatedCard } from "@/components/AnimatedCard";
 import { KeywordCard } from "@/components/KeywordCard";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { type CompactCard, useCardHistory } from "@/context/CardHistoryContext";
@@ -582,14 +582,9 @@ export default function CardSearchScreen() {
   const [showDeckPicker, setShowDeckPicker] = useState(false);
   const [addedToDeck, setAddedToDeck] = useState<string | null>(null);
   const [pickedDeckId, setPickedDeckId] = useState<string | null>(null);
-  const [heroSize, setHeroSize] = useState<{ w: number; h: number } | null>(null);
-  const [parallaxBox, setParallaxBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
-
   // ── Animations ────────────────────────────────────────────────────────────
-  const starScale    = useRef(new Animated.Value(1)).current;
-  const pulseAnim    = useRef(new Animated.Value(1)).current;
-  const livePhotoAnim = useRef(new Animated.Value(0)).current;
-  const livePhotoRef  = useRef<{ stop(): void } | null>(null);
+  const starScale = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   const nd = Platform.OS !== "web"; // useNativeDriver: true only on native
 
   // Pulse the empty-state search icon forever
@@ -604,37 +599,6 @@ export default function CardSearchScreen() {
     return () => loop.stop();
   }, []);
 
-  // Live Photo: the card image itself drifts along an organic 4-waypoint path.
-  // Multi-waypoint interpolation gives a floating, non-mechanical feel.
-  // Values are very small (< 8px, < 2% scale) so the image stays fully visible.
-  useEffect(() => {
-    livePhotoRef.current?.stop();
-    if (!card) { livePhotoAnim.setValue(0); return; }
-    livePhotoAnim.setValue(0);
-    const ease = Easing.inOut(Easing.sin);
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(livePhotoAnim, { toValue: 1, duration: 7000, easing: ease, useNativeDriver: nd }),
-        Animated.timing(livePhotoAnim, { toValue: 0, duration: 7000, easing: ease, useNativeDriver: nd }),
-      ])
-    );
-    livePhotoRef.current = loop;
-    loop.start();
-    return () => loop.stop();
-  }, [card?.id]);
-
-  // Non-linear path via multi-stop interpolation — gives organic floating motion
-  const liveX     = livePhotoAnim.interpolate({ inputRange: [0, 0.3, 0.6, 1], outputRange: [0,  6, -4,  0] });
-  const liveY     = livePhotoAnim.interpolate({ inputRange: [0, 0.3, 0.6, 1], outputRange: [0, -5,  3,  0] });
-  const liveScale = livePhotoAnim.interpolate({ inputRange: [0, 0.5, 1],       outputRange: [1.0, 1.02, 1.0] });
-
-  // Static parallax bounding box (covers card art region)
-  useEffect(() => {
-    setParallaxBox(null);
-    if (!card?.id || !cardArtUri) return;
-    setParallaxBox({ x: 10, y: 8, w: 80, h: 84 });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [card?.id]);
 
   // LayoutAnimation: animates the appearance of card content in the layout
   function triggerCardAppearance() {
@@ -899,64 +863,16 @@ export default function CardSearchScreen() {
         {card && !loadingCard && (
           <View style={styles.content}>
 
-            {/* ── True Cinemagraph: frozen card + AI subject window ── */}
             {cardImageUri && (
               <View style={styles.heroWrapper}>
-                <View
-                  style={styles.heroSection}
-                  onLayout={(e) => {
-                    const { width, height } = e.nativeEvent.layout;
-                    setHeroSize({ w: width, h: height });
-                  }}
-                >
-                  {/* Layer 1: static full card — never animated */}
-                  <Image
-                    source={{ uri: cardImageUri }}
-                    style={styles.heroImage}
-                    resizeMode="contain"
+                <View style={styles.heroSection}>
+                  <AnimatedCard
+                    imageUri={cardImageUri}
+                    artUri={cardArtUri}
+                    width={260}
+                    height={362}
+                    borderRadius={14}
                   />
-
-                  {/* Layer 2: same card image, animated, masked with a soft radial gradient.
-                      Using the SAME cardImageUri as Layer 1 guarantees pixel-perfect alignment —
-                      no seam, no colour shift. The gradient fades the animated layer to transparent
-                      at the edges of the artwork window so it blends seamlessly into the frozen card.
-                      Subject centre is driven by the AI bounding box; falls back to artwork centre. */}
-                  {(() => {
-                    // Centre of the subject in artwork-area % (0–100). Default ≈ artwork centre.
-                    const cx = parallaxBox ? Math.round(parallaxBox.x + parallaxBox.w / 2) : 50;
-                    const cy = parallaxBox ? Math.round(parallaxBox.y + parallaxBox.h / 2) : 42;
-                    // Web: radial gradient mask — opaque at subject, fades to transparent at edges
-                    const maskStyle: object = Platform.OS === "web" ? {
-                      WebkitMaskImage: `radial-gradient(ellipse 75% 80% at ${cx}% ${cy}%, black 0%, black 25%, rgba(0,0,0,0.5) 50%, transparent 72%)`,
-                      maskImage:       `radial-gradient(ellipse 75% 80% at ${cx}% ${cy}%, black 0%, black 25%, rgba(0,0,0,0.5) 50%, transparent 72%)`,
-                    } : {};
-                    return (
-                      <View
-                        pointerEvents="none"
-                        style={[styles.artworkWindow, maskStyle as object]}
-                      >
-                        {/* Same image source as Layer 1 — renders pixel-for-pixel identically.
-                            The only difference is the animated transform. */}
-                        <Animated.Image
-                          source={{ uri: cardImageUri }}
-                          style={{
-                            position: "absolute",
-                            // Fill the heroSection (not just artworkWindow) so the artwork aligns perfectly
-                            left: "-7.5%", top: "-33%",
-                            width: "115%", height: "233%",
-                            transform: [
-                              { translateX: liveX },
-                              { translateY: liveY },
-                              { scale: liveScale },
-                            ],
-                          }}
-                          resizeMode="contain"
-                        />
-                      </View>
-                    );
-                  })()}
-
-                  {/* tap-to-zoom */}
                   <TouchableOpacity
                     onPress={() => setShowImageZoom(true)}
                     activeOpacity={0.9}
@@ -1905,18 +1821,8 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
   content: { gap: 14 },
   heroWrapper: { gap: 10, alignItems: "center" },
-  heroSection: { borderRadius: 18, overflow: "hidden", aspectRatio: 63 / 88, width: "82%", ...Platform.select({ web: { maxWidth: 260 }, default: {} }), backgroundColor: "#0d0d1f" },
-  heroImage: { width: "100%", height: "100%" },
+  heroSection: { borderRadius: 14, overflow: "hidden", position: "relative", alignSelf: "center" },
   heroControls: { flexDirection: "row", alignItems: "center", gap: 10, width: "82%", ...Platform.select({ web: { maxWidth: 260 }, default: {} }) },
-  // Artwork window positioned over the painting area of a standard MtG card
-  artworkWindow: {
-    position: "absolute",
-    top: "14%",
-    bottom: "43%",
-    left: "6.5%",
-    right: "6.5%",
-    overflow: "hidden",
-  },
   heroCardName: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#ffffff" },
   heroCardEnName: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#ffffffaa", marginTop: 2 },
   cardInfoBox: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },

@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
+import { AnimatedCard } from "@/components/AnimatedCard";
 import {
   ActivityIndicator,
   Alert,
@@ -299,7 +300,14 @@ function CardDetailModal({
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 14 }}>
             {/* Card image */}
             {card.imageUri && (
-              <Image source={{ uri: card.imageUri }} style={styles.cardDetailImage} resizeMode="contain" />
+              <View style={{ alignItems: "center", paddingVertical: 8 }}>
+                <AnimatedCard
+                  imageUri={card.imageUri}
+                  width={220}
+                  height={307}
+                  borderRadius={12}
+                />
+              </View>
             )}
 
             {/* Role in deck */}
