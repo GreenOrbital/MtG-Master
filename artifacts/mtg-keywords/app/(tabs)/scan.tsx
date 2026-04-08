@@ -828,7 +828,7 @@ export default function CardSearchScreen() {
           <Text style={[styles.title, { color: colors.foreground }]}>
             {showEnglish ? "Card Search" : "Karte suchen"}
           </Text>
-          <LanguageToggle showEnglish={showEnglish} onToggle={() => setShowEnglish(!showEnglish)} />
+          <LanguageToggle />
         </View>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
           {showEnglish ? "Search by English or German card name" : "Deutschen oder englischen Kartennamen eingeben"}

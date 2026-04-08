@@ -2,18 +2,15 @@ import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
+import { useSettings } from "@/context/SettingsContext";
 
-type Props = {
-  showEnglish: boolean;
-  onToggle: () => void;
-};
-
-export function LanguageToggle({ showEnglish, onToggle }: Props) {
+export function LanguageToggle() {
   const colors = useColors();
+  const { showEnglish, setShowEnglish } = useSettings();
 
   return (
     <TouchableOpacity
-      onPress={onToggle}
+      onPress={() => setShowEnglish(!showEnglish)}
       style={[styles.container, { backgroundColor: colors.secondary, borderColor: colors.border }]}
     >
       <View

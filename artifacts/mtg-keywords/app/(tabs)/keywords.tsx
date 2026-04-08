@@ -72,7 +72,7 @@ export default function KeywordsScreen() {
       <View style={[styles.header, { paddingTop: topPad + 12, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <View style={styles.headerTop}>
           <Text style={[styles.title, { color: colors.foreground }]}>Schlüsselwörter</Text>
-          <LanguageToggle showEnglish={showEnglish} onToggle={() => setShowEnglish(!showEnglish)} />
+          <LanguageToggle />
         </View>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
           {filtered.length} {showEnglish ? "keywords" : "Schlüsselwörter"}

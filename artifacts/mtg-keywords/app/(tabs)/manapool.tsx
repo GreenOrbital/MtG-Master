@@ -1171,7 +1171,7 @@ export default function ManapoolScreen() {
               {activeDeck ? editName || activeDeck.name : (showEnglish ? "Deck Builder" : "Deck-Builder")}
             </Text>
           </TouchableOpacity>
-          <LanguageToggle showEnglish={showEnglish} onToggle={() => setShowEnglish(!showEnglish)} />
+          <LanguageToggle />
         </View>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
           {activeDeck
