@@ -898,7 +898,8 @@ export default function ManapoolScreen() {
 
   // Computed from activeDeck — used in both simulation sections
   const actualDeckSize = activeDeck?.cards.reduce((a, c) => a + c.count, 0) ?? 0;
-  const isAutoFormat   = !!activeDeck?.format && activeDeck.format === simFormat;
+  const actualFormat   = simFormat;
+  const isAutoFormat   = !!activeDeck?.format;
 
   // Auto-detect format + reset card selection when deck changes
   useEffect(() => {
