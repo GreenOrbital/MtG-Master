@@ -349,7 +349,73 @@ def analyze_deck(cards: list[dict]) -> DeckAnalysis:
 
 # ── Demo ──────────────────────────────────────────────────────────────────────
 
+def print_info() -> None:
+    """Gibt eine Erklärung des Bewertungssystems aus."""
+    print()
+    print("=" * 55)
+    print("  MtG KARTENBEWERTUNGS-MODUL  —  Erklärung")
+    print("=" * 55)
+    print("""
+  Jede Karte erhält einen Gesamtwert von 0 bis 100 Punkten,
+  der sich aus drei Teilbereichen zusammensetzt:
+
+  ┌─────────────────────────────────────────────────────┐
+  │  1. MANA-EFFIZIENZ            max. 40 Punkte        │
+  │                                                     │
+  │  Bewertet, wie viel Leistung eine Karte pro         │
+  │  ausgegebenem Mana bringt.                          │
+  │                                                     │
+  │  · Kreaturen: Stärke + Widerstandskraft vs. CMC     │
+  │    Ideal: Summe ≥ 2× Manakosten (z.B. 2/2 für 2)  │
+  │  · Instants/Hexereien: Niedriges Mana = hohe Note  │
+  │  · Länder: feste Note (30), da manakosten­frei      │
+  │  · 0-Mana-Karten: maximale Punktzahl (40)           │
+  └─────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────┐
+  │  2. FLEXIBILITÄT              max. 35 Punkte        │
+  │                                                     │
+  │  Bewertet, wie vielseitig eine Karte einsetzbar     │
+  │  ist — früh und spät im Spiel.                      │
+  │                                                     │
+  │  · Hohe Flex-Keywords (je +10 Pkt.):                │
+  │    Flash, Cycling, Kicker, Flashback, Modal,        │
+  │    Adventure, Foretell, Escape, Mutate …            │
+  │  · Mittlere Keywords (je +3 Pkt.):                  │
+  │    Flying, Haste, Deathtouch, Lifelink,             │
+  │    Trample, Hexproof, Indestructible …              │
+  │  · CMC ≤ 2: +5 Pkt. (Early-Game-tauglich)          │
+  │  · Late-Game-Skalierung (Cascade, Delve…): +5 Pkt. │
+  └─────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────┐
+  │  3. KARTENTYP-BONUS           max. 25 Punkte        │
+  │                                                     │
+  │  Spontanzauber  22  (reaktiv, überraschend)         │
+  │  Planeswalker   20  (Dauerdruck)                    │
+  │  Land           20  (Basis jedes Decks)             │
+  │  Kreatur        18  (Board-Präsenz)                 │
+  │  Artefakt       16  (formatunabhängig)              │
+  │  Hexerei        15  (nicht reaktiv)                 │
+  │  Verzauberung   14  (träge)                         │
+  └─────────────────────────────────────────────────────┘
+
+  BEDEUTUNG DES GESAMTWERTS
+  ─────────────────────────
+  75 – 100  Stark    — Pflichtbestandteil fast jeden Decks
+  50 –  74  Gut      — Solide Karte, passt in viele Decks
+  25 –  49  Mittel   — Situativ oder formatabhängig gut
+   0 –  24  Schwach  — Nur in sehr spezifischen Decks sinnvoll
+
+  HINWEIS: Karten mit variablen Werten (*/*)  werden
+  mit 0/0 gerechnet, da die echte Stärke vom Spielstand
+  abhängt und nicht statisch bewertet werden kann.
+""")
+    print("=" * 55)
+
+
 if __name__ == "__main__":
+    print_info()
     sample_deck = [
         {
             "name": "Lightning Bolt",
