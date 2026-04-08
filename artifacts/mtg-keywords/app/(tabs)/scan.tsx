@@ -264,11 +264,17 @@ function matchLocalKeywords(scryfallKeywords: string[], oracleText: string): Mtg
   for (const kw of MTG_KEYWORDS) {
     const enLower = kw.nameEn.toLowerCase();
     const deLower = kw.name.toLowerCase();
+    // Exact match from Scryfall keyword list (most reliable)
     for (const sk of scryfallKeywords) {
       if (sk.toLowerCase() === enLower || sk.toLowerCase() === deLower) found.set(kw.id, kw);
     }
+    // Oracle text match — use matchPattern if defined, otherwise simple includes
     const oracle = oracleText.toLowerCase();
-    if (oracle.includes(enLower) || oracle.includes(deLower)) found.set(kw.id, kw);
+    if (kw.matchPattern) {
+      if (new RegExp(kw.matchPattern, "i").test(oracleText)) found.set(kw.id, kw);
+    } else if (oracle.includes(enLower) || oracle.includes(deLower)) {
+      found.set(kw.id, kw);
+    }
   }
   return Array.from(found.values());
 }

@@ -10,6 +10,10 @@ export type MtgKeyword = {
   fullEn: string;
   example?: string;
   exampleEn?: string;
+  /** CR rule reference, e.g. "702.62" for Suspend */
+  crRule?: string;
+  /** Optional regex pattern for oracle-text matching (overrides simple includes) */
+  matchPattern?: string;
 };
 
 export const MTG_KEYWORDS: MtgKeyword[] = [
@@ -25,6 +29,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "A creature with flying can only be blocked by creatures with flying or reach. Flying creatures can block other flying creatures. Flying is one of the most common abilities in the game.",
     example: "Engel haben oft Fliegen.",
     exampleEn: "Angels often have flying.",
+    crRule: "702.9",
   },
   {
     id: "trample",
@@ -38,6 +43,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "When a creature with trample attacks and is blocked, the attacker only needs to assign lethal damage to each blocker. Excess damage is dealt to the defending player or planeswalker.",
     example: "Ein 5/5 Trampeln gegen einen 2/2: 2 Schaden an die Kreatur, 3 an den Spieler.",
     exampleEn: "A 5/5 trample vs a 2/2: 2 damage to creature, 3 to player.",
+    crRule: "702.19",
   },
   {
     id: "first_strike",
@@ -51,6 +57,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Creatures with first strike deal their combat damage in a first combat damage step, before creatures without first strike or double strike assign damage.",
     example: "Ein 2/1 mit Erstschlag kann einen 3/3 ohne Erstschlag töten und überlebt.",
     exampleEn: "A 2/1 with first strike can kill a 3/3 without first strike and survive.",
+    crRule: "702.7",
   },
   {
     id: "double_strike",
@@ -64,6 +71,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Creatures with double strike deal damage in both combat damage steps — first in the first-strike step, and then again in the normal combat damage step.",
     example: "Ein 2/2 mit Doppelschlag fügt insgesamt 4 Schaden in einem Angriff zu.",
     exampleEn: "A 2/2 with double strike deals a total of 4 damage in one attack.",
+    crRule: "702.4",
   },
   {
     id: "deathtouch",
@@ -77,6 +85,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Any amount of damage dealt by a creature with deathtouch is considered lethal damage. Even 1 point of damage is enough to destroy any creature regardless of its toughness.",
     example: "Eine 1/1 mit Todesberührung tötet jeden 10/10.",
     exampleEn: "A 1/1 with deathtouch kills any 10/10.",
+    crRule: "702.2",
   },
   {
     id: "lifelink",
@@ -90,6 +99,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Whenever a creature with lifelink deals damage — attacking, blocking, or through abilities — the creature's controller gains that much life.",
     example: "Ein 3/3 mit Lebensverbindung gibt dir 3 Lebenspunkte beim Angriff.",
     exampleEn: "A 3/3 with lifelink gains you 3 life when it attacks.",
+    crRule: "702.15",
   },
   {
     id: "vigilance",
@@ -103,6 +113,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Creatures with vigilance don't need to tap when they attack. They can attack and still remain untapped to block, or remain available without the risk of being unable to block next turn.",
     example: "Greife mit deiner Kreatur an und block dennoch in derselben Runde.",
     exampleEn: "Attack with your creature and still block in the same round.",
+    crRule: "702.20",
   },
   {
     id: "haste",
@@ -116,6 +127,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Normally creatures suffer from summoning sickness and cannot attack or activate tap abilities until the start of the player's next turn. Creatures with haste bypass this restriction.",
     example: "Spiele eine Kreatur mit Eile und greife sofort an.",
     exampleEn: "Play a creature with haste and attack immediately.",
+    crRule: "702.10",
   },
   {
     id: "reach",
@@ -129,6 +141,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Creatures with reach can block flying creatures even though they don't have flying themselves. This typically represents archers, spiders, or similar creatures that can reach high targets.",
     example: "Eine Spinne mit Reichweite kann einen fliegenden Drachen blocken.",
     exampleEn: "A spider with reach can block a flying dragon.",
+    crRule: "702.17",
   },
   {
     id: "hexproof",
@@ -142,6 +155,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "A permanent with hexproof cannot be chosen as a target by spells or abilities controlled by opponents. This prevents targeted removal, targeted effects, and any direct interaction from opponents.",
     example: "Ein Ungeheuer mit Hexensickerung kann nicht durch Vernichtungszauber getötet werden.",
     exampleEn: "A monster with hexproof can't be killed by targeted removal spells.",
+    crRule: "702.11",
   },
   {
     id: "indestructible",
@@ -155,6 +169,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "An indestructible permanent can't be destroyed by combat damage, lethal damage, or effects that say 'destroy'. It can still be exiled, bounced, or sacrificed.",
     example: "Selbst ein 10/10 kann eine unzerstörbare Kreatur nicht im Kampf töten.",
     exampleEn: "Even a 10/10 can't kill an indestructible creature in combat.",
+    crRule: "702.12",
   },
   {
     id: "flash",
@@ -168,6 +183,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "A card with flash can be cast at any time you could cast an instant — including your opponent's turn, in response to their actions, during combat, etc.",
     example: "Spiele eine Kreatur mit Augenblick als Reaktion auf den Angriff deines Gegners.",
     exampleEn: "Play a creature with flash in response to your opponent's attack.",
+    crRule: "702.8",
   },
   {
     id: "menace",
@@ -181,6 +197,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "A creature with menace can only be blocked if the defending player blocks it with two or more creatures. If only one creature is available to block, the attacker must go unblocked.",
     example: "Eine Bedrohungskreatur erzwingt entweder zwei Blocker oder geht durch.",
     exampleEn: "A menace creature forces either two blockers or goes through.",
+    crRule: "702.110",
   },
   {
     id: "protection",
@@ -194,6 +211,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Protection from a quality (e.g., protection from red) means DEBT: Can't be Damaged by, Enchanted/Equipped by, Blocked by, or Targeted by sources with that quality.",
     example: "Schutz vor Schwarz macht eine Kreatur immun gegen alle schwarzen Zauber.",
     exampleEn: "Protection from black makes a creature immune to all black spells.",
+    crRule: "702.16",
   },
   {
     id: "shroud",
@@ -207,6 +225,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Similar to hexproof but stronger: a creature with shroud can't be the target of any spell or ability from any player — including its controller. This provides absolute protection but also prevents buffing it with targeted spells.",
     example: "Du kannst deine eigene Schleierhülle-Kreatur nicht verstärken.",
     exampleEn: "You can't buff your own shroud creature with targeted spells.",
+    crRule: "702.18",
   },
   {
     id: "ward",
@@ -220,6 +239,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "When an opponent targets a creature with ward with a spell or ability, they must pay a cost (e.g., Ward {2} means pay 2 mana) or the spell is countered. Ward taxes opponents for targeting rather than preventing it entirely.",
     example: "Hut {2} macht jeden Vernichtungszauber 2 Mana teurer.",
     exampleEn: "Ward {2} makes every removal spell 2 mana more expensive.",
+    crRule: "702.133",
   },
   {
     id: "prowess",
@@ -233,6 +253,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Whenever you cast a noncreature spell, the creature gets +1/+1 until end of turn. This stacks: casting three noncreature spells gives +3/+3. Prowess rewards spell-heavy aggressive decks.",
     example: "Wirf drei Spontanzauber in einem Zug und deine Kreatur wird zu einem +3/+3 Bedrohung.",
     exampleEn: "Cast three instants in a turn and your creature becomes a +3/+3 threat.",
+    crRule: "702.108",
   },
   {
     id: "defender",
@@ -246,6 +267,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "A creature with defender can't attack. It's restricted to blocking. Typically, defender creatures have high toughness or useful abilities to compensate for this restriction.",
     example: "Eine Steinmauer mit Verteidiger kann viele Angriffe aufhalten, aber nie angreifen.",
     exampleEn: "A stone wall with defender can stop many attacks but can never attack.",
+    crRule: "702.3",
   },
   {
     id: "equip",
@@ -259,6 +281,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Equip is the activated ability of equipment cards. Pay the equip cost and attach the equipment to one of your creatures. Equipment can be moved between creatures, but only during your main phase.",
     example: "Rüste dein bestes Schwert für {2} an deinen Angreifer aus.",
     exampleEn: "Equip your best sword to your attacker for {2}.",
+    crRule: "702.6",
   },
   {
     id: "enchant",
@@ -272,6 +295,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Enchant is the keyword on Aura enchantment cards. It specifies what the Aura can enchant (e.g., 'Enchant creature', 'Enchant land'). The Aura remains attached to the target and grants bonuses or penalties.",
     example: "Verzaubere Kreatur: Diese Aura hängt an einer Kreatur.",
     exampleEn: "Enchant creature: this Aura attaches to a creature.",
+    crRule: "702.5",
   },
   {
     id: "flash_back",
@@ -285,6 +309,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Cards with flashback can be cast a second time from your graveyard by paying the flashback cost. After casting via flashback, the card is exiled instead of going to the graveyard.",
     example: "Wirke deinen Blitzschlag zweimal – einmal normal, einmal aus dem Friedhof.",
     exampleEn: "Cast your lightning bolt twice — once normally, once from the graveyard.",
+    crRule: "702.34",
   },
   {
     id: "kicker",
@@ -298,6 +323,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "You may pay the kicker cost in addition to a spell's mana cost. If you do, the spell has an additional or improved effect. Kicker is optional — you can cast the spell without paying the kicker.",
     example: "Zahle 2 Mana extra beim Antritt und erhalte eine stärkere Version des Zaubers.",
     exampleEn: "Pay 2 extra mana for the kicker to get an enhanced version of the spell.",
+    crRule: "702.33",
   },
   {
     id: "morph",
@@ -311,6 +337,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "You can put any card with morph face down on the battlefield for 3 mana as a generic colorless 2/2 with no abilities. At any time, you may pay the morph cost to turn it face up and reveal its true power.",
     example: "Spiele eine verdeckte 2/2 für {3}, dann decke sie für {1}{G} auf und enthülle einen 6/6.",
     exampleEn: "Play a face-down 2/2 for {3}, then flip it for {1}{G} to reveal a 6/6.",
+    crRule: "702.37",
   },
   {
     id: "cycling",
@@ -324,6 +351,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Cards with cycling can be discarded by paying the cycling cost to draw a new card. Pay the cost, discard this card, draw a card. This gives you flexibility to exchange useless cards for new ones.",
     example: "Kein gutes Ziel für deinen Vernichtungszauber? Radfahre ihn für eine neue Karte.",
     exampleEn: "No good target for your removal? Cycle it for a new card.",
+    crRule: "702.29",
   },
   {
     id: "landfall",
@@ -350,6 +378,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "When you cast a spell with convoke, you may tap creatures you control to help pay for it. Each tapped creature reduces the cost by 1 colorless or by one mana of that creature's color.",
     example: "Tappe 5 Kreaturen, um einen teuren Zauber kostenlos zu wirken.",
     exampleEn: "Tap 5 creatures to cast an expensive spell for free.",
+    crRule: "702.51",
   },
   {
     id: "delve",
@@ -363,6 +392,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Each card you exile from your graveyard while casting a spell with delve reduces its cost by 1. This allows casting very expensive spells early in the game if you have a full graveyard.",
     example: "Verbanne 7 Karten aus dem Friedhof, um einen 8-Mana-Zauber für {1} zu wirken.",
     exampleEn: "Exile 7 cards from graveyard to cast an 8-mana spell for just {1}.",
+    crRule: "702.66",
   },
   {
     id: "devoid",
@@ -389,6 +419,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Whenever a creature with annihilator X attacks, the defending player sacrifices X permanents before blockers are declared. This is one of the most powerful and devastating attack effects in the game.",
     example: "Vernichter 4: Bei jedem Angriff opfert der Gegner 4 Permanente.",
     exampleEn: "Annihilator 4: The opponent sacrifices 4 permanents with every attack.",
+    crRule: "702.86",
   },
   {
     id: "infect",
@@ -402,6 +433,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Creatures with infect deal damage to players as poison counters and to creatures as -1/-1 counters instead of normal damage. A player with 10 or more poison counters loses the game.",
     example: "Füge 10 Giftmarken zu, um deinen Gegner sofort zu besiegen.",
     exampleEn: "Deal 10 poison counters to immediately defeat your opponent.",
+    crRule: "702.90",
   },
   {
     id: "wither",
@@ -415,6 +447,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Similar to infect but only for damage to creatures: creatures with wither deal -1/-1 counters instead of regular combat damage to creatures. Unlike normal damage, these counters don't go away at end of turn.",
     example: "Ein 2/2 mit Welken gegen einen 3/3: Der 3/3 erhält zwei -1/-1-Marken und bleibt schwächer.",
     exampleEn: "A 2/2 with wither vs a 3/3: the 3/3 gets two -1/-1 counters and stays weakened.",
+    crRule: "702.80",
   },
   {
     id: "persist",
@@ -428,6 +461,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "When a creature with persist would die and has no -1/-1 counter on it, it instead returns to the battlefield under its owner's control with a -1/-1 counter.",
     example: "Eine 2/2 mit Beharren stirbt, kehrt als 1/1 zurück.",
     exampleEn: "A 2/2 with persist dies, returns as 1/1.",
+    crRule: "702.79",
   },
   {
     id: "undying",
@@ -441,6 +475,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "When a creature with undying would die and has no +1/+1 counter, it returns to the battlefield under its owner's control with a +1/+1 counter. Similar to persist but with a buff instead of a debuff.",
     example: "Eine 2/2 mit Unsterblich stirbt, kehrt als 3/3 zurück.",
     exampleEn: "A 2/2 with undying dies, returns as a 3/3.",
+    crRule: "702.93",
   },
   {
     id: "exalted",
@@ -454,6 +489,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Whenever a creature attacks alone, it gets +1/+1 until end of turn for each exalted source the attacking player controls. Multiple exalted effects stack.",
     example: "Drei Erhaben-Kreaturen auf dem Feld: Dein einzelner Angreifer erhält +3/+3.",
     exampleEn: "Three exalted creatures on field: your lone attacker gets +3/+3.",
+    crRule: "702.83",
   },
   {
     id: "battalion",
@@ -480,6 +516,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Ninjutsu is an activated ability you can use from your hand. When one of your creatures attacks unblocked, you can pay the ninjutsu cost, return that attacker to hand, and put the ninja onto the battlefield attacking.",
     example: "Tausche einen 1/1-Fliegenden gegen einen Ninja aus und füge Schaden zu.",
     exampleEn: "Swap a 1/1 flyer for a ninja and deal extra damage.",
+    crRule: "702.49",
   },
   {
     id: "bushido",
@@ -493,6 +530,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Whenever a creature with bushido X attacks or becomes blocked, it gets +X/+X until end of turn. Bushido makes creatures stronger in combat, whether attacking or defending.",
     example: "Bushido 2: Im Kampf erhält die Kreatur +2/+2.",
     exampleEn: "Bushido 2: In combat the creature gets +2/+2.",
+    crRule: "702.45",
   },
   {
     id: "scry",
@@ -506,6 +544,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Scry X means: look at the top X cards of your library. Put any number of them on top in any order, and the rest on the bottom in any order. This gives you control over future draws.",
     example: "Hellsehen 2: Schau dir 2 Karten an, behalte die guten, begrab die schlechten.",
     exampleEn: "Scry 2: Look at 2 cards, keep the good ones, bury the bad ones.",
+    crRule: "701.17",
   },
   {
     id: "surveil",
@@ -519,6 +558,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Surveil X means: look at the top X cards of your library. Put any number on top of your library and the rest in your graveyard. Unlike scry, you can put cards in the graveyard, which is useful for graveyard strategies.",
     example: "Auskundschaften 3: Behalte gute Karten, lege unnötige Karten in den Friedhof für Synergie.",
     exampleEn: "Surveil 3: keep good cards, put unneeded ones in graveyard for synergy.",
+    crRule: "701.42",
   },
   {
     id: "populate",
@@ -532,6 +572,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Populate means: choose a creature token you control and create a copy of it. If you control no tokens, nothing happens. This is ideal for strategies that generate many powerful token creatures.",
     example: "Bevölkere deinen 5/5-Drachen-Token: Du bekommst einen zweiten.",
     exampleEn: "Populate your 5/5 dragon token: you get a second one.",
+    crRule: "701.28",
   },
   {
     id: "transform",
@@ -545,6 +586,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Transform means to turn a double-faced card over to reveal its other side. Cards often transform under specific conditions such as at the beginning of each turn or when a certain amount of damage has been dealt.",
     example: "Ein Werwolf transformiert sich nachts und zurück am Tag.",
     exampleEn: "A werewolf transforms at night and back during the day.",
+    crRule: "701.28",
   },
   {
     id: "fight",
@@ -558,6 +600,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "When two creatures fight, they each deal damage equal to their power to each other simultaneously. This is not an attack or block — it happens outside of the normal combat phase.",
     example: "Lass dein 4/4 gegen einen feindlichen 3/3 kämpfen und töte ihn.",
     exampleEn: "Have your 4/4 fight an enemy 3/3 and kill it.",
+    crRule: "701.12",
   },
   {
     id: "exile",
@@ -571,6 +614,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Exile means to remove a card from the game and put it into the exile zone. Exiled cards are generally gone for good and can't be retrieved unless an ability explicitly allows it.",
     example: "Verbanne eine Kreatur: Sie kann nicht regeneriert, wiedergeholt oder durch den Friedhof zurückgebracht werden.",
     exampleEn: "Exile a creature: it can't be regenerated, retrieved via graveyard, or otherwise recovered.",
+    crRule: "701.6",
   },
   {
     id: "token",
@@ -597,6 +641,8 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "To counter a spell means intercepting it on the stack before it resolves. The spell goes directly to the player's graveyard without taking effect. Blue instant spells commonly have the ability to counter spells.",
     example: "Mache den Zauber deines Gegners zunichte: Er hat keinerlei Wirkung.",
     exampleEn: "Counter your opponent's spell: it has no effect whatsoever.",
+    crRule: "701.5",
+    matchPattern: "counter target|counter that spell|counter it|countered\b",
   },
   {
     id: "cascade",
@@ -610,6 +656,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Whenever you cast a cascade spell, reveal cards from your library until you find a nonland card with lesser converted mana cost. You may cast that card without paying its cost. The other revealed cards go to the bottom of your library in random order.",
     example: "Ein 5-Mana Kaskaden-Zauber kann kostenlos einen 4-Mana-Zauber auslösen.",
     exampleEn: "A 5-mana cascade spell can trigger a free 4-mana spell.",
+    crRule: "702.85",
   },
   {
     id: "affinity",
@@ -623,6 +670,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Affinity for a type (e.g., affinity for artifacts) reduces the mana cost of the spell by {1} for each permanent of that type you control. With enough permanents, a spell can even be free.",
     example: "Affinität für Artefakte: Kontrolliere 5 Artefakte → 5 Mana Rabatt.",
     exampleEn: "Affinity for artifacts: control 5 artifacts → 5 mana discount.",
+    crRule: "702.41",
   },
   {
     id: "improvise",
@@ -636,6 +684,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Similar to convoke but only for artifacts: you can tap untapped artifacts you control instead of paying mana. Each artifact reduces the cost by {1}.",
     example: "Tappe 3 Artefakte, um 3 Mana für diesen Zauber zu sparen.",
     exampleEn: "Tap 3 artifacts to save 3 mana on this spell.",
+    crRule: "702.125",
   },
   {
     id: "emerge",
@@ -649,6 +698,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Emerge allows casting a spell by sacrificing a creature. The emerge cost is reduced by the sacrificed creature's mana cost, allowing expensive creatures to be cast using cheaper ones as payment.",
     example: "Opfere eine 3-Mana-Kreatur für -3 auf dem Auftauchen-Preis.",
     exampleEn: "Sacrifice a 3-mana creature for -3 on the emerge cost.",
+    crRule: "702.121",
   },
   {
     id: "energy",
@@ -675,6 +725,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Adventure cards have two parts: a creature on top and an instant/sorcery at the bottom (the adventure). You can cast the creature directly or first cast the adventure. After the adventure resolves, the card is exiled, from where you can cast it as a creature.",
     example: "Wirke zuerst das Abenteuer, dann rufe die Kreatur.",
     exampleEn: "Cast the adventure first, then summon the creature.",
+    crRule: "702.123",
   },
   {
     id: "companion",
@@ -688,6 +739,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "A companion has a deckbuilding requirement. If your deck meets that requirement, you may declare this card as your companion at the start of the game. You can then pay {3} to put it from your sideboard into your hand.",
     example: "Erfülle die Deckbauregel und habe einen garantierten 8. Zug.",
     exampleEn: "Meet the deckbuilding rule and have a guaranteed 8th card in hand.",
+    crRule: "702.138",
   },
   {
     id: "mutate",
@@ -701,6 +753,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "When you mutate a card, you can place it on top or bottom of a target non-human creature you control for its mutate cost. The combined creature has the power/toughness of the top piece and all abilities of every piece.",
     example: "Verschmelze zwei Kreaturen: Du erhältst einen Kombinations-Superwesen.",
     exampleEn: "Merge two creatures: you get a combination super-creature.",
+    crRule: "702.139",
   },
   {
     id: "foretell",
@@ -714,6 +767,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "You may exile any card with foretell face down for {2} on a later turn. You can then cast the card from exile for its foretell cost (usually cheaper). This spreads out mana investments over multiple turns.",
     example: "Voraussagen für {2}, dann nächste Runde für {1}{W} wirken statt {3}{W}.",
     exampleEn: "Foretell for {2}, then cast next turn for {1}{W} instead of {3}{W}.",
+    crRule: "702.120",
   },
   {
     id: "phasing",
@@ -727,6 +781,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "A creature with phasing phases out or in at the beginning of its controller's turn. Phased-out permanents don't exist for game purposes: they can't be targeted, tapped, or otherwise affected.",
     example: "Deine Kreatur phaset an deinem Zug aus, dann am nächsten Zug wieder ein.",
     exampleEn: "Your creature phases out on your turn, then phases back in on the next.",
+    crRule: "702.25",
   },
   {
     id: "partner",
@@ -740,6 +795,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "In Commander format, the partner ability allows using a second card with partner as your second commander. Both commanders start in your command zone and can be cast using their respective mana costs.",
     example: "Zwei Partner-Anführer: doppelte Auswahlmöglichkeit und zwei Anführer-Fähigkeiten.",
     exampleEn: "Two partner commanders: double choice and two commander abilities.",
+    crRule: "702.124",
   },
   {
     id: "commander",
@@ -766,6 +822,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Proliferate means: choose any number of players and/or permanents that already have counters. Add one counter of each kind they already have. This can duplicate poison counters, +1/+1 counters, charge counters, and more.",
     example: "Proliferiere mit 3 Giftmarken auf dem Gegner → jetzt 4 Giftmarken.",
     exampleEn: "Proliferate with 3 poison counters on opponent → now 4 poison counters.",
+    crRule: "701.27",
   },
   {
     id: "investigate",
@@ -779,6 +836,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "When you investigate, you create a colorless Clue artifact token. This token has the ability: '{2}, Sacrifice this token: Draw a card.' Clue tokens provide long-term card advantage.",
     example: "Ermittle zweimal: Zwei Hinweis-Spielsteine = später 2 Karten ziehen.",
     exampleEn: "Investigate twice: two clue tokens = draw 2 cards later.",
+    crRule: "701.36",
   },
   {
     id: "discover",
@@ -857,6 +915,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Storm is one of the most powerful abilities in the game: when you cast a storm spell, it's copied for each spell cast before it this turn. With 5 previous spells, you get 6 total resolutions. Storm decks try to chain as many cheap spells as possible in one turn.",
     example: "Wirke 4 Zauber, dann den Sturm-Zauber: 5 Kopien fegen über den Tisch.",
     exampleEn: "Cast 4 spells, then a storm spell: 5 copies sweep the table.",
+    crRule: "702.40",
   },
   {
     id: "dredge",
@@ -870,6 +929,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Dredge X: if you would draw a card, you may instead mill X cards and return this card from your graveyard to your hand. Dredge cards keep coming back from the graveyard while filling it up, making them very powerful for graveyard strategies.",
     example: "Schürfen 6: Lege 6 Karten auf den Friedhof, hole deine Karte zurück.",
     exampleEn: "Dredge 6: mill 6 cards, return this card to hand.",
+    crRule: "702.52",
   },
   {
     id: "madness",
@@ -883,6 +943,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "When you discard a madness card, it's exiled instead. You may then immediately pay the madness cost (usually lower than normal mana cost) and cast it from exile. If not, it goes to your graveyard. Madness allows efficient use of cards even when forced to discard.",
     example: "Musst du eine Karte abwerfen? Wirf deine Wahnsinn-Karte ab und wirke sie vergünstigt.",
     exampleEn: "Forced to discard? Discard your madness card and cast it at a discount.",
+    crRule: "702.35",
   },
   {
     id: "suspend",
@@ -896,6 +957,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Suspend X: pay the suspend cost and exile this card with X time counters. At the beginning of each of your turns, remove a time counter. When the last one is removed, cast the card for free (with haste if it's a creature). Suspend allows cheap preparation of expensive cards.",
     example: "Suspendiere einen 7-Mana-Zauber für {1}: Warte 4 Runden, dann ist er kostenlos.",
     exampleEn: "Suspend a 7-mana spell for {1}: wait 4 turns, then it's free.",
+    crRule: "702.62",
   },
   {
     id: "regenerate",
@@ -909,6 +971,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Regenerate creates a shield: if the creature would be destroyed this turn (by damage or destroy effects), the shield activates instead. All damage is removed, the creature becomes tapped, and is removed from combat. It stays in play. Regenerate doesn't help against exile or sacrifice effects.",
     example: "Zahle {B}, um deinen Werwolf zu regenerieren: Er überlebt die nächste Vernichtung.",
     exampleEn: "Pay {B} to regenerate your werewolf: it survives the next destruction.",
+    crRule: "701.15",
   },
   {
     id: "shadow",
@@ -922,6 +985,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Creatures with shadow exist on a different 'plane'. They can only be blocked by other shadow creatures, and they can only block shadow creatures. This makes them effectively unblockable against decks without shadow creatures.",
     example: "Ein Schatten-Angreifer geht ungeblockt durch, wenn der Gegner keinen Schatten hat.",
     exampleEn: "A shadow attacker goes through unblocked if the opponent has no shadow creatures.",
+    crRule: "702.27",
   },
   {
     id: "fear",
@@ -935,6 +999,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "A creature with fear can only be blocked by black creatures or artifact creatures, making it effectively unblockable to most opponents. Fear is an older ability largely replaced by intimidate and menace.",
     example: "Dein Schwarzes Ungeheuer mit Furcht ist nur durch schwarze oder Artefakt-Kreaturen blockbar.",
     exampleEn: "Your black monster with fear is only blockable by black or artifact creatures.",
+    crRule: "702.36",
   },
   {
     id: "intimidate",
@@ -948,6 +1013,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Intimidate is an enhanced version of fear. A creature with intimidate can only be blocked by artifact creatures or creatures that share at least one color with it. Against decks of different colors, it's practically unblockable.",
     example: "Deine rote Kreatur mit Einschüchterung kann nur durch rote oder Artefakt-Kreaturen geblockt werden.",
     exampleEn: "Your red creature with intimidate can only be blocked by red or artifact creatures.",
+    crRule: "702.13",
   },
   {
     id: "skulk",
@@ -961,6 +1027,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "A creature with skulk can't be blocked by creatures with greater power than it. Small skulk creatures can't be stopped by large blockers, but are vulnerable to weaker creatures.",
     example: "Eine 1/1 mit Schleichen kann von keiner 2+-Stärke-Kreatur geblockt werden.",
     exampleEn: "A 1/1 with skulk can't be blocked by any creature with power 2 or more.",
+    crRule: "702.118",
   },
   {
     id: "jump_start",
@@ -987,6 +1054,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Cards with overload can be cast for increased costs. When you pay the overload cost, 'target' in the text is replaced by 'each' — the spell hits all affected permanents instead of a single target. This turns targeted spells into board sweepers.",
     example: "Überladen für {4}{U}: Alle Kreaturen deiner Wahl werden zurück auf die Hand gebracht.",
     exampleEn: "Overload for {4}{U}: all creatures of your choice are bounced to hand.",
+    crRule: "702.96",
   },
   {
     id: "escape",
@@ -1000,6 +1068,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Escape allows casting cards from your graveyard. Pay the escape cost and also exile X other cards from your graveyard. The card then enters the battlefield or the spell resolves as if cast from hand.",
     example: "Verbanne 5 Karten aus dem Friedhof, um deine Kreatur zurückzubringen.",
     exampleEn: "Exile 5 cards from graveyard to bring your creature back.",
+    crRule: "702.137",
   },
   {
     id: "dash",
@@ -1013,6 +1082,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "You may cast a creature for its dash cost instead of its normal mana cost. If you do, it gains haste and returns to your hand at end of turn. This allows repeated attacks every turn and protects the creature from removal.",
     example: "Breche für {1}{R} aus: Greife an, kehre dann zurück — nächste Runde wieder.",
     exampleEn: "Dash for {1}{R}: attack, then return — do it again next turn.",
+    crRule: "702.109",
   },
   {
     id: "crew",
@@ -1026,6 +1096,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Crew X is the ability of Vehicle cards (artifacts with the Vehicle subtype). Tap any number of creatures with combined power at least X. The Vehicle becomes an artifact creature until end of turn and can attack or block.",
     example: "Crew 3: Tappe Kreaturen (Stärke 3+), das Fahrzeug startet seinen Motor.",
     exampleEn: "Crew 3: tap creatures (power 3+), the vehicle starts its engine.",
+    crRule: "702.122",
   },
   {
     id: "fabricate",
@@ -1052,6 +1123,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "When an exploit creature enters the battlefield, you may sacrifice a creature — even the exploit creature itself. When you do, an additional effect triggers. Exploit combines well with cards that give benefits from creature death.",
     example: "Opfere eine schwächere Kreatur: Die Ausnutzen-Karte löst einen mächtigen Effekt aus.",
     exampleEn: "Sacrifice a weaker creature: the exploit card triggers a powerful effect.",
+    crRule: "702.111",
   },
   {
     id: "connive",
@@ -1065,6 +1137,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Connive X: the creature draws X cards, then you discard X cards. For each nonland card discarded, the creature gets a +1/+1 counter. This combines card filtering with creature growth.",
     example: "Konspirieren 2: Ziehe 2, wirf 2 Nichtland-Karten ab → +2/+2-Marken.",
     exampleEn: "Connive 2: draw 2, discard 2 nonlands → +2/+2 counters.",
+    crRule: "702.141",
   },
   {
     id: "blitz",
@@ -1104,6 +1177,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "When you goad a creature, it must attack in each combat while it's goaded (if able), and it can't attack you — until your next turn. This forces opponents to attack each other.",
     example: "Stachle das stärkste Ungeheuer an: Es muss deinen Mitgegner angreifen.",
     exampleEn: "Goad the biggest monster: it must attack your co-opponent.",
+    crRule: "701.38",
   },
   {
     id: "morbid",
@@ -1156,6 +1230,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Level up is an activated ability from Rise of the Eldrazi. You can pay the level-up cost each main phase to place a level counter on the creature. At higher levels, the creature becomes stronger and gains new abilities.",
     example: "Stufe 3: Deine Kreatur entwickelt sich zu einem mächtigen Champion.",
     exampleEn: "Level 3: your creature evolves into a powerful champion.",
+    crRule: "702.87",
   },
   {
     id: "manifest",
@@ -1169,6 +1244,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Manifest means to put the top card of your library face down onto the battlefield as a colorless 2/2 creature. At any time, if the card is a creature card, you may pay its normal mana cost to turn it face up and reveal its true abilities.",
     example: "Manifestiere: Verdeckte 2/2. Zahle {2}{G} um einen versteckten 5/5 zu enthüllen.",
     exampleEn: "Manifest: face-down 2/2. Pay {2}{G} to reveal a hidden 5/5.",
+    crRule: "702.113",
   },
   {
     id: "rebound",
@@ -1182,6 +1258,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Rebound works as follows: when you cast a rebound spell from your hand, instead of going to the graveyard after resolving, it's exiled. At the beginning of your next upkeep, you may cast it once more for free.",
     example: "Wirke deinen Rückprall-Verbesserungszauber heute; nächste Runde kostenlos nochmal.",
     exampleEn: "Cast your rebound buff spell today; cast it again for free next turn.",
+    crRule: "702.88",
   },
   {
     id: "unearth",
@@ -1195,6 +1272,7 @@ export const MTG_KEYWORDS: MtgKeyword[] = [
     fullEn: "Unearth is an activated ability on graveyard cards. Pay the unearth cost to bring the card from the graveyard to the battlefield. The creature gains haste and can attack immediately. At end of turn or if it leaves the battlefield, it's exiled instead of going to the graveyard.",
     example: "Grabe für {B} aus: Deine Kreatur greift sofort an, dann weg für immer.",
     exampleEn: "Unearth for {B}: your creature attacks immediately, then gone forever.",
+    crRule: "702.84",
   },
   {
     id: "incubate",

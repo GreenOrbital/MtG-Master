@@ -139,6 +139,15 @@ export function KeywordCard({ keyword, showEnglish, expanded, onPress }: Props) 
                   </Text>
                 </View>
               )}
+              {keyword.crRule && (
+                <View style={[styles.crBox, { backgroundColor: accentColor + "12", borderColor: accentColor + "33" }]}>
+                  <Ionicons name="book-outline" size={11} color={accentColor} />
+                  <Text style={[styles.crLabel, { color: colors.mutedForeground }]}>
+                    {showEnglish ? "Comprehensive Rules" : "Umfassende Regeln"}
+                  </Text>
+                  <Text style={[styles.crRule, { color: accentColor }]}>CR {keyword.crRule}</Text>
+                </View>
+              )}
             </View>
           )}
 
@@ -231,5 +240,24 @@ const styles = StyleSheet.create({
   expandRow: {
     alignItems: "center",
     marginTop: 8,
+  },
+  crBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  crLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    flex: 1,
+  },
+  crRule: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.3,
   },
 });
