@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState, useEffect } from "react";
+import { useRef, useCallback, useState } from "react";
 
 const css = `
   .card-wrap {
@@ -7,7 +7,7 @@ const css = `
     align-items: center;
     justify-content: center;
     min-height: 100vh;
-    gap: 28px;
+    gap: 32px;
     background: #0f172a;
   }
 
@@ -19,8 +19,17 @@ const css = `
     overflow: hidden;
     transform-style: preserve-3d;
     transition: transform 0.15s ease;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+    animation: float 4s ease-in-out infinite;
   }
+
+  /* Floating idle animation */
+  @keyframes float {
+    0%, 100% { transform: rotateX(0deg) rotateY(0deg) translateY(0px); }
+    50%       { transform: rotateX(4deg) rotateY(-4deg) translateY(-8px); }
+  }
+
+  .card.active { animation: none; }
 
   .layer {
     position: absolute;
@@ -30,120 +39,153 @@ const css = `
     background-position: center;
   }
 
+  /* Background: same art, blurred + dark */
   .bg {
-    filter: blur(2px) brightness(0.6);
-    transform: translateZ(0px) scale(1.08);
+    filter: blur(4px) brightness(0.5) saturate(1.3);
+    transform: scale(1.12);
+    transition: transform 0.15s ease;
   }
 
+  /* Full card face — slightly smaller to show bg behind */
   .mid {
-    mix-blend-mode: screen;
-    opacity: 0.92;
-    transform: translateZ(20px);
+    background-size: 94%;
+    background-repeat: no-repeat;
+    background-position: center;
+    transition: transform 0.15s ease;
   }
 
+  /* Golden glow overlay */
   .glow {
-    background: radial-gradient(circle at 50% 50%, rgba(255,215,0,0.45), transparent 70%);
-    animation: glow 3s infinite alternate;
-    transform: translateZ(40px);
+    background: radial-gradient(circle at 50% 40%, rgba(255,215,0,0.5), transparent 65%);
+    animation: glow 2.5s ease-in-out infinite alternate;
   }
 
   @keyframes glow {
-    from { opacity: 0.25; }
-    to   { opacity: 0.65; }
+    from { opacity: 0.2; }
+    to   { opacity: 0.7; }
   }
 
-  .card-picker {
+  /* Card picker */
+  .picker {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     gap: 8px;
-    max-width: 380px;
+    max-width: 360px;
   }
-
-  .card-picker button {
-    padding: 5px 11px;
+  .picker button {
+    padding: 6px 12px;
     border-radius: 8px;
     border: 1.5px solid rgba(255,255,255,0.12);
     background: transparent;
-    color: rgba(255,255,255,0.45);
+    color: rgba(255,255,255,0.4);
     font-size: 11px;
     font-family: system-ui;
     cursor: pointer;
     transition: all 0.15s;
   }
-
-  .card-picker button.active {
-    border-color: rgba(255,215,80,0.65);
-    background: rgba(255,215,80,0.1);
+  .picker button.active {
+    border-color: rgba(255,215,80,0.7);
+    background: rgba(255,215,80,0.12);
     color: #f5e090;
   }
 `;
 
 const CARDS = [
-  "Black Lotus",
-  "Jace, the Mind Sculptor",
-  "Liliana of the Veil",
-  "Nicol Bolas, Dragon-God",
-  "Lightning Bolt",
+  {
+    name: "Black Lotus",
+    art:  "https://cards.scryfall.io/art_crop/front/b/d/bd8fa327-dd41-4737-8f19-2cf5eb1f7cdd.jpg",
+    full: "https://cards.scryfall.io/large/front/b/d/bd8fa327-dd41-4737-8f19-2cf5eb1f7cdd.jpg",
+  },
+  {
+    name: "Jace, the Mind Sculptor",
+    art:  "https://cards.scryfall.io/art_crop/front/a/b/ab0b1e35-ed4e-4e8c-b01a-a4a64a34e8ec.jpg",
+    full: "https://cards.scryfall.io/large/front/a/b/ab0b1e35-ed4e-4e8c-b01a-a4a64a34e8ec.jpg",
+  },
+  {
+    name: "Liliana of the Veil",
+    art:  "https://cards.scryfall.io/art_crop/front/4/7/4762c6b9-cc5b-4d12-acdf-89cf2a5fa7bc.jpg",
+    full: "https://cards.scryfall.io/large/front/4/7/4762c6b9-cc5b-4d12-acdf-89cf2a5fa7bc.jpg",
+  },
+  {
+    name: "Nicol Bolas, Dragon-God",
+    art:  "https://cards.scryfall.io/art_crop/front/5/7/571bc7a9-1341-4f2c-9108-fb22b501d2e6.jpg",
+    full: "https://cards.scryfall.io/large/front/5/7/571bc7a9-1341-4f2c-9108-fb22b501d2e6.jpg",
+  },
+  {
+    name: "Lightning Bolt",
+    art:  "https://cards.scryfall.io/art_crop/front/e/3/e3285e6b-3e79-4d7c-bf96-d920f973b122.jpg",
+    full: "https://cards.scryfall.io/large/front/e/3/e3285e6b-3e79-4d7c-bf96-d920f973b122.jpg",
+  },
 ];
-
-interface ScryfallCard {
-  image_uris?: { art_crop: string };
-  card_faces?: Array<{ image_uris?: { art_crop: string } }>;
-}
 
 export default function CardAnimation() {
   const cardRef = useRef<HTMLDivElement>(null);
-  const [artUrl, setArtUrl] = useState<string | null>(null);
+  const bgRef   = useRef<HTMLDivElement>(null);
+  const midRef  = useRef<HTMLDivElement>(null);
   const [pick, setPick] = useState(0);
+  const [hovering, setHovering] = useState(false);
 
-  useEffect(() => {
-    setArtUrl(null);
-    fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(CARDS[pick])}`)
-      .then(r => r.json())
-      .then((d: ScryfallCard) => {
-        const url = d.image_uris?.art_crop ?? d.card_faces?.[0]?.image_uris?.art_crop ?? null;
-        setArtUrl(url);
-      });
-  }, [pick]);
+  const card = CARDS[pick];
 
   const onMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
     const rect = el.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width  - 0.5;
     const y = (e.clientY - rect.top)  / rect.height - 0.5;
-    el.style.transform = `rotateY(${x * 15}deg) rotateX(${-y * 15}deg) scale(1.05)`;
+
+    if (cardRef.current)
+      cardRef.current.style.transform = `rotateY(${x * 20}deg) rotateX(${-y * 20}deg) scale(1.06)`;
+    if (bgRef.current)
+      bgRef.current.style.transform = `scale(1.12) translate(${x * -12}px, ${y * -12}px)`;
+    if (midRef.current)
+      midRef.current.style.transform = `translate(${x * 8}px, ${y * 8}px)`;
   }, []);
 
   const onMouseLeave = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    e.currentTarget.style.transform = "rotateY(0deg) rotateX(0deg) scale(1)";
+    setHovering(false);
+    if (cardRef.current)
+      cardRef.current.style.transform = "";
+    if (bgRef.current)
+      bgRef.current.style.transform = "scale(1.12)";
+    if (midRef.current)
+      midRef.current.style.transform = "";
   }, []);
 
-  const bgStyle = artUrl ? { backgroundImage: `url(${artUrl})` } : {};
+  const onMouseEnter = useCallback(() => setHovering(true), []);
 
   return (
     <>
       <style>{css}</style>
       <div className="card-wrap">
         <div
-          className="card"
+          className={`card ${hovering ? "active" : ""}`}
           ref={cardRef}
           onMouseMove={onMouseMove}
           onMouseLeave={onMouseLeave}
+          onMouseEnter={onMouseEnter}
         >
-          <div className="layer bg" style={bgStyle} />
-          <div className="layer mid" style={bgStyle} />
+          <div
+            className="layer bg"
+            ref={bgRef}
+            style={{ backgroundImage: `url(${card.art})` }}
+          />
+          <div
+            className="layer mid"
+            ref={midRef}
+            style={{ backgroundImage: `url(${card.full})` }}
+          />
           <div className="layer glow" />
         </div>
 
-        <div className="card-picker">
-          {CARDS.map((name, i) => (
+        <div className="picker">
+          {CARDS.map((c, i) => (
             <button
-              key={name}
+              key={c.name}
               className={i === pick ? "active" : ""}
               onClick={() => setPick(i)}
             >
-              {name}
+              {c.name}
             </button>
           ))}
         </div>
