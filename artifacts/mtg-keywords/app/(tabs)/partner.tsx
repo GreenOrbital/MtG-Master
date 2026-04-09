@@ -29,8 +29,8 @@ const BENEFITS_DE = [
   },
   {
     icon: "star-outline" as const,
-    title: "Kostenloser Eintrag",
-    text: "Die Aufnahme ins Partnernetzwerk ist für Shops vollständig kostenlos. Kein Abo, keine versteckten Gebühren.",
+    title: "Faire Konditionen",
+    text: "Die Aufnahme ins Partnernetzwerk kostet eine kleine monatliche Gebühr — kein Jahresvertrag, jederzeit kündbar.",
   },
   {
     icon: "trending-up-outline" as const,
@@ -52,8 +52,8 @@ const BENEFITS_EN = [
   },
   {
     icon: "star-outline" as const,
-    title: "Free Listing",
-    text: "Joining the partner network is completely free for shops. No subscription, no hidden fees.",
+    title: "Fair Pricing",
+    text: "Joining the partner network costs a small monthly fee — no annual contract, cancel any time.",
   },
   {
     icon: "trending-up-outline" as const,
@@ -138,8 +138,8 @@ Viele Grüße`;
           <Ionicons name="information-circle-outline" size={18} color={colors.primary} style={{ marginTop: 1 }} />
           <Text style={[styles.introText, { color: colors.foreground }]}>
             {showEnglish
-              ? "Master of MtG connects Magic: The Gathering players with local game stores. As a partner, your shop appears directly in the app — completely free."
-              : "Master of MtG verbindet Magic: The Gathering-Spieler mit lokalen Spieleläden. Als Partner erscheint dein Shop direkt in der App — vollständig kostenlos."}
+              ? "Master of MtG connects Magic: The Gathering players with local game stores. As a partner, your shop appears directly in the app for a small monthly fee."
+              : "Master of MtG verbindet Magic: The Gathering-Spieler mit lokalen Spieleläden. Als Partner erscheint dein Shop direkt in der App — für eine kleine monatliche Gebühr."}
           </Text>
         </View>
 
@@ -215,8 +215,8 @@ Viele Grüße`;
           <Ionicons name="checkmark-circle-outline" size={15} color={colors.mutedForeground} />
           <Text style={[styles.footerText, { color: colors.mutedForeground }]}>
             {showEnglish
-              ? "Listings are free. GreenOrbital reviews each application individually."
-              : "Die Aufnahme ist kostenlos. GreenOrbital prüft jede Anfrage individuell."}
+              ? "A small monthly fee applies. GreenOrbital reviews each application individually."
+              : "Es fällt eine kleine monatliche Gebühr an. GreenOrbital prüft jede Anfrage individuell."}
           </Text>
         </View>
       </ScrollView>

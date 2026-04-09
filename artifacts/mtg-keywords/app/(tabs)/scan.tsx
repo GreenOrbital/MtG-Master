@@ -1178,6 +1178,15 @@ export default function CardSearchScreen() {
                   <Ionicons name="cart-outline" size={13} color="#3b82f6" />
                   <Text style={[styles.externalLinkText, { color: "#3b82f6" }]}>Amazon.com</Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.externalLinkBtn, { borderColor: colors.primary + "55", backgroundColor: colors.primary + "14" }]}
+                  onPress={() => Linking.openURL("https://www.google.com/maps/search/Magic+the+Gathering+Shop")}
+                >
+                  <Ionicons name="location-outline" size={13} color={colors.primary} />
+                  <Text style={[styles.externalLinkText, { color: colors.primary }]}>
+                    {showEnglish ? "Shop nearby" : "Shop in der Nähe"}
+                  </Text>
+                </TouchableOpacity>
               </View>
 
               {/* ── Zum Deck hinzufügen ── */}

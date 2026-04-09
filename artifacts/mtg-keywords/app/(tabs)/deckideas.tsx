@@ -173,6 +173,12 @@ function PreconRow({ deck, isLast, colors, langEn }: {
             onPress={() => Linking.openURL(`https://www.cardmarket.com/${cardmarketLang}/Magic/Products/Search?searchString=${cardmarketSearch}`)}>
             <Text style={[styles.amazonSmallBtnText, { color: "#60a5fa" }]}>Cardmarket</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.amazonSmallBtn, { borderColor: "#7c3aed66", backgroundColor: "#7c3aed18" }]}
+            onPress={() => Linking.openURL("https://www.google.com/maps/search/Magic+the+Gathering+Shop")}
+          >
+            <Text style={[styles.amazonSmallBtnText, { color: "#a78bfa" }]}>{showEnglish ? "Shop nearby" : "Shop in der Nähe"}</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -488,6 +494,17 @@ function CardDetailModal({
                   <Ionicons name="open-outline" size={13} color="#3b82f6" />
                 </TouchableOpacity>
               </View>
+              <TouchableOpacity
+                style={[styles.cardmarketBtn, { backgroundColor: "#7c3aed18", borderColor: "#7c3aed44" }]}
+                onPress={() => Linking.openURL("https://www.google.com/maps/search/Magic+the+Gathering+Shop")}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="location-outline" size={16} color="#a78bfa" />
+                <Text style={[styles.cardmarketBtnText, { color: "#a78bfa" }]}>
+                  {showEnglish ? "Find a shop nearby" : "Shop in der Nähe finden"}
+                </Text>
+                <Ionicons name="open-outline" size={14} color="#a78bfa" />
+              </TouchableOpacity>
             </View>
           </ScrollView>
         </View>
