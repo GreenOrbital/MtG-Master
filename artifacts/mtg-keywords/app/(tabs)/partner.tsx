@@ -19,6 +19,7 @@ import { ShopNearbyModal } from "@/components/ShopNearbyModal";
 import { LanguageToggle } from "@/components/LanguageToggle";
 
 const CONTACT_EMAIL = "info@greenorbital.de";
+const APP_URL = "https://magic-keyword-explainer.replit.app";
 
 // ── Registration email ────────────────────────────────────────────────────────
 
@@ -50,6 +51,8 @@ function buildRegistrationMailto(showEnglish: boolean) {
         "",
         "Please fill in all fields and send this email to info@greenorbital.de.",
         "GreenOrbital will get back to you with the partner contract after receiving your registration.",
+        "",
+        `App: ${APP_URL}`,
       ].join("\n")
     : [
         "Anmeldeformular – Partnernetzwerk Master of MtG",
@@ -73,6 +76,8 @@ function buildRegistrationMailto(showEnglish: boolean) {
         "",
         "Bitte alle Felder ausfüllen und diese E-Mail an info@greenorbital.de senden.",
         "GreenOrbital meldet sich nach Eingang der Anmeldung mit dem Partnervertrag.",
+        "",
+        `App: ${APP_URL}`,
       ].join("\n");
 
   return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -106,9 +111,11 @@ export default function PartnerScreen() {
     `- Booster-Pack-Verfügbarkeit je Karte`,
     `- Favoriten zum schnellen Nachschlagen`,
     ``,
+    `Einfach mal ausprobieren: ${APP_URL}`,
+    ``,
     `Die App hat außerdem ein Partnernetzwerk, über das lokale Spieleläden direkt in der App angezeigt werden – genau dann, wenn Spieler eine Karte suchen oder ein Deck bauen. Das könnte gezielt mehr Laufkundschaft in deinen Laden bringen.`,
     ``,
-    `Mehr Infos oder Anmeldung: info@greenorbital.de`,
+    `Mehr Infos oder Anmeldung als Partner: info@greenorbital.de`,
     ``,
     `Viele Grüße`,
   ].join("\n");
@@ -127,9 +134,11 @@ export default function PartnerScreen() {
     `- Booster pack availability per card`,
     `- Favorites for quick lookups`,
     ``,
+    `Check it out here: ${APP_URL}`,
+    ``,
     `The app also features a partner network where local game stores are shown directly in the app – right when players are searching for cards or building decks. This could bring targeted foot traffic to your store.`,
     ``,
-    `More info or sign-up: info@greenorbital.de`,
+    `More info or partner sign-up: info@greenorbital.de`,
     ``,
     `Best regards`,
   ].join("\n");
