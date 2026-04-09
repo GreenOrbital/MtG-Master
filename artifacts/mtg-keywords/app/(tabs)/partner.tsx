@@ -7,6 +7,7 @@ import {
   Modal,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -271,11 +272,64 @@ export default function PartnerScreen() {
   const [showDirectory, setShowDirectory] = useState(false);
 
   const t = (de: string, en: string) => (showEnglish ? en : de);
+  const bodyDE = [
+    `Hallo,`,
+    ``,
+    `ich nutze die App "Master of MtG" – ein kostenloses Tool für Magic: The Gathering-Spieler, das weit mehr kann als ein einfaches Kartenlexikon:`,
+    ``,
+    `- Kartensuche auf Deutsch & Englisch mit allen Details`,
+    `- Schlüsselwörter & Regeln einfach erklärt`,
+    `- Format-Legalität für Standard, Modern, Commander & mehr`,
+    `- Deck-Builder mit Manapool-Berechnung`,
+    `- Deck-Ideen mit Kartenvorschlägen nach Spielstil`,
+    `- Commander-Combos über die Spellbook-Datenbank`,
+    `- Booster-Pack-Verfügbarkeit je Karte`,
+    `- Favoriten zum schnellen Nachschlagen`,
+    ``,
+    `Die App hat außerdem ein Partnernetzwerk, über das lokale Spieleläden direkt in der App angezeigt werden – genau dann, wenn Spieler eine Karte suchen oder ein Deck bauen. Das könnte gezielt mehr Laufkundschaft in deinen Laden bringen.`,
+    ``,
+    `Mehr Infos oder Anmeldung: info@greenorbital.de`,
+    ``,
+    `Viele Grüße`,
+  ].join("\n");
 
-  const recommendHref = `mailto:?subject=${encodeURIComponent(t("Eine App, die deinen Shop interessieren könnte – Master of MtG", "An App That Might Interest Your Store – Master of MtG"))}&body=${encodeURIComponent(t(
-    `Hallo,\n\nich nutze die App „Master of MtG" – ein kostenloses Tool für Magic: The Gathering-Spieler, das weit mehr kann als ein einfaches Kartenlexikon:\n\n• Kartensuche auf Deutsch & Englisch mit allen Details\n• Schlüsselwörter & Regeln einfach erklärt\n• Format-Legalität für Standard, Modern, Commander & mehr\n• Deck-Builder mit Manapool-Berechnung\n• Deck-Ideen mit Kartenvorschlägen nach Spielstil\n• Commander-Combos über die Spellbook-Datenbank\n• Booster-Pack-Verfügbarkeit je Karte\n• Favoriten zum schnellen Nachschlagen\n\nDie App hat außerdem ein Partnernetzwerk, über das lokale Spieleläden direkt in der App angezeigt werden – genau dann, wenn Spieler eine Karte suchen oder ein Deck bauen. Das könnte gezielt mehr Laufkundschaft in deinen Laden bringen.\n\nMehr Infos oder Anmeldung: info@greenorbital.de\n\nViele Grüße`,
-    `Hi,\n\nI use the app "Master of MtG" – a free tool for Magic: The Gathering players that goes well beyond a simple card encyclopedia:\n\n• Card search in German & English with full details\n• Keywords & rules explained in plain language\n• Format legality for Standard, Modern, Commander & more\n• Deck builder with mana pool calculation\n• Deck ideas with card suggestions based on play style\n• Commander combos via the Spellbook database\n• Booster pack availability per card\n• Favorites for quick lookups\n\nThe app also features a partner network where local game stores are shown directly in the app – right when players are searching for cards or building decks. This could bring targeted foot traffic to your store.\n\nMore info or sign-up: info@greenorbital.de\n\nBest regards`
-  ))}`;
+  const bodyEN = [
+    `Hi,`,
+    ``,
+    `I use the app "Master of MtG" – a free tool for Magic: The Gathering players that goes well beyond a simple card encyclopedia:`,
+    ``,
+    `- Card search in German & English with full details`,
+    `- Keywords & rules explained in plain language`,
+    `- Format legality for Standard, Modern, Commander & more`,
+    `- Deck builder with mana pool calculation`,
+    `- Deck ideas with card suggestions based on play style`,
+    `- Commander combos via the Spellbook database`,
+    `- Booster pack availability per card`,
+    `- Favorites for quick lookups`,
+    ``,
+    `The app also features a partner network where local game stores are shown directly in the app – right when players are searching for cards or building decks. This could bring targeted foot traffic to your store.`,
+    ``,
+    `More info or sign-up: info@greenorbital.de`,
+    ``,
+    `Best regards`,
+  ].join("\n");
+
+  const subjectDE = "Eine App, die deinen Shop interessieren könnte – Master of MtG";
+  const subjectEN = "An App That Might Interest Your Store – Master of MtG";
+
+  const handleRecommend = async () => {
+    const subject = showEnglish ? subjectEN : subjectDE;
+    const body = showEnglish ? bodyEN : bodyDE;
+    if (Platform.OS === "web") {
+      Linking.openURL(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+    } else {
+      try {
+        await Share.share({ message: `${subject}\n\n${body}` });
+      } catch {
+        Linking.openURL(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+      }
+    }
+  };
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -369,7 +423,7 @@ export default function PartnerScreen() {
         <TouchableOpacity
           style={[styles.ctaBtnAlt, { backgroundColor: colors.card, borderColor: colors.primary + "55" }]}
           activeOpacity={0.82}
-          onPress={() => Linking.openURL(recommendHref)}
+          onPress={handleRecommend}
         >
           <Ionicons name="share-social-outline" size={20} color={colors.primary} />
           <View style={{ flex: 1 }}>
