@@ -22,40 +22,56 @@ const CONTACT_EMAIL = "info@greenorbital.de";
 
 // ── Registration email ────────────────────────────────────────────────────────
 
-function buildRegistrationMailto() {
-  const subject = "Anmeldung Partnernetzwerk – Master of MtG / Partner Network Registration";
+function buildRegistrationMailto(showEnglish: boolean) {
+  const subject = showEnglish
+    ? "Partner Network Registration – Master of MtG"
+    : "Anmeldung Partnernetzwerk – Master of MtG";
 
-  const body = [
-    "Anmeldeformular – Partnernetzwerk Master of MtG",
-    "Partner Network Registration Form – Master of MtG",
-    "",
-    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-    "",
-    "Shopname / Shop Name:          ",
-    "Inhaber / Owner:               ",
-    "E-Mail / Email:                ",
-    "Telefon / Phone:               ",
-    "Adresse / Address:             ",
-    "Stadt / City:                  ",
-    "Land / Country:                ",
-    "Website:                       ",
-    "",
-    "Kurzbeschreibung",
-    "(Öffnungszeiten, Sortiment, besondere Angebote):",
-    "",
-    "",
-    "Short Description",
-    "(Opening hours, inventory, special offers):",
-    "",
-    "",
-    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-    "",
-    "Bitte alle Felder ausfüllen und diese E-Mail an info@greenorbital.de senden.",
-    "Please fill in all fields and send this email to info@greenorbital.de.",
-    "",
-    "GreenOrbital meldet sich nach Eingang der Anmeldung mit dem Partnervertrag.",
-    "GreenOrbital will get back to you with the partner contract after receiving your registration.",
-  ].join("\n");
+  const body = showEnglish
+    ? [
+        "Partner Network Registration Form – Master of MtG",
+        "",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "",
+        "Shop Name:          ",
+        "Owner / Contact:    ",
+        "Email:              ",
+        "Phone:              ",
+        "Address:            ",
+        "City:               ",
+        "Country:            ",
+        "Website:            ",
+        "",
+        "Short Description (opening hours, inventory, special offers):",
+        "",
+        "",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "",
+        "Please fill in all fields and send this email to info@greenorbital.de.",
+        "GreenOrbital will get back to you with the partner contract after receiving your registration.",
+      ].join("\n")
+    : [
+        "Anmeldeformular – Partnernetzwerk Master of MtG",
+        "",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "",
+        "Shopname:           ",
+        "Inhaber / Kontakt:  ",
+        "E-Mail:             ",
+        "Telefon:            ",
+        "Adresse:            ",
+        "Stadt:              ",
+        "Land:               ",
+        "Website:            ",
+        "",
+        "Kurzbeschreibung (Öffnungszeiten, Sortiment, besondere Angebote):",
+        "",
+        "",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "",
+        "Bitte alle Felder ausfüllen und diese E-Mail an info@greenorbital.de senden.",
+        "GreenOrbital meldet sich nach Eingang der Anmeldung mit dem Partnervertrag.",
+      ].join("\n");
 
   return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
@@ -134,7 +150,7 @@ export default function PartnerScreen() {
   };
 
   const handleRegister = () => {
-    const url = buildRegistrationMailto();
+    const url = buildRegistrationMailto(showEnglish);
     Linking.openURL(url).catch(() => {
       if (Platform.OS === "web") {
         Alert.alert(
