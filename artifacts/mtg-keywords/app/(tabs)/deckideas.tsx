@@ -220,6 +220,10 @@ function PreconRow({ deck, isLast, colors, langEn }: {
 }) {
   const [imgFailed, setImgFailed] = useState(false);
   const [showShopModal, setShowShopModal] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
+  const [commanderImg, setCommanderImg] = useState<string | null>(null);
+  const [commanderLoading, setCommanderLoading] = useState(false);
+
   const productImgUri = deck.asin && !imgFailed
     ? `https://ws-na.amazon-adsystem.com/widgets/q?_encoding=UTF8&MarketPlace=DE&ASIN=${deck.asin}&ServiceVersion=20070822&ID=AsinImage&WS=1&Format=SL300`
     : null;
@@ -235,48 +239,165 @@ function PreconRow({ deck, isLast, colors, langEn }: {
   const cardmarketLang = langEn ? "en" : "de";
   const cardmarketSearch = encodeURIComponent(deck.name);
 
+  const openDetail = useCallback(async () => {
+    setShowDetail(true);
+    if (deck.commander && !commanderImg && !commanderLoading) {
+      setCommanderLoading(true);
+      try {
+        const res = await fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(deck.commander)}`);
+        if (res.ok) {
+          const data = await res.json();
+          const img = data.image_uris?.normal ?? data.card_faces?.[0]?.image_uris?.normal ?? null;
+          setCommanderImg(img);
+        }
+      } catch {}
+      setCommanderLoading(false);
+    }
+  }, [deck.commander, commanderImg, commanderLoading]);
+
   return (
-    <View style={[styles.preconRow, { borderBottomColor: colors.border, borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth }]}>
-      {/* Product box image */}
-      {productImgUri ? (
-        <Image
-          source={{ uri: productImgUri }}
-          style={{ width: 60, height: 84, marginRight: 10, flexShrink: 0 }}
-          resizeMode="contain"
-          onError={() => setImgFailed(true)}
-        />
-      ) : null}
-      {/* Text info */}
-      <View style={{ flex: 1, justifyContent: "center", gap: 2 }}>
-        <Text style={[styles.preconName, { color: colors.foreground }]} numberOfLines={2}>{deck.name}</Text>
-        <Text style={[styles.preconSet, { color: colors.mutedForeground }]} numberOfLines={1}>{setLabel} · {deck.year}</Text>
-        {deck.commander && (
-          <Text style={{ color: "#16a34a", fontSize: 10, fontStyle: "italic" }} numberOfLines={1}>{deck.commander}</Text>
+    <>
+      <TouchableOpacity
+        style={[styles.preconRow, { borderBottomColor: colors.border, borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth }]}
+        onPress={openDetail}
+        activeOpacity={0.75}
+      >
+        {/* Product box image */}
+        {productImgUri ? (
+          <Image
+            source={{ uri: productImgUri }}
+            style={{ width: 60, height: 84, marginRight: 10, flexShrink: 0 }}
+            resizeMode="contain"
+            onError={() => setImgFailed(true)}
+          />
+        ) : (
+          <View style={{ width: 52, height: 52, borderRadius: 10, marginRight: 10, flexShrink: 0, backgroundColor: "#16a34a22", alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name="albums-outline" size={22} color="#16a34a" />
+          </View>
         )}
-        {/* Buy buttons: Amazon + Cardmarket */}
-        <View style={{ flexDirection: "row", gap: 5, marginTop: 4, flexWrap: "wrap" }}>
-          <TouchableOpacity style={[styles.amazonSmallBtn, { borderColor: "#ff990066", backgroundColor: "#ff990022" }]}
-            onPress={() => Linking.openURL(amazonDeUrl)}>
-            <Text style={[styles.amazonSmallBtnText, { color: "#ff9900" }]}>Amazon.de</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.amazonSmallBtn, { borderColor: "#3b82f666", backgroundColor: "#3b82f622" }]}
-            onPress={() => Linking.openURL(amazonComUrl)}>
-            <Text style={[styles.amazonSmallBtnText, { color: "#3b82f6" }]}>Amazon.com</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.amazonSmallBtn, { borderColor: "#2563eb66", backgroundColor: "#2563eb22" }]}
-            onPress={() => Linking.openURL(`https://www.cardmarket.com/${cardmarketLang}/Magic/Products/Search?searchString=${cardmarketSearch}`)}>
-            <Text style={[styles.amazonSmallBtnText, { color: "#60a5fa" }]}>Cardmarket</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.amazonSmallBtn, { borderColor: "#7c3aed66", backgroundColor: "#7c3aed18" }]}
-            onPress={() => setShowShopModal(true)}
-          >
-            <Text style={[styles.amazonSmallBtnText, { color: "#a78bfa" }]}>{langEn ? "Shop nearby" : "Shop in der Nähe"}</Text>
-          </TouchableOpacity>
+        {/* Text info */}
+        <View style={{ flex: 1, justifyContent: "center", gap: 2 }}>
+          <Text style={[styles.preconName, { color: colors.foreground }]} numberOfLines={2}>{deck.name}</Text>
+          <Text style={[styles.preconSet, { color: colors.mutedForeground }]} numberOfLines={1}>{setLabel} · {deck.year}</Text>
+          {deck.commander && (
+            <Text style={{ color: "#16a34a", fontSize: 10, fontStyle: "italic" }} numberOfLines={1}>{deck.commander}</Text>
+          )}
         </View>
-      </View>
-      <ShopNearbyModal visible={showShopModal} onClose={() => setShowShopModal(false)} />
-    </View>
+        <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} style={{ marginLeft: 4 }} />
+      </TouchableOpacity>
+
+      {/* Detail Bottom Sheet */}
+      <Modal visible={showDetail} transparent animationType="slide" onRequestClose={() => setShowDetail(false)}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: "#00000080" }} activeOpacity={1} onPress={() => setShowDetail(false)} />
+        <View style={[styles.preconDetailSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {/* Handle bar */}
+          <View style={{ alignItems: "center", paddingTop: 10, paddingBottom: 4 }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border }} />
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+            {/* Header */}
+            <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, flexDirection: "row", alignItems: "flex-start", gap: 14 }}>
+              {productImgUri ? (
+                <Image source={{ uri: productImgUri }} style={{ width: 80, height: 112, borderRadius: 8 }} resizeMode="contain" />
+              ) : (
+                <View style={{ width: 80, height: 112, borderRadius: 8, backgroundColor: "#16a34a22", alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons name="albums-outline" size={36} color="#16a34a" />
+                </View>
+              )}
+              <View style={{ flex: 1, gap: 4, paddingTop: 4 }}>
+                <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: colors.foreground, lineHeight: 24 }}>{deck.name}</Text>
+                <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{setLabel}</Text>
+                <View style={[styles.yearBadgeDetail, { backgroundColor: "#16a34a22", borderColor: "#16a34a55" }]}>
+                  <Ionicons name="calendar-outline" size={12} color="#16a34a" />
+                  <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#16a34a" }}>{deck.year}</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Commander card */}
+            {deck.commander && (
+              <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+                <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.8 }}>
+                  {langEn ? "Commander" : "Commander"}
+                </Text>
+                <View style={{ flexDirection: "row", gap: 12, alignItems: "flex-start" }}>
+                  {commanderLoading ? (
+                    <View style={{ width: 120, height: 168, borderRadius: 10, backgroundColor: colors.secondary, alignItems: "center", justifyContent: "center" }}>
+                      <ActivityIndicator size="small" color="#16a34a" />
+                    </View>
+                  ) : commanderImg ? (
+                    <Image source={{ uri: commanderImg }} style={{ width: 120, height: 168, borderRadius: 10 }} resizeMode="cover" />
+                  ) : (
+                    <View style={{ width: 120, height: 168, borderRadius: 10, backgroundColor: colors.secondary, alignItems: "center", justifyContent: "center" }}>
+                      <Ionicons name="person-circle-outline" size={40} color={colors.mutedForeground} />
+                    </View>
+                  )}
+                  <View style={{ flex: 1, gap: 6 }}>
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: colors.foreground, lineHeight: 20 }}>{deck.commander}</Text>
+                    <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: 18 }}>
+                      {langEn ? "Lead Commander" : "Leitender Commander"}
+                    </Text>
+                    <TouchableOpacity
+                      style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4, borderRadius: 8, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 10, paddingVertical: 7 }}
+                      onPress={() => Linking.openURL(`https://scryfall.com/search?q=!"${encodeURIComponent(deck.commander!)}"`)}
+                    >
+                      <Ionicons name="search-outline" size={13} color={colors.mutedForeground} />
+                      <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>Scryfall</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Divider */}
+            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginHorizontal: 16, marginBottom: 14 }} />
+
+            {/* Buy section */}
+            <View style={{ paddingHorizontal: 16, gap: 8 }}>
+              <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>
+                {langEn ? "Buy" : "Kaufen"}
+              </Text>
+              <TouchableOpacity
+                style={{ flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, borderWidth: 1, borderColor: "#ff990066", backgroundColor: "#ff990015", paddingHorizontal: 14, paddingVertical: 12 }}
+                onPress={() => Linking.openURL(amazonDeUrl)}
+              >
+                <Ionicons name="cart-outline" size={18} color="#ff9900" />
+                <Text style={{ flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#ff9900" }}>Amazon.de</Text>
+                <Ionicons name="open-outline" size={14} color="#ff990088" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, borderWidth: 1, borderColor: "#3b82f666", backgroundColor: "#3b82f615", paddingHorizontal: 14, paddingVertical: 12 }}
+                onPress={() => Linking.openURL(amazonComUrl)}
+              >
+                <Ionicons name="cart-outline" size={18} color="#3b82f6" />
+                <Text style={{ flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#3b82f6" }}>Amazon.com</Text>
+                <Ionicons name="open-outline" size={14} color="#3b82f688" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, borderWidth: 1, borderColor: "#2563eb66", backgroundColor: "#2563eb15", paddingHorizontal: 14, paddingVertical: 12 }}
+                onPress={() => Linking.openURL(`https://www.cardmarket.com/${cardmarketLang}/Magic/Products/Search?searchString=${cardmarketSearch}`)}
+              >
+                <Ionicons name="pricetag-outline" size={18} color="#60a5fa" />
+                <Text style={{ flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#60a5fa" }}>Cardmarket</Text>
+                <Ionicons name="open-outline" size={14} color="#60a5fa88" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, borderWidth: 1, borderColor: "#7c3aed66", backgroundColor: "#7c3aed15", paddingHorizontal: 14, paddingVertical: 12 }}
+                onPress={() => setShowShopModal(true)}
+              >
+                <Ionicons name="storefront-outline" size={18} color="#a78bfa" />
+                <Text style={{ flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#a78bfa" }}>
+                  {langEn ? "Shop nearby" : "Shop in der Nähe"}
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color="#a78bfa88" />
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </View>
+        <ShopNearbyModal visible={showShopModal} onClose={() => setShowShopModal(false)} />
+      </Modal>
+    </>
   );
 }
 
@@ -1236,6 +1357,12 @@ const styles = StyleSheet.create({
   preconSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
   yearChip: { borderRadius: 99, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 5 },
   yearChipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  yearBadgeDetail: { flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start", borderRadius: 99, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3 },
+  preconDetailSheet: {
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderWidth: 1, borderBottomWidth: 0,
+    maxHeight: "85%",
+  },
   preconList: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
   preconRow: {
     flexDirection: "row", alignItems: "center", gap: 10,
