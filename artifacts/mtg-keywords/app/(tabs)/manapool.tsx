@@ -2222,8 +2222,8 @@ export default function ManapoolScreen() {
                           {showEnglish ? "Game Mode" : "Spielmodus"}
                         </Text>
                         {isAutoFormat && (
-                          <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5, backgroundColor: "#06b6d4" + "22", borderWidth: 1, borderColor: "#06b6d4" + "55" }}>
-                            <Text style={{ fontSize: 9, color: "#06b6d4", fontFamily: "Inter_600SemiBold" }}>
+                          <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5, backgroundColor: "#c8a96e" + "22", borderWidth: 1, borderColor: "#c8a96e" + "55" }}>
+                            <Text style={{ fontSize: 9, color: "#c8a96e", fontFamily: "Inter_600SemiBold" }}>
                               {showEnglish ? "auto" : "auto"}
                             </Text>
                           </View>
@@ -2523,8 +2523,8 @@ export default function ManapoolScreen() {
                           {showEnglish ? GAME_FORMATS[simFormat].labelEn : GAME_FORMATS[simFormat].labelDe}
                         </Text>
                         {isAutoFormat && (
-                          <View style={{ paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, backgroundColor: "#06b6d4" + "22" }}>
-                            <Text style={{ fontSize: 9, color: "#06b6d4", fontFamily: "Inter_600SemiBold" }}>auto</Text>
+                          <View style={{ paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, backgroundColor: "#c8a96e" + "22" }}>
+                            <Text style={{ fontSize: 9, color: "#c8a96e", fontFamily: "Inter_600SemiBold" }}>auto</Text>
                           </View>
                         )}
                       </View>
@@ -2539,7 +2539,7 @@ export default function ManapoolScreen() {
                         { label: showEnglish ? "Total cards" : "Gesamt", val: totalCards, col: colors.foreground },
                         { label: showEnglish ? "Lands"      : "Länder", val: totalLandsInDeck, col: "#16a34a" },
                         { label: showEnglish ? "Non-lands"  : "Nicht-Länder", val: totalCards - totalLandsInDeck, col: colors.primary },
-                        { label: showEnglish ? "Land ratio" : "Landanteil", val: landRatio.toFixed(0) + "%", col: "#06b6d4" },
+                        { label: showEnglish ? "Land ratio" : "Landanteil", val: landRatio.toFixed(0) + "%", col: "#c8a96e" },
                       ].map((s) => (
                         <View key={s.label} style={{ flex: 1, backgroundColor: colors.background, borderRadius: 8, borderWidth: 1, borderColor: colors.border, padding: 8, alignItems: "center" }}>
                           <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: s.col }}>{s.val}</Text>
@@ -2577,7 +2577,7 @@ export default function ManapoolScreen() {
                     {/* Run button */}
                     {!mcRunning && (
                       <TouchableOpacity
-                        style={{ backgroundColor: "#06b6d4", borderRadius: 10, padding: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
+                        style={{ backgroundColor: "#c8a96e", borderRadius: 10, padding: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
                         onPress={() => runMC(activeDeck.cards, simHandSize)}
                         activeOpacity={0.8}
                       >
@@ -2590,7 +2590,7 @@ export default function ManapoolScreen() {
 
                     {mcRunning && (
                       <View style={{ alignItems: "center", padding: 24, gap: 10 }}>
-                        <ActivityIndicator color="#06b6d4" />
+                        <ActivityIndicator color="#c8a96e" />
                         <Text style={{ color: colors.mutedForeground, fontSize: 12, fontFamily: "Inter_400Regular" }}>
                           {showEnglish ? "Simulating games…" : "Spiele werden simuliert…"}
                         </Text>

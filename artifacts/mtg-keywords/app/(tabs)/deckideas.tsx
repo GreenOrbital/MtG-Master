@@ -400,13 +400,13 @@ function PreconRow({ deck, isLast, colors, langEn }: {
                 <Text style={{ flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#60a5fa" }}>Cardmarket</Text>
                 <Ionicons name="open-outline" size={14} color="#60a5fa88" />
               </TouchableOpacity>
-              <TouchableOpacity style={{ flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, borderWidth: 1, borderColor: "#7c3aed66", backgroundColor: "#7c3aed15", paddingHorizontal: 14, paddingVertical: 12 }}
+              <TouchableOpacity style={{ flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, borderWidth: 1, borderColor: "#c8a96e66", backgroundColor: "#c8a96e15", paddingHorizontal: 14, paddingVertical: 12 }}
                 onPress={() => setShowShopModal(true)}>
-                <Ionicons name="storefront-outline" size={18} color="#a78bfa" />
-                <Text style={{ flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#a78bfa" }}>
+                <Ionicons name="storefront-outline" size={18} color="#c8a96e" />
+                <Text style={{ flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#c8a96e" }}>
                   {langEn ? "Shop nearby" : "Shop in der Nähe"}
                 </Text>
-                <Ionicons name="chevron-forward" size={14} color="#a78bfa88" />
+                <Ionicons name="chevron-forward" size={14} color="#c8a96e88" />
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -601,8 +601,8 @@ function CardDetailModal({
                 </View>
               ) : null}
               {card.mana_cost ? (
-                <View style={[styles.metaBadge, { backgroundColor: "#7c3aed18", borderColor: "#7c3aed55", borderWidth: 1 }]}>
-                  <Text style={[styles.metaBadgeText, { color: "#a78bfa" }]}>{card.mana_cost} · CMC {card.cmc}</Text>
+                <View style={[styles.metaBadge, { backgroundColor: "#c8a96e18", borderColor: "#c8a96e55", borderWidth: 1 }]}>
+                  <Text style={[styles.metaBadgeText, { color: "#c8a96e" }]}>{card.mana_cost} · CMC {card.cmc}</Text>
                 </View>
               ) : null}
               {rarityLabel ? (
@@ -759,7 +759,7 @@ function CardDetailModal({
                 </TouchableOpacity>
               </View>
               <TouchableOpacity
-                style={[styles.cardmarketBtn, { backgroundColor: "#7c3aed18", borderColor: "#7c3aed44" }]}
+                style={[styles.cardmarketBtn, { backgroundColor: "#c8a96e18", borderColor: "#c8a96e44" }]}
                 onPress={() => setShowShopModal(true)}
                 activeOpacity={0.7}
               >

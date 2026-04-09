@@ -1,38 +1,38 @@
 const colors = {
   light: {
-    text: "#0d0d1f",
-    tint: "#7c3aed",
+    text: "#e8d8a0",
+    tint: "#c8a96e",
 
-    background: "#050510",
-    foreground: "#e2e8f0",
+    background: "#0f0d0a",
+    foreground: "#e8d8a0",
 
-    card: "#0d0d1f",
-    cardForeground: "#e2e8f0",
+    card: "#1c1510",
+    cardForeground: "#e8d8a0",
 
-    primary: "#7c3aed",
-    primaryForeground: "#ffffff",
+    primary: "#c8a96e",
+    primaryForeground: "#1a0a00",
 
-    secondary: "#1e1b4b",
-    secondaryForeground: "#c4b5fd",
+    secondary: "#2a1e10",
+    secondaryForeground: "#c8a96e",
 
-    muted: "#1e1b4b",
-    mutedForeground: "#718096",
+    muted: "#2a1e10",
+    mutedForeground: "#887050",
 
-    accent: "#06b6d4",
-    accentForeground: "#ffffff",
+    accent: "#d4bc7e",
+    accentForeground: "#1a0a00",
 
     destructive: "#ef4444",
     destructiveForeground: "#ffffff",
 
-    border: "#1a202c",
-    input: "#1e1b4b",
+    border: "#3a2a1a",
+    input: "#2a1e10",
 
-    white: "#7c3aed",
+    white: "#e8d8a0",
     blue: "#2563eb",
-    black: "#0d0d1f",
+    black: "#0f0d0a",
     red: "#ef4444",
-    green: "#06b6d4",
-    gold: "#eab308",
+    green: "#4caf50",
+    gold: "#c8a96e",
   },
 
   radius: 12,

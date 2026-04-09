@@ -69,7 +69,7 @@ export function CookieBanner({ showEnglish }: { showEnglish: boolean }) {
     >
       <View style={styles.banner}>
         <View style={styles.top}>
-          <Ionicons name="shield-checkmark-outline" size={20} color="#7c3aed" style={{ marginRight: 8 }} />
+          <Ionicons name="shield-checkmark-outline" size={20} color="#c8a96e" style={{ marginRight: 8 }} />
           <Text style={styles.title}>
             {showEnglish ? "Privacy & Cookies" : "Datenschutz & Cookies"}
           </Text>
@@ -82,7 +82,7 @@ export function CookieBanner({ showEnglish }: { showEnglish: boolean }) {
         </Text>
 
         <View style={styles.analyticsRow}>
-          <Ionicons name="bar-chart-outline" size={13} color="#06b6d4" />
+          <Ionicons name="bar-chart-outline" size={13} color="#c8a96e" />
           <Text style={styles.analyticsText}>
             {showEnglish ? "Google Analytics (anonymous usage data)" : "Google Analytics (anonyme Nutzungsdaten)"}
           </Text>
@@ -95,7 +95,7 @@ export function CookieBanner({ showEnglish }: { showEnglish: boolean }) {
           <Text style={styles.linkText}>
             {showEnglish ? "Privacy Policy" : "Datenschutzerklärung"}
           </Text>
-          <Ionicons name="open-outline" size={12} color="#7c3aed" />
+          <Ionicons name="open-outline" size={12} color="#c8a96e" />
         </TouchableOpacity>
 
         <View style={styles.buttons}>
@@ -125,10 +125,10 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   banner: {
-    backgroundColor: "#0d0d1f",
+    backgroundColor: "#1c1510",
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: "#7c3aed55",
+    borderColor: "#c8a96e55",
     padding: 16,
     shadowColor: "#000",
     shadowOpacity: 0.5,
@@ -142,12 +142,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   title: {
-    color: "#fff",
+    color: "#e8d8a0",
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
   },
   body: {
-    color: "#a0a0b8",
+    color: "#887050",
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     lineHeight: 20,
@@ -157,16 +157,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#06b6d411",
+    backgroundColor: "#c8a96e11",
     borderWidth: 1,
-    borderColor: "#06b6d433",
+    borderColor: "#c8a96e33",
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
     marginBottom: 12,
   },
   analyticsText: {
-    color: "#06b6d4",
+    color: "#c8a96e",
     fontSize: 12,
     fontFamily: "Inter_500Medium",
   },
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   linkText: {
-    color: "#7c3aed",
+    color: "#c8a96e",
     fontSize: 12,
     fontFamily: "Inter_500Medium",
     textDecorationLine: "underline",
@@ -196,19 +196,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   btnDeclineText: {
-    color: "#a0a0b8",
+    color: "#887050",
     fontFamily: "Inter_600SemiBold",
     fontSize: 14,
   },
   btnAccept: {
     flex: 1,
-    backgroundColor: "#7c3aed",
+    backgroundColor: "#c8a96e",
     borderRadius: 10,
     paddingVertical: 11,
     alignItems: "center",
   },
   btnAcceptText: {
-    color: "#fff",
+    color: "#1a0a00",
     fontFamily: "Inter_600SemiBold",
     fontSize: 14,
   },
