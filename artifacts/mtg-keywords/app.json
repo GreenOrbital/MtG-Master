@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0e0a14"
+      "backgroundColor": "#0f0d0a"
     },
     "ios": {
       "supportsTablet": false
@@ -22,8 +22,8 @@
       "name": "Master of MtG",
       "shortName": "MoMtG",
       "description": "Magic: The Gathering Kartensuche, Keywords & Deck-Builder",
-      "themeColor": "#8b2fc9",
-      "backgroundColor": "#0e0a14",
+      "themeColor": "#c8a96e",
+      "backgroundColor": "#0f0d0a",
       "display": "standalone",
       "orientation": "any",
       "lang": "de"

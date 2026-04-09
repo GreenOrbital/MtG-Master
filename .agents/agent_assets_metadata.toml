@@ -35,3 +35,9 @@ id = "08h454GJC1eA7UMuAW1vP"
 uri = "file://artifacts/mtg-keywords/assets/images/icon-grimoire.png"
 type = "image"
 title = "Variante 2 · Grimoire-Buch"
+
+[[outputs]]
+id = "FG7v29xqoJQgA3DV2VFKS"
+uri = "file://artifacts/mtg-keywords/assets/images/icon.png"
+type = "image"
+title = "App Icon · Master of MtG"
