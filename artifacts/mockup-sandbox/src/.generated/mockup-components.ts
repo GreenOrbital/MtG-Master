@@ -2,7 +2,10 @@
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/CardAnimation.tsx": () => import("../components/mockups/CardAnimation.tsx"),
+  "./components/mockups/mtg-design-variants/ArcaneBlueprint.tsx": () => import("../components/mockups/mtg-design-variants/ArcaneBlueprint.tsx"),
   "./components/mockups/mtg-design-variants/Arena.tsx": () => import("../components/mockups/mtg-design-variants/Arena.tsx"),
   "./components/mockups/mtg-design-variants/Codex.tsx": () => import("../components/mockups/mtg-design-variants/Codex.tsx"),
-  "./components/mockups/mtg-design-variants/Grimoire.tsx": () => import("../components/mockups/mtg-design-variants/Grimoire.tsx")
+  "./components/mockups/mtg-design-variants/Grimoire.tsx": () => import("../components/mockups/mtg-design-variants/Grimoire.tsx"),
+  "./components/mockups/mtg-design-variants/MysticForest.tsx": () => import("../components/mockups/mtg-design-variants/MysticForest.tsx"),
+  "./components/mockups/mtg-design-variants/NeonMana.tsx": () => import("../components/mockups/mtg-design-variants/NeonMana.tsx")
 };
