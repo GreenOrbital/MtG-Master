@@ -86,6 +86,98 @@ const COMMANDER_PRECONS: PreconDeck[] = [
   { name: "Sultai Arisen",          set: "Tarkir: Dragonstorm",         setDe: "Tarkir: Drachensturm",               year: "2025", commander: "Teval, the Balanced Scale",        preconSetCode: "tdc", asin: "B0DSQX4P6M" },
   { name: "Mardu Surge",            set: "Tarkir: Dragonstorm",         setDe: "Tarkir: Drachensturm",               year: "2025", commander: "Zurgo Stormrender",                preconSetCode: "tdc", asin: "B0DSQSGZV3" },
   { name: "Temur Roar",             set: "Tarkir: Dragonstorm",         setDe: "Tarkir: Drachensturm",               year: "2025", commander: "Sarkhan, Soul Aflame",             preconSetCode: "tdc", asin: "B0DSR38H4H" },
+  // Commander 2023 — missing decks from Phyrexia, MOM, WOE
+  { name: "Rebellion Rising",       set: "Phyrexia: All Will Be One",   setDe: "Phyrexia: Alles wird eins",           year: "2023", preconSetCode: "onc" },
+  { name: "Corrupting Influence",   set: "Phyrexia: All Will Be One",   setDe: "Phyrexia: Alles wird eins",           year: "2023", preconSetCode: "onc" },
+  { name: "Call for Backup",        set: "March of the Machine",        setDe: "Marsch der Maschine",                 year: "2023", preconSetCode: "moc" },
+  { name: "Growing Threat",         set: "March of the Machine",        setDe: "Marsch der Maschine",                 year: "2023", preconSetCode: "moc" },
+  { name: "Divine Convocation",     set: "March of the Machine",        setDe: "Marsch der Maschine",                 year: "2023", preconSetCode: "moc" },
+  { name: "Cavalry Charge",         set: "March of the Machine",        setDe: "Marsch der Maschine",                 year: "2023", preconSetCode: "moc" },
+  { name: "Tinker Time",            set: "March of the Machine",        setDe: "Marsch der Maschine",                 year: "2023", preconSetCode: "moc" },
+  { name: "Virtue and Valor",       set: "Wilds of Eldraine",           setDe: "Wildnis von Eldraine",                year: "2023", preconSetCode: "woc" },
+  { name: "Fae Dominion",           set: "Wilds of Eldraine",           setDe: "Wildnis von Eldraine",                year: "2023", preconSetCode: "woc" },
+  // Commander 2022
+  { name: "Buckle Up",              set: "Kamigawa: Neon Dynasty",      setDe: "Kamigawa: Neon-Dynastie",             year: "2022", preconSetCode: "nec" },
+  { name: "Upgrades Unleashed",     set: "Kamigawa: Neon Dynasty",      setDe: "Kamigawa: Neon-Dynastie",             year: "2022", preconSetCode: "nec" },
+  { name: "Obscura Operation",      set: "Streets of New Capenna",      setDe: "Streets of New Capenna",              year: "2022", preconSetCode: "snc" },
+  { name: "Maestros Massacre",      set: "Streets of New Capenna",      setDe: "Streets of New Capenna",              year: "2022", preconSetCode: "snc" },
+  { name: "Riveteers Rampage",      set: "Streets of New Capenna",      setDe: "Streets of New Capenna",              year: "2022", preconSetCode: "snc" },
+  { name: "Cabaretti Cacophony",    set: "Streets of New Capenna",      setDe: "Streets of New Capenna",              year: "2022", preconSetCode: "snc" },
+  { name: "Bedecked Brokers",       set: "Streets of New Capenna",      setDe: "Streets of New Capenna",              year: "2022", preconSetCode: "snc" },
+  { name: "Legends' Legacy",        set: "Dominaria United",            setDe: "Dominaria vereint",                   year: "2022", preconSetCode: "dmc" },
+  { name: "Draconic Dissent",       set: "Dominaria United",            setDe: "Dominaria vereint",                   year: "2022", preconSetCode: "dmc" },
+  { name: "Painbow",                set: "The Brothers' War",            setDe: "Der Krieg der Brüder",                year: "2022", preconSetCode: "brc" },
+  { name: "Exit from Exile",        set: "The Brothers' War",            setDe: "Der Krieg der Brüder",                year: "2022", preconSetCode: "brc" },
+  { name: "Party Time",             set: "The Brothers' War",            setDe: "Der Krieg der Brüder",                year: "2022", preconSetCode: "brc" },
+  { name: "Mind Flayarrrs",         set: "Commander Legends: Battle for Baldur's Gate", setDe: "Commander-Legenden: Kampf um Baldur's Gate", year: "2022", preconSetCode: "clb" },
+  // Commander 2021
+  { name: "Lorehold Legacies",      set: "Strixhaven",                  setDe: "Strixhaven",                          year: "2021", preconSetCode: "stc" },
+  { name: "Prismari Performance",   set: "Strixhaven",                  setDe: "Strixhaven",                          year: "2021", preconSetCode: "stc" },
+  { name: "Quandrix Quandary",      set: "Strixhaven",                  setDe: "Strixhaven",                          year: "2021", preconSetCode: "stc" },
+  { name: "Silverquill Statement",  set: "Strixhaven",                  setDe: "Strixhaven",                          year: "2021", preconSetCode: "stc" },
+  { name: "Witherbloom Witchcraft", set: "Strixhaven",                  setDe: "Strixhaven",                          year: "2021", preconSetCode: "stc" },
+  { name: "Aura of Courage",        set: "Adventures in the Forgotten Realms", setDe: "Abenteuer in den Vergessenen Reichen", year: "2021", preconSetCode: "afc" },
+  { name: "Draconic Rage",          set: "Adventures in the Forgotten Realms", setDe: "Abenteuer in den Vergessenen Reichen", year: "2021", preconSetCode: "afc" },
+  { name: "Dungeons of Death",      set: "Adventures in the Forgotten Realms", setDe: "Abenteuer in den Vergessenen Reichen", year: "2021", preconSetCode: "afc" },
+  { name: "Planar Portal",          set: "Adventures in the Forgotten Realms", setDe: "Abenteuer in den Vergessenen Reichen", year: "2021", preconSetCode: "afc" },
+  { name: "Undead Unleashed",       set: "Innistrad: Midnight Hunt",    setDe: "Innistrad: Jagd zur Mitternacht",      year: "2021", preconSetCode: "mic" },
+  { name: "Phantom Premonition",    set: "Innistrad: Crimson Vow",      setDe: "Innistrad: Purpurnes Gelübde",         year: "2021", preconSetCode: "voc" },
+  { name: "Elven Empire",           set: "Kaldheim",                    setDe: "Kaldheim",                            year: "2021", preconSetCode: "khc" },
+  // Commander 2020
+  { name: "Arcane Maelstrom",       set: "Ikoria: Lair of Behemoths",   setDe: "Ikoria: Heimat der Ungetüme",          year: "2020", preconSetCode: "c20" },
+  { name: "Timeless Wisdom",        set: "Ikoria: Lair of Behemoths",   setDe: "Ikoria: Heimat der Ungetüme",          year: "2020", preconSetCode: "c20" },
+  { name: "Enhanced Evolution",     set: "Ikoria: Lair of Behemoths",   setDe: "Ikoria: Heimat der Ungetüme",          year: "2020", preconSetCode: "c20" },
+  { name: "Ruthless Regiment",      set: "Ikoria: Lair of Behemoths",   setDe: "Ikoria: Heimat der Ungetüme",          year: "2020", preconSetCode: "c20" },
+  { name: "Symbiotic Swarm",        set: "Ikoria: Lair of Behemoths",   setDe: "Ikoria: Heimat der Ungetüme",          year: "2020", preconSetCode: "c20" },
+  { name: "Sneak Attack",           set: "Zendikar Rising",             setDe: "Zendikar: Der Aufstieg",               year: "2020", preconSetCode: "znc" },
+  { name: "Land's Wrath",           set: "Zendikar Rising",             setDe: "Zendikar: Der Aufstieg",               year: "2020", preconSetCode: "znc" },
+  { name: "Reap the Tides",         set: "Zendikar Rising",             setDe: "Zendikar: Der Aufstieg",               year: "2020", preconSetCode: "znc" },
+  { name: "Arm for Battle",         set: "Zendikar Rising",             setDe: "Zendikar: Der Aufstieg",               year: "2020", preconSetCode: "znc" },
+  // Commander 2019
+  { name: "Faceless Menace",        set: "Commander 2019",              setDe: "Commander 2019",                       year: "2019", preconSetCode: "c19" },
+  { name: "Mystic Intellect",       set: "Commander 2019",              setDe: "Commander 2019",                       year: "2019", preconSetCode: "c19" },
+  { name: "Primal Genesis",         set: "Commander 2019",              setDe: "Commander 2019",                       year: "2019", preconSetCode: "c19" },
+  { name: "Merciless Rage",         set: "Commander 2019",              setDe: "Commander 2019",                       year: "2019", preconSetCode: "c19" },
+  // Commander 2018
+  { name: "Adaptive Enchantment",   set: "Commander 2018",              setDe: "Commander 2018",                       year: "2018", preconSetCode: "c18" },
+  { name: "Exquisite Invention",    set: "Commander 2018",              setDe: "Commander 2018",                       year: "2018", preconSetCode: "c18" },
+  { name: "Nature's Vengeance",     set: "Commander 2018",              setDe: "Commander 2018",                       year: "2018", preconSetCode: "c18" },
+  { name: "Subjective Reality",     set: "Commander 2018",              setDe: "Commander 2018",                       year: "2018", preconSetCode: "c18" },
+  // Commander 2017
+  { name: "Arcane Wizardry",        set: "Commander 2017",              setDe: "Commander 2017",                       year: "2017", preconSetCode: "c17" },
+  { name: "Draconic Domination",    set: "Commander 2017",              setDe: "Commander 2017",                       year: "2017", preconSetCode: "c17" },
+  { name: "Feline Ferocity",        set: "Commander 2017",              setDe: "Commander 2017",                       year: "2017", preconSetCode: "c17" },
+  { name: "Vampiric Bloodlust",     set: "Commander 2017",              setDe: "Commander 2017",                       year: "2017", preconSetCode: "c17" },
+  // Commander 2016
+  { name: "Breed Lethality",        set: "Commander 2016",              setDe: "Commander 2016",                       year: "2016", preconSetCode: "c16" },
+  { name: "Entropic Uprising",      set: "Commander 2016",              setDe: "Commander 2016",                       year: "2016", preconSetCode: "c16" },
+  { name: "Invent Superiority",     set: "Commander 2016",              setDe: "Commander 2016",                       year: "2016", preconSetCode: "c16" },
+  { name: "Open Hostility",         set: "Commander 2016",              setDe: "Commander 2016",                       year: "2016", preconSetCode: "c16" },
+  { name: "Stalwart Unity",         set: "Commander 2016",              setDe: "Commander 2016",                       year: "2016", preconSetCode: "c16" },
+  // Commander 2015
+  { name: "Call the Spirits",       set: "Commander 2015",              setDe: "Commander 2015",                       year: "2015", preconSetCode: "c15" },
+  { name: "Seize Control",          set: "Commander 2015",              setDe: "Commander 2015",                       year: "2015", preconSetCode: "c15" },
+  { name: "Plunder the Graves",     set: "Commander 2015",              setDe: "Commander 2015",                       year: "2015", preconSetCode: "c15" },
+  { name: "Wade into Battle",       set: "Commander 2015",              setDe: "Commander 2015",                       year: "2015", preconSetCode: "c15" },
+  { name: "Swell the Host",         set: "Commander 2015",              setDe: "Commander 2015",                       year: "2015", preconSetCode: "c15" },
+  // Commander 2014
+  { name: "Built from Scratch",     set: "Commander 2014",              setDe: "Commander 2014",                       year: "2014", preconSetCode: "c14" },
+  { name: "Forged in Stone",        set: "Commander 2014",              setDe: "Commander 2014",                       year: "2014", preconSetCode: "c14" },
+  { name: "Sworn to Darkness",      set: "Commander 2014",              setDe: "Commander 2014",                       year: "2014", preconSetCode: "c14" },
+  { name: "Peer Through Time",      set: "Commander 2014",              setDe: "Commander 2014",                       year: "2014", preconSetCode: "c14" },
+  { name: "Guided by Nature",       set: "Commander 2014",              setDe: "Commander 2014",                       year: "2014", preconSetCode: "c14" },
+  // Commander 2013
+  { name: "Evasive Maneuvers",      set: "Commander 2013",              setDe: "Commander 2013",                       year: "2013", preconSetCode: "c13" },
+  { name: "Mind Seize",             set: "Commander 2013",              setDe: "Commander 2013",                       year: "2013", preconSetCode: "c13" },
+  { name: "Eternal Bargain",        set: "Commander 2013",              setDe: "Commander 2013",                       year: "2013", preconSetCode: "c13" },
+  { name: "Nature of the Beast",    set: "Commander 2013",              setDe: "Commander 2013",                       year: "2013", preconSetCode: "c13" },
+  { name: "Power Hungry",           set: "Commander 2013",              setDe: "Commander 2013",                       year: "2013", preconSetCode: "c13" },
+  // Commander 2011
+  { name: "Heavenly Inferno",       set: "Commander 2011",              setDe: "Commander 2011",                       year: "2011", preconSetCode: "cmd" },
+  { name: "Mirror Mastery",         set: "Commander 2011",              setDe: "Commander 2011",                       year: "2011", preconSetCode: "cmd" },
+  { name: "Counterpunch",           set: "Commander 2011",              setDe: "Commander 2011",                       year: "2011", preconSetCode: "cmd" },
+  { name: "Political Puppets",      set: "Commander 2011",              setDe: "Commander 2011",                       year: "2011", preconSetCode: "cmd" },
+  { name: "Devour for Power",       set: "Commander 2011",              setDe: "Commander 2011",                       year: "2011", preconSetCode: "cmd" },
 ];
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -544,6 +636,12 @@ export default function DeckIdeasScreen() {
   const [importFeedback, setImportFeedback] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showPreconSection, setShowPreconSection] = useState(false);
+  const [preconYearFilter, setPreconYearFilter] = useState<string>("all");
+
+  const preconYears = Array.from(new Set(COMMANDER_PRECONS.map(d => d.year))).sort((a, b) => Number(b) - Number(a));
+  const filteredPrecons = preconYearFilter === "all"
+    ? COMMANDER_PRECONS
+    : COMMANDER_PRECONS.filter(d => d.year === preconYearFilter);
   const preconLangEn = showEnglish;
 
   // Load archetype list when format changes (synchronous — no network needed)
@@ -700,8 +798,8 @@ export default function DeckIdeasScreen() {
               </Text>
               <Text style={[styles.preconSubtitle, { color: colors.mutedForeground }]}>
                 {showEnglish
-                  ? `${COMMANDER_PRECONS.length} official decks`
-                  : `${COMMANDER_PRECONS.length} offizielle Decks`}
+                  ? `${filteredPrecons.length} / ${COMMANDER_PRECONS.length} official decks`
+                  : `${filteredPrecons.length} / ${COMMANDER_PRECONS.length} offizielle Decks`}
               </Text>
             </View>
             <Ionicons name={showPreconSection ? "chevron-up" : "chevron-down"} size={18} color="#16a34a" />
@@ -709,11 +807,49 @@ export default function DeckIdeasScreen() {
 
           {showPreconSection && (
             <View style={[styles.preconList, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              {COMMANDER_PRECONS.map((deck, i) => (
+              {/* Year filter chips */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={{ paddingHorizontal: 12, paddingTop: 10 }}
+                contentContainerStyle={{ gap: 8, paddingRight: 12 }}
+              >
+                <TouchableOpacity
+                  onPress={() => setPreconYearFilter("all")}
+                  style={[
+                    styles.yearChip,
+                    preconYearFilter === "all"
+                      ? { backgroundColor: "#16a34a", borderColor: "#16a34a" }
+                      : { backgroundColor: "transparent", borderColor: colors.border },
+                  ]}
+                >
+                  <Text style={[styles.yearChipText, { color: preconYearFilter === "all" ? "#fff" : colors.foreground }]}>
+                    {showEnglish ? "All" : "Alle"}
+                  </Text>
+                </TouchableOpacity>
+                {preconYears.map(yr => (
+                  <TouchableOpacity
+                    key={yr}
+                    onPress={() => setPreconYearFilter(yr)}
+                    style={[
+                      styles.yearChip,
+                      preconYearFilter === yr
+                        ? { backgroundColor: "#16a34a", borderColor: "#16a34a" }
+                        : { backgroundColor: "transparent", borderColor: colors.border },
+                    ]}
+                  >
+                    <Text style={[styles.yearChipText, { color: preconYearFilter === yr ? "#fff" : colors.foreground }]}>
+                      {yr}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <View style={{ height: 10 }} />
+              {filteredPrecons.map((deck, i) => (
                 <PreconRow
-                  key={i}
+                  key={`${deck.year}-${deck.name}`}
                   deck={deck}
-                  isLast={i === COMMANDER_PRECONS.length - 1}
+                  isLast={i === filteredPrecons.length - 1}
                   colors={colors}
                   langEn={preconLangEn}
                 />
@@ -1098,6 +1234,8 @@ const styles = StyleSheet.create({
   preconIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   preconTitle: { fontSize: 16, fontFamily: "Inter_700Bold", marginBottom: 2 },
   preconSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  yearChip: { borderRadius: 99, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 5 },
+  yearChipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   preconList: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
   preconRow: {
     flexDirection: "row", alignItems: "center", gap: 10,

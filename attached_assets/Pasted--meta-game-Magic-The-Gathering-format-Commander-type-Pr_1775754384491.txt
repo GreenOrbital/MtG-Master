@@ -1,0 +1,206 @@
+{
+  "meta": {
+    "game": "Magic: The Gathering",
+    "format": "Commander",
+    "type": "Preconstructed Decks",
+    "coverage": "2011-2025",
+    "includes": [
+      "Main Commander Series",
+      "Set Commander Decks",
+      "Universes Beyond",
+      "Starter Commander",
+      "Commander Legends"
+    ]
+  },
+  "sets": [
+    {
+      "year": 2011,
+      "set": "Commander 2011",
+      "decks": [
+        {"name": "Heavenly Inferno", "colors": ["R","W","B"]},
+        {"name": "Mirror Mastery", "colors": ["U","R","G"]},
+        {"name": "Counterpunch", "colors": ["W","B","G"]},
+        {"name": "Political Puppets", "colors": ["U","R","W"]},
+        {"name": "Devour for Power", "colors": ["B","G","U"]}
+      ]
+    },
+    {
+      "year": 2013,
+      "set": "Commander 2013",
+      "decks": [
+        {"name": "Evasive Maneuvers"},
+        {"name": "Mind Seize"},
+        {"name": "Eternal Bargain"},
+        {"name": "Nature of the Beast"},
+        {"name": "Power Hungry"}
+      ]
+    },
+    {
+      "year": 2014,
+      "set": "Commander 2014",
+      "decks": [
+        {"name": "Built from Scratch"},
+        {"name": "Forged in Stone"},
+        {"name": "Sworn to Darkness"},
+        {"name": "Peer Through Time"},
+        {"name": "Guided by Nature"}
+      ]
+    },
+    {
+      "year": 2015,
+      "set": "Commander 2015",
+      "decks": [
+        {"name": "Call the Spirits"},
+        {"name": "Seize Control"},
+        {"name": "Plunder the Graves"},
+        {"name": "Wade into Battle"},
+        {"name": "Sworn to Darkness"}
+      ]
+    },
+    {
+      "year": 2016,
+      "set": "Commander 2016",
+      "decks": [
+        {"name": "Breed Lethality"},
+        {"name": "Entropic Uprising"},
+        {"name": "Invent Superiority"},
+        {"name": "Open Hostility"},
+        {"name": "Stalwart Unity"}
+      ]
+    },
+    {
+      "year": 2017,
+      "set": "Commander 2017",
+      "decks": [
+        {"name": "Arcane Wizardry"},
+        {"name": "Draconic Domination"},
+        {"name": "Feline Ferocity"},
+        {"name": "Vampiric Bloodlust"}
+      ]
+    },
+    {
+      "year": 2018,
+      "set": "Commander 2018",
+      "decks": [
+        {"name": "Adaptive Enchantment"},
+        {"name": "Exquisite Invention"},
+        {"name": "Nature's Vengeance"},
+        {"name": "Subjective Reality"}
+      ]
+    },
+    {
+      "year": 2019,
+      "set": "Commander 2019",
+      "decks": [
+        {"name": "Faceless Menace"},
+        {"name": "Mystic Intellect"},
+        {"name": "Primal Genesis"},
+        {"name": "Merciless Rage"}
+      ]
+    },
+    {
+      "year": 2020,
+      "set": "Commander 2020 + Sets",
+      "decks": [
+        {"name": "Arcane Maelstrom"},
+        {"name": "Timeless Wisdom"},
+        {"name": "Enhanced Evolution"},
+        {"name": "Ruthless Regiment"},
+        {"name": "Symbiotic Swarm"},
+        {"name": "Sneak Attack"},
+        {"name": "Land's Wrath"},
+        {"name": "Reap the Tides"},
+        {"name": "Arm for Battle"}
+      ]
+    },
+    {
+      "year": 2021,
+      "set": "Commander 2021 + Sets",
+      "decks": [
+        {"name": "Lorehold Legacies"},
+        {"name": "Prismari Performance"},
+        {"name": "Quandrix Quandary"},
+        {"name": "Silverquill Statement"},
+        {"name": "Witherbloom Witchcraft"},
+        {"name": "Aura of Courage"},
+        {"name": "Draconic Rage"},
+        {"name": "Dungeons of Death"},
+        {"name": "Planar Portal"},
+        {"name": "Undead Unleashed"},
+        {"name": "Phantom Premonition"},
+        {"name": "Elven Empire"}
+      ]
+    },
+    {
+      "year": 2022,
+      "set": "Commander 2022 + Sets",
+      "decks": [
+        {"name": "Buckle Up"},
+        {"name": "Upgrades Unleashed"},
+        {"name": "Obscura Operation"},
+        {"name": "Maestros Massacre"},
+        {"name": "Riveteers Rampage"},
+        {"name": "Cabaretti Cacophony"},
+        {"name": "Bedecked Brokers"},
+        {"name": "Legends' Legacy"},
+        {"name": "Draconic Dissent"},
+        {"name": "Painbow"},
+        {"name": "Exit from Exile"},
+        {"name": "Party Time"},
+        {"name": "Mind Flayarrrs"},
+        {"name": "Draconic Dissent"}
+      ]
+    },
+    {
+      "year": 2023,
+      "set": "Commander 2023 + Sets",
+      "decks": [
+        {"name": "Rebellion Rising"},
+        {"name": "Corrupting Influence"},
+        {"name": "Call for Backup"},
+        {"name": "Growing Threat"},
+        {"name": "Divine Convocation"},
+        {"name": "Cavalry Charge"},
+        {"name": "Tinker Time"},
+        {"name": "Enduring Enchantments"},
+        {"name": "Virtue and Valor"},
+        {"name": "Fae Dominion"},
+        {"name": "Ahoy Mateys"},
+        {"name": "Veloci-Ramp-Tor"},
+        {"name": "Explorers of the Deep"}
+      ]
+    },
+    {
+      "year": 2024,
+      "set": "Commander 2024 + Sets",
+      "decks": [
+        {"name": "Deadly Disguise"},
+        {"name": "Revenant Recon"},
+        {"name": "Blame Game"},
+        {"name": "Deep Clue Sea"},
+        {"name": "Most Wanted"},
+        {"name": "Grand Larceny"},
+        {"name": "Quick Draw"},
+        {"name": "Desert Bloom"},
+        {"name": "Creative Energy"},
+        {"name": "Eldrazi Incursion"},
+        {"name": "Tricky Terrain"},
+        {"name": "Animated Army"}
+      ]
+    },
+    {
+      "year": 2025,
+      "set": "Universes Beyond / New",
+      "decks": [
+        {"name": "Warhammer 40,000: Forces of the Imperium"},
+        {"name": "Warhammer 40,000: Ruinous Powers"},
+        {"name": "Warhammer 40,000: Necron Dynasties"},
+        {"name": "Warhammer 40,000: Tyranid Swarm"},
+        {"name": "Lord of the Rings: Food and Fellowship"},
+        {"name": "Lord of the Rings: Riders of Rohan"},
+        {"name": "Lord of the Rings: Elven Council"},
+        {"name": "Lord of the Rings: Hosts of Mordor"}
+      ]
+    }
+  ]
+}
