@@ -6,8 +6,32 @@ uri = "file://artifacts/mtg-keywords/assets/images/icon.png"
 type = "image"
 title = "mtg app icon"
 
+[[generated]]
+id = "3S80Gwmd_J7Puk-LqMW5t"
+uri = "file://artifacts/mtg-keywords/assets/images/icon-lotus.png"
+type = "image"
+title = "mtg app icon lotus sigil"
+
+[[generated]]
+id = "b6LtcKt6PYVi_Nc4I9cKp"
+uri = "file://artifacts/mtg-keywords/assets/images/icon-grimoire.png"
+type = "image"
+title = "mtg app icon grimoire book"
+
 [[outputs]]
 id = "iY5w2VYOyzUd6AW1o8_VB"
 uri = "file://netlify-deploy.tar.gz"
 type = "unspecified"
 title = "Master of MtG — Netlify Deploy Paket"
+
+[[outputs]]
+id = "g_I0_iohrVHPZy8s1wzWe"
+uri = "file://artifacts/mtg-keywords/assets/images/icon-lotus.png"
+type = "image"
+title = "Variante 1 · Goldene Lotus-Sigille"
+
+[[outputs]]
+id = "08h454GJC1eA7UMuAW1vP"
+uri = "file://artifacts/mtg-keywords/assets/images/icon-grimoire.png"
+type = "image"
+title = "Variante 2 · Grimoire-Buch"
