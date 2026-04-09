@@ -8,6 +8,7 @@ import deckCombosRouter from "./deck-combos";
 import userDataRouter from "./user-data";
 import cardParallaxRouter from "./card-parallax";
 import deckSuggestionRouter from "./deck-suggestion";
+import partnerRouter from "./partner";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(deckCombosRouter);
 router.use(userDataRouter);
 router.use(cardParallaxRouter);
 router.use(deckSuggestionRouter);
+router.use(partnerRouter);
 
 export default router;

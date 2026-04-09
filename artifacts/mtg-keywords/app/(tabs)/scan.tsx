@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AnimatedCard } from "@/components/AnimatedCard";
 import { KeywordCard } from "@/components/KeywordCard";
+import { ShopNearbyModal } from "@/components/ShopNearbyModal";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { type CompactCard, useCardHistory } from "@/context/CardHistoryContext";
 import { useDecks } from "@/context/DeckContext";
@@ -582,6 +583,7 @@ export default function CardSearchScreen() {
   const [showDeckPicker, setShowDeckPicker] = useState(false);
   const [addedToDeck, setAddedToDeck] = useState<string | null>(null);
   const [pickedDeckId, setPickedDeckId] = useState<string | null>(null);
+  const [showShopModal, setShowShopModal] = useState(false);
   // ── Animations ────────────────────────────────────────────────────────────
   const starScale = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -1180,7 +1182,7 @@ export default function CardSearchScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.externalLinkBtn, { borderColor: colors.primary + "55", backgroundColor: colors.primary + "14" }]}
-                  onPress={() => Linking.openURL("https://www.google.com/maps/search/Magic+the+Gathering+Shop")}
+                  onPress={() => setShowShopModal(true)}
                 >
                   <Ionicons name="location-outline" size={13} color={colors.primary} />
                   <Text style={[styles.externalLinkText, { color: colors.primary }]}>
@@ -1798,6 +1800,7 @@ export default function CardSearchScreen() {
           </View>
         )}
       </ScrollView>
+      <ShopNearbyModal visible={showShopModal} onClose={() => setShowShopModal(false)} />
     </View>
   );
 }

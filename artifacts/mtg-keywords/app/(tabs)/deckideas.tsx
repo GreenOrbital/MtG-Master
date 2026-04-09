@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import { AnimatedCard } from "@/components/AnimatedCard";
+import { ShopNearbyModal } from "@/components/ShopNearbyModal";
 import {
   ActivityIndicator,
   Alert,
@@ -126,6 +127,7 @@ function PreconRow({ deck, isLast, colors, langEn }: {
   langEn: boolean;
 }) {
   const [imgFailed, setImgFailed] = useState(false);
+  const [showShopModal, setShowShopModal] = useState(false);
   const productImgUri = deck.asin && !imgFailed
     ? `https://ws-na.amazon-adsystem.com/widgets/q?_encoding=UTF8&MarketPlace=DE&ASIN=${deck.asin}&ServiceVersion=20070822&ID=AsinImage&WS=1&Format=SL300`
     : null;
@@ -175,12 +177,13 @@ function PreconRow({ deck, isLast, colors, langEn }: {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.amazonSmallBtn, { borderColor: "#7c3aed66", backgroundColor: "#7c3aed18" }]}
-            onPress={() => Linking.openURL("https://www.google.com/maps/search/Magic+the+Gathering+Shop")}
+            onPress={() => setShowShopModal(true)}
           >
-            <Text style={[styles.amazonSmallBtnText, { color: "#a78bfa" }]}>{showEnglish ? "Shop nearby" : "Shop in der Nähe"}</Text>
+            <Text style={[styles.amazonSmallBtnText, { color: "#a78bfa" }]}>{langEn ? "Shop nearby" : "Shop in der Nähe"}</Text>
           </TouchableOpacity>
         </View>
       </View>
+      <ShopNearbyModal visible={showShopModal} onClose={() => setShowShopModal(false)} />
     </View>
   );
 }
@@ -272,6 +275,7 @@ function CardDetailModal({
   colors: ReturnType<typeof useColors>;
 }) {
   const [expandedKwId, setExpandedKwId] = React.useState<string | null>(null);
+  const [showShopModal, setShowShopModal] = React.useState(false);
 
   if (!card) return null;
 
@@ -496,19 +500,20 @@ function CardDetailModal({
               </View>
               <TouchableOpacity
                 style={[styles.cardmarketBtn, { backgroundColor: "#7c3aed18", borderColor: "#7c3aed44" }]}
-                onPress={() => Linking.openURL("https://www.google.com/maps/search/Magic+the+Gathering+Shop")}
+                onPress={() => setShowShopModal(true)}
                 activeOpacity={0.7}
               >
                 <Ionicons name="location-outline" size={16} color="#a78bfa" />
                 <Text style={[styles.cardmarketBtnText, { color: "#a78bfa" }]}>
                   {showEnglish ? "Find a shop nearby" : "Shop in der Nähe finden"}
                 </Text>
-                <Ionicons name="open-outline" size={14} color="#a78bfa" />
+                <Ionicons name="chevron-forward-outline" size={14} color="#a78bfa" />
               </TouchableOpacity>
             </View>
           </ScrollView>
         </View>
       </View>
+      <ShopNearbyModal visible={showShopModal} onClose={() => setShowShopModal(false)} />
     </Modal>
   );
 }
