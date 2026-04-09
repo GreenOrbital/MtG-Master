@@ -17,12 +17,18 @@ localPort = 25770
 [services.development]
 run = "pnpm --filter @workspace/mtg-keywords run dev"
 
-[services.production]
-serve = "static"
-publicDir = "artifacts/mtg-keywords/dist"
-
 [services.production.build]
-args = ["pnpm", "--filter", "@workspace/mtg-keywords", "run", "build:web"]
+args = ["sh", "-c", "pnpm --filter @workspace/mtg-keywords run build:web && pnpm --filter @workspace/api-server run build"]
+
+[services.production.build.env]
+NODE_ENV = "production"
+
+[services.production.run]
+args = ["node", "--enable-source-maps", "artifacts/api-server/dist/index.mjs"]
+
+[services.production.run.env]
+PORT = "25770"
+NODE_ENV = "production"
 
 [services.env]
 PORT = "25770"

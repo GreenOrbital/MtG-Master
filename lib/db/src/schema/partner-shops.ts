@@ -1,5 +1,4 @@
 import { pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const partnerShopsTable = pgTable("partner_shops", {
@@ -20,13 +19,7 @@ export const partnerShopsTable = pgTable("partner_shops", {
   approvedAt: timestamp("approved_at", { withTimezone: true }),
 });
 
-export const insertPartnerShopSchema = createInsertSchema(partnerShopsTable).omit({
-  id: true,
-  status: true,
-  adminNotes: true,
-  createdAt: true,
-  approvedAt: true,
-}).extend({
+export const insertPartnerShopSchema = z.object({
   shopName: z.string().min(2).max(200),
   ownerName: z.string().min(2).max(200),
   email: z.string().email().max(200),

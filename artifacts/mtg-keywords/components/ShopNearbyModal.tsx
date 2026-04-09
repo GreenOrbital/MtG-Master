@@ -18,9 +18,9 @@ import { CONTINENT_ORDER_DE, CONTINENT_ORDER_EN } from "@/utils/continentMap";
 
 export function getPartnerApiBase(): string {
   if (Platform.OS === "web" && typeof window !== "undefined") {
-    return `${window.location.origin}/api-server/api`;
+    return `${window.location.origin}/api`;
   }
-  return "https://magic-keyword-explainer.replit.app/api-server/api";
+  return "https://magic-keyword-explainer.replit.app/api";
 }
 
 type ShopEntry = {

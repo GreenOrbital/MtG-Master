@@ -1,6 +1,8 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import path from "path";
+import fs from "fs";
 import { clerkMiddleware } from "@clerk/express";
 import router from "./routes";
 import { logger } from "./lib/logger";
@@ -37,5 +39,22 @@ app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 app.use(clerkMiddleware());
 
 app.use("/api", router);
+
+// ── Static frontend serving (production) ────────────────────────────────────
+if (process.env["NODE_ENV"] === "production") {
+  const distDir = path.resolve(process.cwd(), "artifacts/mtg-keywords/dist");
+  if (fs.existsSync(distDir)) {
+    app.use(express.static(distDir));
+    app.get("*", (_req, res) => {
+      const indexPath = path.join(distDir, "index.html");
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(404).send("Not found");
+      }
+    });
+    logger.info({ distDir }, "Serving static frontend");
+  }
+}
 
 export default app;
