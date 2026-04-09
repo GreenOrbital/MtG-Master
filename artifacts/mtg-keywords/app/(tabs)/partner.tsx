@@ -241,6 +241,48 @@ export default function PartnerScreen() {
           ))}
         </View>
 
+        {/* Pricing */}
+        <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
+          {t("KONDITIONEN", "PRICING")}
+        </Text>
+        <View style={[styles.pricingCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {/* Early Bird */}
+          <View style={[styles.pricingRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
+            <View style={{ flex: 1, gap: 4 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Text style={[styles.pricingLabel, { color: colors.foreground }]}>
+                  {t("Early Bird – erste 50 Shops", "Early Bird – First 50 Shops")}
+                </Text>
+                <View style={[styles.badgeEarly, { backgroundColor: "#f59e0b22", borderColor: "#f59e0b55" }]}>
+                  <Text style={[styles.badgeText, { color: "#f59e0b" }]}>{t("Begrenzt", "Limited")}</Text>
+                </View>
+              </View>
+              <Text style={[styles.pricingDesc, { color: colors.mutedForeground }]}>
+                {t("1. Monat kostenlos · danach monatlich kündbar", "1st month free · then cancel any time")}
+              </Text>
+            </View>
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={[styles.pricingAmount, { color: colors.primary }]}>€ 9,99</Text>
+              <Text style={[styles.pricingPer, { color: colors.mutedForeground }]}>{t("/ Monat", "/ month")}</Text>
+            </View>
+          </View>
+          {/* Standard */}
+          <View style={styles.pricingRow}>
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={[styles.pricingLabel, { color: colors.foreground }]}>
+                {t("Standard – ab Shop 51", "Standard – from Shop 51")}
+              </Text>
+              <Text style={[styles.pricingDesc, { color: colors.mutedForeground }]}>
+                {t("Kein Jahresvertrag · jederzeit kündbar", "No annual contract · cancel any time")}
+              </Text>
+            </View>
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={[styles.pricingAmount, { color: colors.foreground }]}>€ 24,99</Text>
+              <Text style={[styles.pricingPer, { color: colors.mutedForeground }]}>{t("/ Monat", "/ month")}</Text>
+            </View>
+          </View>
+        </View>
+
         {/* CTAs */}
         <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>{t("MITMACHEN", "GET STARTED")}</Text>
 
@@ -273,8 +315,8 @@ export default function PartnerScreen() {
           <Ionicons name="information-circle-outline" size={15} color={colors.mutedForeground} />
           <Text style={[styles.footerText, { color: colors.mutedForeground }]}>
             {t(
-              "Die Aufnahme ins Netzwerk kostet eine kleine monatliche Gebühr — kein Jahresvertrag, jederzeit kündbar. GreenOrbital prüft jede Anfrage individuell.",
-              "Joining the network costs a small monthly fee — no annual contract, cancel any time. GreenOrbital reviews each application individually."
+              "GreenOrbital prüft jede Anfrage individuell. Early-Bird-Konditionen gelten für die ersten 50 angemeldeten Shops — sichere dir jetzt deinen Platz.",
+              "GreenOrbital reviews each application individually. Early Bird pricing applies to the first 50 registered shops — secure your spot now."
             )}
           </Text>
         </View>
@@ -335,4 +377,13 @@ const styles = StyleSheet.create({
 
   footerNote: { flexDirection: "row", gap: 8, alignItems: "flex-start", marginHorizontal: 16, marginTop: 4, marginBottom: 8, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 16 },
   footerText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
+
+  pricingCard: { marginHorizontal: 16, marginBottom: 20, borderRadius: 14, borderWidth: 1, overflow: "hidden" },
+  pricingRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
+  pricingLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", flexShrink: 1 },
+  pricingDesc: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
+  pricingAmount: { fontSize: 20, fontFamily: "Inter_700Bold" },
+  pricingPer: { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "right" },
+  badgeEarly: { borderRadius: 6, borderWidth: 1, paddingHorizontal: 6, paddingVertical: 2 },
+  badgeText: { fontSize: 10, fontFamily: "Inter_600SemiBold", letterSpacing: 0.3 },
 });
