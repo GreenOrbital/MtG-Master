@@ -212,6 +212,15 @@ const COLOR_TEXT: Record<string, string> = {
 
 // ─── PreconRow Component ──────────────────────────────────────────────────────
 
+type ScryfallCardSnap = {
+  name: string;
+  type_line?: string;
+  oracle_text?: string;
+  mana_cost?: string;
+  imageNormal: string | null;
+  imageLarge: string | null;
+};
+
 function PreconRow({ deck, isLast, colors, langEn }: {
   deck: PreconDeck;
   isLast: boolean;
@@ -221,8 +230,9 @@ function PreconRow({ deck, isLast, colors, langEn }: {
   const [imgFailed, setImgFailed] = useState(false);
   const [showShopModal, setShowShopModal] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
-  const [commanderImg, setCommanderImg] = useState<string | null>(null);
+  const [commanderCard, setCommanderCard] = useState<ScryfallCardSnap | null>(null);
   const [commanderLoading, setCommanderLoading] = useState(false);
+  const [showCommanderCard, setShowCommanderCard] = useState(false);
 
   const productImgUri = deck.asin && !imgFailed
     ? `https://ws-na.amazon-adsystem.com/widgets/q?_encoding=UTF8&MarketPlace=DE&ASIN=${deck.asin}&ServiceVersion=20070822&ID=AsinImage&WS=1&Format=SL300`
@@ -241,19 +251,26 @@ function PreconRow({ deck, isLast, colors, langEn }: {
 
   const openDetail = useCallback(async () => {
     setShowDetail(true);
-    if (deck.commander && !commanderImg && !commanderLoading) {
+    if (deck.commander && !commanderCard && !commanderLoading) {
       setCommanderLoading(true);
       try {
         const res = await fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(deck.commander)}`);
         if (res.ok) {
-          const data = await res.json();
-          const img = data.image_uris?.normal ?? data.card_faces?.[0]?.image_uris?.normal ?? null;
-          setCommanderImg(img);
+          const d = await res.json();
+          const face = d.card_faces?.[0];
+          setCommanderCard({
+            name: d.name,
+            type_line: d.type_line ?? face?.type_line,
+            oracle_text: d.oracle_text ?? face?.oracle_text,
+            mana_cost: d.mana_cost ?? face?.mana_cost,
+            imageNormal: d.image_uris?.normal ?? face?.image_uris?.normal ?? null,
+            imageLarge:  d.image_uris?.large  ?? face?.image_uris?.large  ?? null,
+          });
         }
       } catch {}
       setCommanderLoading(false);
     }
-  }, [deck.commander, commanderImg, commanderLoading]);
+  }, [deck.commander, commanderCard, commanderLoading]);
 
   return (
     <>
@@ -262,7 +279,7 @@ function PreconRow({ deck, isLast, colors, langEn }: {
         onPress={openDetail}
         activeOpacity={0.75}
       >
-        {/* Product box image */}
+        {/* Product box image — only show when available */}
         {productImgUri ? (
           <Image
             source={{ uri: productImgUri }}
@@ -270,11 +287,7 @@ function PreconRow({ deck, isLast, colors, langEn }: {
             resizeMode="contain"
             onError={() => setImgFailed(true)}
           />
-        ) : (
-          <View style={{ width: 52, height: 52, borderRadius: 10, marginRight: 10, flexShrink: 0, backgroundColor: "#16a34a22", alignItems: "center", justifyContent: "center" }}>
-            <Ionicons name="albums-outline" size={22} color="#16a34a" />
-          </View>
-        )}
+        ) : null}
         {/* Text info */}
         <View style={{ flex: 1, justifyContent: "center", gap: 2 }}>
           <Text style={[styles.preconName, { color: colors.foreground }]} numberOfLines={2}>{deck.name}</Text>
@@ -290,22 +303,17 @@ function PreconRow({ deck, isLast, colors, langEn }: {
       <Modal visible={showDetail} transparent animationType="slide" onRequestClose={() => setShowDetail(false)}>
         <TouchableOpacity style={{ flex: 1, backgroundColor: "#00000080" }} activeOpacity={1} onPress={() => setShowDetail(false)} />
         <View style={[styles.preconDetailSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          {/* Handle bar */}
           <View style={{ alignItems: "center", paddingTop: 10, paddingBottom: 4 }}>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border }} />
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-            {/* Header */}
+            {/* Header: box art + title */}
             <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, flexDirection: "row", alignItems: "flex-start", gap: 14 }}>
               {productImgUri ? (
                 <Image source={{ uri: productImgUri }} style={{ width: 80, height: 112, borderRadius: 8 }} resizeMode="contain" />
-              ) : (
-                <View style={{ width: 80, height: 112, borderRadius: 8, backgroundColor: "#16a34a22", alignItems: "center", justifyContent: "center" }}>
-                  <Ionicons name="albums-outline" size={36} color="#16a34a" />
-                </View>
-              )}
-              <View style={{ flex: 1, gap: 4, paddingTop: 4 }}>
+              ) : null}
+              <View style={{ flex: 1, gap: 4, paddingTop: productImgUri ? 4 : 0 }}>
                 <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: colors.foreground, lineHeight: 24 }}>{deck.name}</Text>
                 <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{setLabel}</Text>
                 <View style={[styles.yearBadgeDetail, { backgroundColor: "#16a34a22", borderColor: "#16a34a55" }]}>
@@ -315,42 +323,58 @@ function PreconRow({ deck, isLast, colors, langEn }: {
               </View>
             </View>
 
-            {/* Commander card */}
+            {/* Commander card — tappable to open full card detail */}
             {deck.commander && (
               <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
                 <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.8 }}>
-                  {langEn ? "Commander" : "Commander"}
+                  Commander
                 </Text>
                 <View style={{ flexDirection: "row", gap: 12, alignItems: "flex-start" }}>
-                  {commanderLoading ? (
-                    <View style={{ width: 120, height: 168, borderRadius: 10, backgroundColor: colors.secondary, alignItems: "center", justifyContent: "center" }}>
-                      <ActivityIndicator size="small" color="#16a34a" />
-                    </View>
-                  ) : commanderImg ? (
-                    <Image source={{ uri: commanderImg }} style={{ width: 120, height: 168, borderRadius: 10 }} resizeMode="cover" />
-                  ) : (
-                    <View style={{ width: 120, height: 168, borderRadius: 10, backgroundColor: colors.secondary, alignItems: "center", justifyContent: "center" }}>
-                      <Ionicons name="person-circle-outline" size={40} color={colors.mutedForeground} />
-                    </View>
-                  )}
-                  <View style={{ flex: 1, gap: 6 }}>
+                  {/* Tappable card image */}
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={() => { if (commanderCard) setShowCommanderCard(true); }}
+                    disabled={!commanderCard}
+                  >
+                    {commanderLoading ? (
+                      <View style={{ width: 120, height: 168, borderRadius: 10, backgroundColor: colors.secondary, alignItems: "center", justifyContent: "center" }}>
+                        <ActivityIndicator size="small" color="#16a34a" />
+                      </View>
+                    ) : commanderCard?.imageNormal ? (
+                      <View>
+                        <Image source={{ uri: commanderCard.imageNormal }} style={{ width: 120, height: 168, borderRadius: 10 }} resizeMode="cover" />
+                        <View style={{ position: "absolute", bottom: 6, right: 6, backgroundColor: "#00000088", borderRadius: 99, padding: 4 }}>
+                          <Ionicons name="expand-outline" size={12} color="#fff" />
+                        </View>
+                      </View>
+                    ) : (
+                      <View style={{ width: 120, height: 168, borderRadius: 10, backgroundColor: colors.secondary, alignItems: "center", justifyContent: "center" }}>
+                        <Ionicons name="person-circle-outline" size={40} color={colors.mutedForeground} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  {/* Card text info */}
+                  <View style={{ flex: 1, gap: 5 }}>
                     <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: colors.foreground, lineHeight: 20 }}>{deck.commander}</Text>
-                    <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: 18 }}>
-                      {langEn ? "Lead Commander" : "Leitender Commander"}
-                    </Text>
-                    <TouchableOpacity
-                      style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4, borderRadius: 8, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 10, paddingVertical: 7 }}
-                      onPress={() => Linking.openURL(`https://scryfall.com/search?q=!"${encodeURIComponent(deck.commander!)}"`)}
-                    >
-                      <Ionicons name="search-outline" size={13} color={colors.mutedForeground} />
-                      <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>Scryfall</Text>
-                    </TouchableOpacity>
+                    {commanderCard?.mana_cost ? (
+                      <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{commanderCard.mana_cost}</Text>
+                    ) : null}
+                    {commanderCard?.type_line ? (
+                      <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: 17 }} numberOfLines={2}>{commanderCard.type_line}</Text>
+                    ) : null}
+                    {commanderCard?.oracle_text ? (
+                      <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.foreground, lineHeight: 17, marginTop: 2 }} numberOfLines={5}>{commanderCard.oracle_text}</Text>
+                    ) : null}
+                    {commanderCard && (
+                      <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, fontStyle: "italic", marginTop: 2 }}>
+                        {langEn ? "Tap image for full view" : "Bild tippen für Vollansicht"}
+                      </Text>
+                    )}
                   </View>
                 </View>
               </View>
             )}
 
-            {/* Divider */}
             <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginHorizontal: 16, marginBottom: 14 }} />
 
             {/* Buy section */}
@@ -358,34 +382,26 @@ function PreconRow({ deck, isLast, colors, langEn }: {
               <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>
                 {langEn ? "Buy" : "Kaufen"}
               </Text>
-              <TouchableOpacity
-                style={{ flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, borderWidth: 1, borderColor: "#ff990066", backgroundColor: "#ff990015", paddingHorizontal: 14, paddingVertical: 12 }}
-                onPress={() => Linking.openURL(amazonDeUrl)}
-              >
+              <TouchableOpacity style={{ flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, borderWidth: 1, borderColor: "#ff990066", backgroundColor: "#ff990015", paddingHorizontal: 14, paddingVertical: 12 }}
+                onPress={() => Linking.openURL(amazonDeUrl)}>
                 <Ionicons name="cart-outline" size={18} color="#ff9900" />
                 <Text style={{ flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#ff9900" }}>Amazon.de</Text>
                 <Ionicons name="open-outline" size={14} color="#ff990088" />
               </TouchableOpacity>
-              <TouchableOpacity
-                style={{ flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, borderWidth: 1, borderColor: "#3b82f666", backgroundColor: "#3b82f615", paddingHorizontal: 14, paddingVertical: 12 }}
-                onPress={() => Linking.openURL(amazonComUrl)}
-              >
+              <TouchableOpacity style={{ flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, borderWidth: 1, borderColor: "#3b82f666", backgroundColor: "#3b82f615", paddingHorizontal: 14, paddingVertical: 12 }}
+                onPress={() => Linking.openURL(amazonComUrl)}>
                 <Ionicons name="cart-outline" size={18} color="#3b82f6" />
                 <Text style={{ flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#3b82f6" }}>Amazon.com</Text>
                 <Ionicons name="open-outline" size={14} color="#3b82f688" />
               </TouchableOpacity>
-              <TouchableOpacity
-                style={{ flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, borderWidth: 1, borderColor: "#2563eb66", backgroundColor: "#2563eb15", paddingHorizontal: 14, paddingVertical: 12 }}
-                onPress={() => Linking.openURL(`https://www.cardmarket.com/${cardmarketLang}/Magic/Products/Search?searchString=${cardmarketSearch}`)}
-              >
+              <TouchableOpacity style={{ flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, borderWidth: 1, borderColor: "#2563eb66", backgroundColor: "#2563eb15", paddingHorizontal: 14, paddingVertical: 12 }}
+                onPress={() => Linking.openURL(`https://www.cardmarket.com/${cardmarketLang}/Magic/Products/Search?searchString=${cardmarketSearch}`)}>
                 <Ionicons name="pricetag-outline" size={18} color="#60a5fa" />
                 <Text style={{ flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#60a5fa" }}>Cardmarket</Text>
                 <Ionicons name="open-outline" size={14} color="#60a5fa88" />
               </TouchableOpacity>
-              <TouchableOpacity
-                style={{ flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, borderWidth: 1, borderColor: "#7c3aed66", backgroundColor: "#7c3aed15", paddingHorizontal: 14, paddingVertical: 12 }}
-                onPress={() => setShowShopModal(true)}
-              >
+              <TouchableOpacity style={{ flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, borderWidth: 1, borderColor: "#7c3aed66", backgroundColor: "#7c3aed15", paddingHorizontal: 14, paddingVertical: 12 }}
+                onPress={() => setShowShopModal(true)}>
                 <Ionicons name="storefront-outline" size={18} color="#a78bfa" />
                 <Text style={{ flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#a78bfa" }}>
                   {langEn ? "Shop nearby" : "Shop in der Nähe"}
@@ -397,6 +413,37 @@ function PreconRow({ deck, isLast, colors, langEn }: {
         </View>
         <ShopNearbyModal visible={showShopModal} onClose={() => setShowShopModal(false)} />
       </Modal>
+
+      {/* Commander card fullscreen modal */}
+      {commanderCard && (
+        <Modal visible={showCommanderCard} transparent animationType="fade" onRequestClose={() => setShowCommanderCard(false)}>
+          <TouchableOpacity
+            style={{ flex: 1, backgroundColor: "#000000cc", alignItems: "center", justifyContent: "center", padding: 24 }}
+            activeOpacity={1}
+            onPress={() => setShowCommanderCard(false)}
+          >
+            {(commanderCard.imageLarge ?? commanderCard.imageNormal) ? (
+              <Image
+                source={{ uri: commanderCard.imageLarge ?? commanderCard.imageNormal! }}
+                style={{ width: "100%", aspectRatio: 488 / 680, borderRadius: 16 }}
+                resizeMode="contain"
+              />
+            ) : null}
+            <View style={{ marginTop: 14, backgroundColor: colors.card, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10, gap: 4, width: "100%" }}>
+              <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.foreground }}>{commanderCard.name}</Text>
+              {commanderCard.type_line ? (
+                <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{commanderCard.type_line}</Text>
+              ) : null}
+              {commanderCard.oracle_text ? (
+                <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.foreground, lineHeight: 19, marginTop: 4 }}>{commanderCard.oracle_text}</Text>
+              ) : null}
+            </View>
+            <Text style={{ color: "#ffffff88", fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 12 }}>
+              {langEn ? "Tap anywhere to close" : "Antippen zum Schließen"}
+            </Text>
+          </TouchableOpacity>
+        </Modal>
+      )}
     </>
   );
 }
