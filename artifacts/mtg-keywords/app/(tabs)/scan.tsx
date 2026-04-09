@@ -1158,37 +1158,43 @@ export default function CardSearchScreen() {
 
               {/* ── External links ── */}
               <View style={[styles.externalLinks, { borderTopColor: colors.border }]}>
-                <TouchableOpacity style={[styles.externalLinkBtn, { borderColor: colors.border }]} onPress={() => Linking.openURL(scryfallUrl)}>
-                  <Ionicons name="open-outline" size={13} color={colors.mutedForeground} />
-                  <Text style={[styles.externalLinkText, { color: colors.mutedForeground }]}>Scryfall</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.externalLinkBtn, { borderColor: colors.border, backgroundColor: "#1da462" + "18" }]} onPress={() => Linking.openURL(cardmarketUrl)}>
-                  <Ionicons name="cart-outline" size={13} color="#1da462" />
-                  <Text style={[styles.externalLinkText, { color: "#1da462" }]}>Cardmarket</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.externalLinkBtn, { borderColor: "#ff990044", backgroundColor: "#ff990018" }]}
-                  onPress={() => card && Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent(card.name + " Magic the Gathering Karte")}&tag=masterofmtg-21`)}
-                >
-                  <Ionicons name="cart-outline" size={13} color="#ff9900" />
-                  <Text style={[styles.externalLinkText, { color: "#ff9900" }]}>Amazon.de</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.externalLinkBtn, { borderColor: "#3b82f644", backgroundColor: "#3b82f618" }]}
-                  onPress={() => card && Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent(card.name + " Magic the Gathering Card")}&tag=mtg08d-20`)}
-                >
-                  <Ionicons name="cart-outline" size={13} color="#3b82f6" />
-                  <Text style={[styles.externalLinkText, { color: "#3b82f6" }]}>Amazon.com</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.externalLinkBtn, { borderColor: colors.primary + "55", backgroundColor: colors.primary + "14" }]}
-                  onPress={() => setShowShopModal(true)}
-                >
-                  <Ionicons name="location-outline" size={13} color={colors.primary} />
-                  <Text style={[styles.externalLinkText, { color: colors.primary }]}>
-                    {showEnglish ? "Shop nearby" : "Shop in der Nähe"}
-                  </Text>
-                </TouchableOpacity>
+                {/* Row 1: Kaufen */}
+                <View style={styles.externalLinksRow}>
+                  <TouchableOpacity style={[styles.externalLinkBtn, { borderColor: "#1da46244", backgroundColor: "#1da46218" }]} onPress={() => Linking.openURL(cardmarketUrl)}>
+                    <Ionicons name="cart-outline" size={13} color="#1da462" />
+                    <Text style={[styles.externalLinkText, { color: "#1da462" }]}>Cardmarket</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.externalLinkBtn, { borderColor: "#ff990044", backgroundColor: "#ff990018" }]}
+                    onPress={() => card && Linking.openURL(`https://www.amazon.de/s?k=${encodeURIComponent(card.name + " Magic the Gathering Karte")}&tag=masterofmtg-21`)}
+                  >
+                    <Ionicons name="cart-outline" size={13} color="#ff9900" />
+                    <Text style={[styles.externalLinkText, { color: "#ff9900" }]}>Amazon.de</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.externalLinkBtn, { borderColor: "#3b82f644", backgroundColor: "#3b82f618" }]}
+                    onPress={() => card && Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent(card.name + " Magic the Gathering Card")}&tag=mtg08d-20`)}
+                  >
+                    <Ionicons name="cart-outline" size={13} color="#3b82f6" />
+                    <Text style={[styles.externalLinkText, { color: "#3b82f6" }]}>Amazon.com</Text>
+                  </TouchableOpacity>
+                </View>
+                {/* Row 2: Info + Lokaler Shop */}
+                <View style={styles.externalLinksRow}>
+                  <TouchableOpacity style={[styles.externalLinkBtn, { borderColor: colors.border }]} onPress={() => Linking.openURL(scryfallUrl)}>
+                    <Ionicons name="open-outline" size={13} color={colors.mutedForeground} />
+                    <Text style={[styles.externalLinkText, { color: colors.mutedForeground }]}>Scryfall</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.externalLinkBtn, { flex: 2, borderColor: colors.primary + "55", backgroundColor: colors.primary + "14" }]}
+                    onPress={() => setShowShopModal(true)}
+                  >
+                    <Ionicons name="location-outline" size={13} color={colors.primary} />
+                    <Text style={[styles.externalLinkText, { color: colors.primary }]}>
+                      {showEnglish ? "Shop nearby" : "Shop in der Nähe"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {/* ── Zum Deck hinzufügen ── */}
@@ -1586,6 +1592,10 @@ export default function CardSearchScreen() {
                               onPress={() => Linking.openURL(`https://www.amazon.com/s?k=${encodeURIComponent("Magic the Gathering " + bp.setName + " Booster Pack")}&tag=mtg08d-20`)}>
                               <Text style={[styles.amazonSmallBtnText, { color: "#3b82f6" }]}>COM</Text>
                             </TouchableOpacity>
+                            <TouchableOpacity style={[styles.amazonSmallBtn, { borderColor: colors.primary + "66", backgroundColor: colors.primary + "18" }]}
+                              onPress={() => setShowShopModal(true)}>
+                              <Ionicons name="location-outline" size={12} color={colors.primary} />
+                            </TouchableOpacity>
                           </View>
                         </TouchableOpacity>
                       );
@@ -1859,8 +1869,9 @@ const styles = StyleSheet.create({
   oracleText: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 20, fontStyle: "italic" },
   flavorBox: { borderTopWidth: 1, paddingHorizontal: 14, paddingVertical: 10 },
   flavorText: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18, fontStyle: "italic" },
-  externalLinks: { borderTopWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: 8, paddingHorizontal: 14, paddingVertical: 10 },
-  externalLinkBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, borderRadius: 8, borderWidth: 1, paddingVertical: 7 },
+  externalLinks: { borderTopWidth: StyleSheet.hairlineWidth, flexDirection: "column", gap: 6, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 10 },
+  externalLinksRow: { flexDirection: "row", gap: 6 },
+  externalLinkBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, borderRadius: 8, borderWidth: 1, paddingVertical: 8 },
   externalLinkText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   printsSection: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 10 },
   printsLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 },
