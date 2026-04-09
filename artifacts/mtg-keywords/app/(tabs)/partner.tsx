@@ -19,6 +19,7 @@ import { useColors } from "@/hooks/useColors";
 import { useSettings } from "@/context/SettingsContext";
 import { ShopNearbyModal, getPartnerApiBase } from "@/components/ShopNearbyModal";
 import { COUNTRIES_DE, COUNTRIES_EN, getContinent } from "@/utils/continentMap";
+import { LanguageToggle } from "@/components/LanguageToggle";
 
 const CONTACT_EMAIL = "info@greenorbital.de";
 
@@ -282,12 +283,15 @@ export default function PartnerScreen() {
 
         {/* Header */}
         <View style={styles.header}>
+          <View style={styles.headerTopRow}>
+            <Text style={[styles.headerTitle, { color: colors.foreground }]}>
+              {t("Partnernetzwerk", "Partner Network")}
+            </Text>
+            <LanguageToggle />
+          </View>
           <View style={[styles.headerIconWrap, { backgroundColor: colors.primary + "22" }]}>
             <Ionicons name="storefront-outline" size={32} color={colors.primary} />
           </View>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-            {t("Partnernetzwerk", "Partner Network")}
-          </Text>
           <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
             {t(
               "Bringe deinen Spieleladen näher zu Magic: The Gathering-Spielern",
@@ -412,8 +416,9 @@ const STEPS = (t: (de: string, en: string) => string) => [
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: { alignItems: "center", paddingHorizontal: 24, paddingTop: 12, paddingBottom: 20, gap: 10 },
+  headerTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" },
   headerIconWrap: { width: 64, height: 64, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  headerTitle: { fontSize: 26, fontFamily: "Inter_700Bold", textAlign: "center" },
+  headerTitle: { fontSize: 26, fontFamily: "Inter_700Bold", flex: 1 },
   headerSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
 
   directoryCta: { flexDirection: "row", alignItems: "center", gap: 12, marginHorizontal: 16, marginBottom: 20, borderRadius: 14, borderWidth: 1, padding: 14 },
