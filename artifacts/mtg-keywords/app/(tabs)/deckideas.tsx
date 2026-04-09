@@ -951,7 +951,8 @@ export default function DeckIdeasScreen() {
             </View>
           )}
 
-          {/* ── Commander Fertigdecks kaufen ── */}
+          {/* ── Commander Fertigdecks kaufen ── only for Commander format */}
+          {selectedFormat === "commander" && <>
           <TouchableOpacity
             style={[styles.preconHeader, { backgroundColor: colors.card, borderColor: "#16a34a", borderWidth: 2 }]}
             onPress={() => setShowPreconSection(v => !v)}
@@ -1024,6 +1025,7 @@ export default function DeckIdeasScreen() {
               ))}
             </View>
           )}
+          </>}
 
           {archetypes.map((a) => (
             <TouchableOpacity
