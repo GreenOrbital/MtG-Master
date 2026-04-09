@@ -14,9 +14,21 @@
       "backgroundColor": "#0f0d0a"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "de.greenorbital.masterofmtg"
     },
-    "android": {},
+    "android": {
+      "package": "de.greenorbital.masterofmtg",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#0f0d0a"
+      },
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE"
+      ]
+    },
     "web": {
       "favicon": "./assets/images/favicon.png",
       "name": "Master of MtG",

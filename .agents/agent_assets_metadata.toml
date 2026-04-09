@@ -41,3 +41,9 @@ id = "FG7v29xqoJQgA3DV2VFKS"
 uri = "file://artifacts/mtg-keywords/assets/images/icon.png"
 type = "image"
 title = "App Icon · Master of MtG"
+
+[[outputs]]
+id = "kUpBJ3WDh5qVE_efkrgb4"
+uri = "file://artifacts/mtg-keywords/assets/images/adaptive-icon.png"
+type = "image"
+title = "Android Adaptive Icon (transparenter Hintergrund)"
