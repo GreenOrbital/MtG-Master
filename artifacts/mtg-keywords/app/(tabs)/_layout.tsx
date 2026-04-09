@@ -61,6 +61,13 @@ function WebSidebar() {
       labelEn: "Deck Ideas",
     },
     {
+      route: "/partner",
+      iconDefault: "storefront-outline" as const,
+      iconActive: "storefront" as const,
+      labelDe: "Partner",
+      labelEn: "Partners",
+    },
+    {
       route: "/settings",
       iconDefault: "settings-outline" as const,
       iconActive: "settings" as const,
@@ -146,6 +153,10 @@ function NativeTabLayout() {
       <NativeTabs.Trigger name="deckideas">
         <Icon sf={{ default: "lightbulb", selected: "lightbulb.fill" }} />
         <Label>{showEnglish ? "Deck Ideas" : "Ideen"}</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="partner">
+        <Icon sf={{ default: "storefront", selected: "storefront.fill" }} />
+        <Label>{showEnglish ? "Partners" : "Partner"}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
         <Icon sf={{ default: "gear", selected: "gear" }} />
@@ -239,6 +250,18 @@ function ClassicTabLayout() {
               <SymbolView name="lightbulb" tintColor={color} size={24} />
             ) : (
               <Ionicons name="bulb-outline" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="partner"
+        options={{
+          title: showEnglish ? "Partners" : "Partner",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="storefront" tintColor={color} size={24} />
+            ) : (
+              <Ionicons name="storefront-outline" size={22} color={color} />
             ),
         }}
       />
