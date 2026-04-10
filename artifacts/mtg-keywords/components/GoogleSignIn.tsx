@@ -7,17 +7,13 @@ import { useColors } from "@/hooks/useColors";
 import { useSettings } from "@/context/SettingsContext";
 
 const BENEFITS_DE = [
-  { icon: "sync-outline" as const,      text: "Favoriten & Decks geräteübergreifend synchronisieren" },
-  { icon: "cloud-outline" as const,     text: "Daten sicher in der Cloud gespeichert" },
-  { icon: "notifications-outline" as const, text: "Infos zu neuen MtG-Sets erhalten" },
-  { icon: "star-outline" as const,      text: "Personalisierte Empfehlungen" },
+  { icon: "sync-outline" as const,  text: "Favoriten & Decks geräteübergreifend synchronisieren" },
+  { icon: "cloud-outline" as const, text: "Daten sicher in der Cloud gespeichert" },
 ];
 
 const BENEFITS_EN = [
-  { icon: "sync-outline" as const,      text: "Sync favorites & decks across all devices" },
-  { icon: "cloud-outline" as const,     text: "Data securely stored in the cloud" },
-  { icon: "notifications-outline" as const, text: "Get notified about new MtG sets" },
-  { icon: "star-outline" as const,      text: "Personalized recommendations" },
+  { icon: "sync-outline" as const,  text: "Sync favorites & decks across all devices" },
+  { icon: "cloud-outline" as const, text: "Data securely stored in the cloud" },
 ];
 
 export function GoogleSignIn() {
