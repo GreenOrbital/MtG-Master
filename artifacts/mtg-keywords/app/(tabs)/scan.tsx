@@ -23,6 +23,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AdBanner } from "@/components/AdBanner";
+import { GoogleSignIn } from "@/components/GoogleSignIn";
 import { AnimatedCard } from "@/components/AnimatedCard";
 import { KeywordCard } from "@/components/KeywordCard";
 import { ShopNearbyModal } from "@/components/ShopNearbyModal";
@@ -1810,6 +1811,11 @@ export default function CardSearchScreen() {
                 </Text>
               </View>
             )}
+
+            {/* Account sign-in card */}
+            <View style={{ paddingHorizontal: 4, paddingTop: 8 }}>
+              <GoogleSignIn />
+            </View>
           </View>
         )}
       </ScrollView>

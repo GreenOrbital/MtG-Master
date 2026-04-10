@@ -6,6 +6,20 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "rea
 import { useColors } from "@/hooks/useColors";
 import { useSettings } from "@/context/SettingsContext";
 
+const BENEFITS_DE = [
+  { icon: "sync-outline" as const,      text: "Favoriten & Decks geräteübergreifend synchronisieren" },
+  { icon: "cloud-outline" as const,     text: "Daten sicher in der Cloud gespeichert" },
+  { icon: "notifications-outline" as const, text: "Infos zu neuen MtG-Sets erhalten" },
+  { icon: "star-outline" as const,      text: "Personalisierte Empfehlungen" },
+];
+
+const BENEFITS_EN = [
+  { icon: "sync-outline" as const,      text: "Sync favorites & decks across all devices" },
+  { icon: "cloud-outline" as const,     text: "Data securely stored in the cloud" },
+  { icon: "notifications-outline" as const, text: "Get notified about new MtG sets" },
+  { icon: "star-outline" as const,      text: "Personalized recommendations" },
+];
+
 export function GoogleSignIn() {
   const colors = useColors();
   const { showEnglish } = useSettings();
@@ -67,28 +81,74 @@ export function GoogleSignIn() {
     );
   }
 
+  const benefits = showEnglish ? BENEFITS_EN : BENEFITS_DE;
+
   return (
-    <TouchableOpacity
-      style={[styles.googleBtn, { borderColor: colors.primary + "60", backgroundColor: colors.card }]}
-      onPress={handleSignIn}
-      activeOpacity={0.8}
-      disabled={loading}
-    >
-      {loading ? (
-        <ActivityIndicator size="small" color={colors.primary} />
-      ) : (
-        <>
-          <Ionicons name="logo-google" size={18} color="#4285F4" />
-          <Text style={[styles.googleBtnText, { color: colors.foreground }]}>
-            {showEnglish ? "Sign in with Google" : "Mit Google anmelden"}
-          </Text>
-        </>
-      )}
-    </TouchableOpacity>
+    <View style={[styles.wrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <Text style={[styles.headline, { color: colors.foreground }]}>
+        {showEnglish ? "Sign in for more features" : "Anmelden & mehr erleben"}
+      </Text>
+
+      <View style={styles.benefits}>
+        {benefits.map((b, i) => (
+          <View key={i} style={styles.benefitRow}>
+            <Ionicons name={b.icon} size={15} color={colors.primary} style={{ marginTop: 1 }} />
+            <Text style={[styles.benefitText, { color: colors.mutedForeground }]}>{b.text}</Text>
+          </View>
+        ))}
+      </View>
+
+      <TouchableOpacity
+        style={[styles.googleBtn, { borderColor: colors.primary + "60", backgroundColor: colors.background }]}
+        onPress={handleSignIn}
+        activeOpacity={0.8}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator size="small" color={colors.primary} />
+        ) : (
+          <>
+            <Ionicons name="logo-google" size={18} color="#4285F4" />
+            <Text style={[styles.googleBtnText, { color: colors.foreground }]}>
+              {showEnglish ? "Sign in with Google" : "Mit Google anmelden"}
+            </Text>
+          </>
+        )}
+      </TouchableOpacity>
+
+      <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+        {showEnglish
+          ? "Optional — the app works fully without an account."
+          : "Optional — die App funktioniert auch ohne Konto."}
+      </Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 16,
+    gap: 14,
+  },
+  headline: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
+  },
+  benefits: { gap: 8 },
+  benefitRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  benefitText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 19,
+  },
   card: {
     borderRadius: 12,
     borderWidth: 1,
@@ -123,8 +183,14 @@ const styles = StyleSheet.create({
     gap: 10,
     borderWidth: 1,
     borderRadius: 12,
-    paddingVertical: 14,
+    paddingVertical: 13,
     paddingHorizontal: 20,
   },
   googleBtnText: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  hint: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    opacity: 0.7,
+  },
 });
