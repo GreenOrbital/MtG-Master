@@ -1,5 +1,6 @@
-import { Animated, Easing, Image, Platform, StyleSheet, View } from "react-native";
-import { useRef, useEffect, useCallback } from "react";
+import { Animated, Easing, Image, Platform, StyleSheet, View, ActivityIndicator } from "react-native";
+import { useRef, useEffect, useCallback, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
 
 let CSS_INJECTED = false;
 
@@ -49,10 +50,19 @@ export function AnimatedCard({
   const bg = artUri ?? imageUri;
   const nd = Platform.OS !== "web";
 
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
+
   const cardRef  = useRef<any>(null);
   const glowRef  = useRef<any>(null);
   const floatY   = useRef(new Animated.Value(0)).current;
   const glowOpac = useRef(new Animated.Value(0.15)).current;
+
+  // Reset when imageUri changes
+  useEffect(() => {
+    setImgLoaded(false);
+    setImgError(false);
+  }, [imageUri]);
 
   // ── Web: inject CSS animation & add class via DOM ref ─────────────────────
   useEffect(() => {
@@ -115,6 +125,15 @@ export function AnimatedCard({
     filter: "blur(4px) brightness(0.5) saturate(1.3)",
   } : {};
 
+  const placeholder = (
+    <View style={[styles.layer, styles.placeholder]}>
+      {imgError
+        ? <Ionicons name="image-outline" size={48} color="#887050" />
+        : <ActivityIndicator size="large" color="#c8a96e" />
+      }
+    </View>
+  );
+
   // ── Web render ───────────────────────────────────────────────────────────
   if (Platform.OS === "web") {
     return (
@@ -126,18 +145,18 @@ export function AnimatedCard({
         onMouseMove={onMouseMove}
         onMouseLeave={onMouseLeave}
       >
-        {/* Background: blurred art */}
+        {!imgLoaded && !imgError && placeholder}
         <Image
           source={{ uri: bg }}
           style={[styles.layer, styles.bgScale, bgWebStyle]}
         />
-        {/* Full card face */}
         <Image
           source={{ uri: imageUri }}
-          style={styles.layer}
+          style={[styles.layer, !imgLoaded && { opacity: 0 }]}
           resizeMode="contain"
+          onLoad={() => setImgLoaded(true)}
+          onError={() => setImgError(true)}
         />
-        {/* Glow overlay */}
         <View
           ref={glowRef}
           style={[styles.layer, glowWebStyle, { pointerEvents: "none" }]}
@@ -156,6 +175,7 @@ export function AnimatedCard({
         { transform: [{ translateY: floatY }] },
       ]}
     >
+      {!imgLoaded && !imgError && placeholder}
       <Image
         source={{ uri: bg }}
         style={[styles.layer, styles.bgScale]}
@@ -163,8 +183,10 @@ export function AnimatedCard({
       />
       <Image
         source={{ uri: imageUri }}
-        style={styles.layer}
+        style={[styles.layer, !imgLoaded && { opacity: 0 }]}
         resizeMode="contain"
+        onLoad={() => setImgLoaded(true)}
+        onError={() => setImgError(true)}
       />
       <Animated.View
         style={[
@@ -189,5 +211,11 @@ const styles = StyleSheet.create({
   },
   bgScale: {
     transform: [{ scale: 1.12 }],
+  },
+  placeholder: {
+    backgroundColor: "#1c1510",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1,
   },
 });
