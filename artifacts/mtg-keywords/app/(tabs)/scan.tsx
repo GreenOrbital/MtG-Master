@@ -282,7 +282,7 @@ function matchLocalKeywords(scryfallKeywords: string[], oracleText: string): Mtg
   return Array.from(found.values());
 }
 
-const HEADERS = Platform.OS === "web" ? {} : { "User-Agent": "MtGKeywordsApp/1.0" };
+const HEADERS = { "Accept": "application/json;q=0.9,*/*;q=0.8" };
 
 async function fetchAutocompleteSuggestions(query: string): Promise<Suggestion[]> {
   try {
@@ -734,7 +734,7 @@ export default function CardSearchScreen() {
       : s.resolveById ? await fetchCardById(s.resolveById)
       : s.resolveByName ? await fetchCardByName(s.resolveByName) : null;
     setLoadingCard(false);
-    if (!data) setErrorMsg(showEnglish ? `Card "${s.display}" not found.` : `Karte "${s.display}" nicht gefunden.`);
+    if (!data) setErrorMsg(showEnglish ? `"${s.display}" not found — please check your internet connection.` : `„${s.display}" nicht gefunden — bitte Internetverbindung prüfen.`);
     else applyCard(data); // non-blocking
   }
 
@@ -743,7 +743,7 @@ export default function CardSearchScreen() {
     resetCardState(); setLoadingCard(true);
     const data = await fetchCardById(c.id);
     setLoadingCard(false);
-    if (!data) setErrorMsg(showEnglish ? "Card not found." : "Karte nicht gefunden.");
+    if (!data) setErrorMsg(showEnglish ? "Card not found — please check your internet connection." : "Karte nicht gefunden — bitte Internetverbindung prüfen.");
     else applyCard(data); // non-blocking
   }
 
