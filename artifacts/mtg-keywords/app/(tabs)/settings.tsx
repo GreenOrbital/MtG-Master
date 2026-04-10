@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSettings } from "@/context/SettingsContext";
 import { MTG_KEYWORDS } from "@/data/keywords";
 import { useColors } from "@/hooks/useColors";
+import { GoogleSignIn } from "@/components/GoogleSignIn";
 
 function SettingRow({
   label,
@@ -158,6 +159,16 @@ export default function SettingsScreen() {
         contentContainerStyle={{ paddingBottom: bottomPad }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Account / Google Sign-In */}
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
+            {showEnglish ? "ACCOUNT" : "KONTO"}
+          </Text>
+          <View style={{ padding: 12 }}>
+            <GoogleSignIn />
+          </View>
+        </View>
+
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
             {showEnglish ? "LANGUAGE" : "SPRACHE"}

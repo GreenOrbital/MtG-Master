@@ -5,9 +5,11 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
+import { ClerkProvider } from "@clerk/expo";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import * as WebBrowser from "expo-web-browser";
 import React, { useEffect } from "react";
 import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -21,6 +23,10 @@ import { CookieBanner } from "@/components/CookieBanner";
 import { CardHistoryProvider } from "@/context/CardHistoryContext";
 import { DeckProvider } from "@/context/DeckContext";
 import { SettingsProvider, useSettings } from "@/context/SettingsContext";
+
+WebBrowser.maybeCompleteAuthSession();
+
+const CLERK_KEY = "pk_test_ZGVmaW5pdGUtYm9hci0zNC5jbGVyay5hY2NvdW50cy5kZXYk";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -77,20 +83,22 @@ export default function RootLayout() {
   if (!fontsLoaded && !fontError) return null;
 
   return (
-    <SafeAreaProvider>
-      <ErrorBoundary>
-        <OfflineGuard>
-          <QueryClientProvider client={queryClient}>
-            <GestureHandlerRootView style={{ flex: 1 }}>
-              <KeyboardProvider style={{ flex: 1 }}>
-                <AppProviders>
-                  <RootLayoutNav />
-                </AppProviders>
-              </KeyboardProvider>
-            </GestureHandlerRootView>
-          </QueryClientProvider>
-        </OfflineGuard>
-      </ErrorBoundary>
-    </SafeAreaProvider>
+    <ClerkProvider publishableKey={CLERK_KEY}>
+      <SafeAreaProvider>
+        <ErrorBoundary>
+          <OfflineGuard>
+            <QueryClientProvider client={queryClient}>
+              <GestureHandlerRootView style={{ flex: 1 }}>
+                <KeyboardProvider style={{ flex: 1 }}>
+                  <AppProviders>
+                    <RootLayoutNav />
+                  </AppProviders>
+                </KeyboardProvider>
+              </GestureHandlerRootView>
+            </QueryClientProvider>
+          </OfflineGuard>
+        </ErrorBoundary>
+      </SafeAreaProvider>
+    </ClerkProvider>
   );
 }
