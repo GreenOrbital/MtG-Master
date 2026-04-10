@@ -1,7 +1,7 @@
-import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
+  ImageBackground,
   Linking,
   Platform,
   StyleSheet,
@@ -12,171 +12,190 @@ import {
 import { useColors } from "@/hooks/useColors";
 import { useSettings } from "@/context/SettingsContext";
 
-// ─── Amazon Affiliate Banners ─────────────────────────────────────────────────
+// ─── Banner-Konfiguration ─────────────────────────────────────────────────────
 // DE: tag=masterofmtg-21  |  EN: tag=mtg08d-20
-// TODO: Replace with AdMob once App ID is configured (see AdMobBanner.tsx)
+// Kartenbilder: Scryfall Art Crop (kostenlose, öffentliche CDN-URLs)
 
-const BANNERS_DE = [
+interface BannerConfig {
+  cardName: string;
+  titleDe: string;
+  titleEn: string;
+  subDe: string;
+  subEn: string;
+  urlDe: string;
+  urlEn: string;
+}
+
+const BANNERS: BannerConfig[] = [
   {
-    label: "Amazon-Anzeige",
-    title: "MtG Booster-Packs",
-    sub: "Neue Karten — direkt bei Amazon.de",
-    icon: "cube-outline" as const,
-    url: "https://www.amazon.de/s?k=magic+the+gathering+booster&tag=masterofmtg-21",
+    cardName: "Lightning Bolt",
+    titleDe: "MtG Booster-Packs",
+    titleEn: "MtG Booster Packs",
+    subDe: "Neue Karten — direkt bei Amazon.de",
+    subEn: "New cards — shop on Amazon",
+    urlDe: "https://www.amazon.de/s?k=magic+the+gathering+booster&tag=masterofmtg-21",
+    urlEn: "https://www.amazon.com/s?k=magic+the+gathering+booster&tag=mtg08d-20",
   },
   {
-    label: "Amazon-Anzeige",
-    title: "Commander Decks",
-    sub: "Fertige Decks für deine Spielrunde",
-    icon: "layers-outline" as const,
-    url: "https://www.amazon.de/s?k=magic+the+gathering+commander+deck&tag=masterofmtg-21",
+    cardName: "Atraxa, Praetors' Voice",
+    titleDe: "Commander Decks",
+    titleEn: "Commander Decks",
+    subDe: "Fertige Decks für deine Spielrunde",
+    subEn: "Ready-to-play decks for your group",
+    urlDe: "https://www.amazon.de/s?k=magic+the+gathering+commander+deck&tag=masterofmtg-21",
+    urlEn: "https://www.amazon.com/s?k=magic+the+gathering+commander+deck&tag=mtg08d-20",
   },
   {
-    label: "Amazon-Anzeige",
-    title: "Karten-Hüllen & Zubehör",
-    sub: "Schütze deine Sammlerstücke",
-    icon: "shield-outline" as const,
-    url: "https://www.amazon.de/s?k=magic+the+gathering+sleeves+zubeh%C3%B6r&tag=masterofmtg-21",
+    cardName: "Sol Ring",
+    titleDe: "Hüllen & Zubehör",
+    titleEn: "Sleeves & Accessories",
+    subDe: "Schütze deine Sammlerstücke",
+    subEn: "Protect your collection",
+    urlDe: "https://www.amazon.de/s?k=magic+the+gathering+sleeves+zubeh%C3%B6r&tag=masterofmtg-21",
+    urlEn: "https://www.amazon.com/s?k=magic+the+gathering+sleeves+accessories&tag=mtg08d-20",
   },
   {
-    label: "Amazon-Anzeige",
-    title: "MtG Einzelkarten",
-    sub: "Komplettiere dein Deck",
-    icon: "card-outline" as const,
-    url: "https://www.amazon.de/s?k=magic+the+gathering+singles&tag=masterofmtg-21",
+    cardName: "Brainstorm",
+    titleDe: "MtG Einzelkarten",
+    titleEn: "MtG Singles",
+    subDe: "Komplettiere dein Deck",
+    subEn: "Complete your deck",
+    urlDe: "https://www.amazon.de/s?k=magic+the+gathering+singles&tag=masterofmtg-21",
+    urlEn: "https://www.amazon.com/s?k=magic+the+gathering+singles&tag=mtg08d-20",
   },
 ];
 
-const BANNERS_EN = [
-  {
-    label: "Amazon Ad",
-    title: "MtG Booster Packs",
-    sub: "New cards — shop on Amazon",
-    icon: "cube-outline" as const,
-    url: "https://www.amazon.com/s?k=magic+the+gathering+booster&tag=mtg08d-20",
-  },
-  {
-    label: "Amazon Ad",
-    title: "Commander Decks",
-    sub: "Ready-to-play decks for your group",
-    icon: "layers-outline" as const,
-    url: "https://www.amazon.com/s?k=magic+the+gathering+commander+deck&tag=mtg08d-20",
-  },
-  {
-    label: "Amazon Ad",
-    title: "Card Sleeves & Accessories",
-    sub: "Protect your collection",
-    icon: "shield-outline" as const,
-    url: "https://www.amazon.com/s?k=magic+the+gathering+sleeves+accessories&tag=mtg08d-20",
-  },
-  {
-    label: "Amazon Ad",
-    title: "MtG Singles",
-    sub: "Complete your deck",
-    icon: "card-outline" as const,
-    url: "https://www.amazon.com/s?k=magic+the+gathering+singles&tag=mtg08d-20",
-  },
-];
+const ROTATION_INTERVAL = 8000;
 
-const ROTATION_INTERVAL = 7000;
+function useScryfallArtCrops(cards: string[]) {
+  const [images, setImages] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    cards.forEach((name) => {
+      fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`)
+        .then((r) => r.json())
+        .then((data) => {
+          const url = data?.image_uris?.art_crop ?? data?.card_faces?.[0]?.image_uris?.art_crop;
+          if (url) setImages((prev) => ({ ...prev, [name]: url }));
+        })
+        .catch(() => {});
+    });
+  }, []);
+
+  return images;
+}
 
 export function AdBanner() {
   const colors = useColors();
   const { showEnglish } = useSettings();
-  const banners = showEnglish ? BANNERS_EN : BANNERS_DE;
-
   const [index, setIndex] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const nd = Platform.OS !== "web";
 
+  const artCrops = useScryfallArtCrops(BANNERS.map((b) => b.cardName));
+
   useEffect(() => {
     const timer = setInterval(() => {
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: nd,
-      }).start(() => {
-        setIndex((i) => (i + 1) % banners.length);
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: nd,
-        }).start();
+      Animated.timing(fadeAnim, { toValue: 0, duration: 300, useNativeDriver: nd }).start(() => {
+        setIndex((i) => (i + 1) % BANNERS.length);
+        Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: nd }).start();
       });
     }, ROTATION_INTERVAL);
     return () => clearInterval(timer);
-  }, [banners.length]);
+  }, []);
 
-  const banner = banners[index];
+  const banner = BANNERS[index];
+  const imageUrl = artCrops[banner.cardName];
+  const title = showEnglish ? banner.titleEn : banner.titleDe;
+  const sub = showEnglish ? banner.subEn : banner.subDe;
+  const url = showEnglish ? banner.urlEn : banner.urlDe;
+  const adLabel = showEnglish ? "Amazon Ad" : "Amazon-Anzeige";
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.82}
-      onPress={() => Linking.openURL(banner.url)}
-      style={[styles.wrapper, { borderColor: colors.primary + "55", backgroundColor: colors.card }]}
-    >
-      <Animated.View style={[styles.inner, { opacity: fadeAnim }]}>
-        <View style={[styles.iconWrap, { backgroundColor: colors.primary + "20" }]}>
-          <Ionicons name={banner.icon} size={18} color={colors.primary} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>
-            {banner.title}
-          </Text>
-          <Text style={[styles.sub, { color: colors.mutedForeground }]} numberOfLines={1}>
-            {banner.sub}
-          </Text>
-        </View>
-        <View style={styles.rightCol}>
-          <Text style={[styles.label, { color: colors.mutedForeground }]}>{banner.label}</Text>
-          <Ionicons name="arrow-forward" size={13} color={colors.primary} style={{ opacity: 0.7 }} />
-        </View>
-      </Animated.View>
-    </TouchableOpacity>
+    <Animated.View style={[styles.wrapper, { opacity: fadeAnim }]}>
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={() => Linking.openURL(url)}
+        style={[styles.touch, { borderColor: colors.primary + "55" }]}
+      >
+        <ImageBackground
+          source={imageUrl ? { uri: imageUrl } : undefined}
+          style={styles.bg}
+          imageStyle={styles.bgImage}
+          resizeMode="cover"
+        >
+          {/* Dark gradient overlay */}
+          <View style={[styles.overlay, { backgroundColor: imageUrl ? "rgba(10,8,5,0.68)" : colors.card }]} />
+
+          <View style={styles.content}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.title} numberOfLines={1}>{title}</Text>
+              <Text style={styles.sub} numberOfLines={1}>{sub}</Text>
+            </View>
+            <View style={styles.right}>
+              <Text style={[styles.label, { color: colors.primary }]}>{adLabel}</Text>
+              <Text style={[styles.arrow, { color: colors.primary }]}>→</Text>
+            </View>
+          </View>
+        </ImageBackground>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   wrapper: {
-    borderWidth: 1,
-    borderRadius: 10,
     marginHorizontal: 16,
     marginBottom: 8,
+    borderRadius: 10,
     overflow: "hidden",
   },
-  inner: {
+  touch: {
+    borderRadius: 10,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  bg: {
+    minHeight: 52,
+    justifyContent: "center",
+  },
+  bgImage: {
+    borderRadius: 10,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 10,
+  },
+  content: {
     flexDirection: "row",
     alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     gap: 10,
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-    minHeight: 48,
-  },
-  iconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
   },
   title: {
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
+    color: "#e8d8a0",
   },
   sub: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
-    marginTop: 1,
-    opacity: 0.8,
+    color: "rgba(232,216,160,0.75)",
+    marginTop: 2,
   },
-  rightCol: {
+  right: {
     alignItems: "flex-end",
-    gap: 3,
+    gap: 2,
   },
   label: {
     fontSize: 9,
     fontFamily: "Inter_400Regular",
-    opacity: 0.6,
     letterSpacing: 0.3,
+    opacity: 0.85,
+  },
+  arrow: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
   },
 });
