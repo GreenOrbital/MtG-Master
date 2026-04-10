@@ -25,11 +25,10 @@
         "backgroundColor": "#0f0d0a"
       },
       "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.INTERNET",
-        "android.permission.ACCESS_NETWORK_STATE",
-        "android.permission.RECORD_AUDIO"
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
       ],
       "usesCleartextTraffic": false
     },
@@ -69,12 +68,6 @@
       "eas": {
         "projectId": "57e3ee18-76ff-4782-85ff-b9dddb216a81"
       }
-    },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/57e3ee18-76ff-4782-85ff-b9dddb216a81"
     },
     "owner": "greenorbital"
   }
