@@ -84,7 +84,7 @@ function WebSidebar() {
           <Ionicons name="flash" size={18} color={colors.primary} />
         </View>
         <View>
-          <Text style={[styles.sidebarLogoTitle, { color: colors.foreground }]}>Master of MtG</Text>
+          <Text style={[styles.sidebarLogoTitle, { color: colors.foreground }]}>MtG Master</Text>
           <Text style={[styles.sidebarLogoSub, { color: colors.mutedForeground }]}>
             {showEnglish ? "Card Encyclopedia" : "Karten-Lexikon"}
           </Text>
@@ -123,11 +123,7 @@ function WebSidebar() {
       </View>
 
       {/* Footer */}
-      <View style={[styles.sidebarFooter, { borderTopColor: colors.border }]}>
-        <Text style={[styles.sidebarFooterText, { color: colors.mutedForeground }]}>
-          Powered by Scryfall
-        </Text>
-      </View>
+      <View style={[styles.sidebarFooter, { borderTopColor: colors.border }]} />
     </View>
   );
 }

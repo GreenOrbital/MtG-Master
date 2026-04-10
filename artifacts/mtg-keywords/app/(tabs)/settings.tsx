@@ -225,28 +225,6 @@ export default function SettingsScreen() {
           />
         </View>
 
-        {/* GoFundMe Support */}
-        <TouchableOpacity
-          style={[styles.supportBtn, { borderColor: "#f59e0b" }]}
-          activeOpacity={0.78}
-          onPress={() => Linking.openURL("https://gofund.me/edffb012a")}
-        >
-          <View style={styles.supportLeft}>
-            <Ionicons name="heart" size={22} color="#f59e0b" />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.supportTitle, { color: "#f59e0b" }]}>
-                {showEnglish ? "Support this App" : "App unterstützen"}
-              </Text>
-              <Text style={[styles.supportSub, { color: colors.mutedForeground }]}>
-                {showEnglish
-                  ? "Help keep Master of MtG free & ad-free via GoFundMe"
-                  : "Master of MtG werbefrei halten — per GoFundMe unterstützen"}
-              </Text>
-            </View>
-          </View>
-          <Ionicons name="open-outline" size={18} color="#f59e0b" />
-        </TouchableOpacity>
-
         {/* Impressum & Datenschutz */}
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
@@ -289,11 +267,11 @@ export default function SettingsScreen() {
           onPress={() =>
             Linking.openURL(
               `mailto:info@greenorbital.de?subject=${encodeURIComponent(
-                showEnglish ? "Master of MtG — Feedback" : "Master of MtG — Feedback"
+                showEnglish ? "MtG Master — Feedback" : "MtG Master — Feedback"
               )}&body=${encodeURIComponent(
                 showEnglish
-                  ? "Hello,\n\nI have the following feedback for Master of MtG:\n\n"
-                  : "Hallo,\n\nIch habe folgendes Feedback zu Master of MtG:\n\n"
+                  ? "Hello,\n\nI have the following feedback for MtG Master:\n\n"
+                  : "Hallo,\n\nIch habe folgendes Feedback zu MtG Master:\n\n"
               )}`
             )
           }

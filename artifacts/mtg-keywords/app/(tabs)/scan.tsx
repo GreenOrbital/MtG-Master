@@ -846,6 +846,14 @@ export default function CardSearchScreen() {
 
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
+        {/* Ad Banner */}
+        <View style={[styles.adBanner, { borderColor: colors.primary + "60", backgroundColor: colors.card }]}>
+          <Ionicons name="megaphone-outline" size={16} color={colors.primary} style={{ opacity: 0.7 }} />
+          <Text style={[styles.adBannerText, { color: colors.mutedForeground }]}>
+            {showEnglish ? "Advertisement" : "Werbung"}
+          </Text>
+        </View>
+
         {loadingCard && (
           <View style={styles.loadingBox}>
             <ActivityIndicator size="large" color={colors.primary} />
@@ -1837,6 +1845,19 @@ const styles = StyleSheet.create({
   suggestion: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 11, gap: 10 },
   suggestionText: { fontSize: 14, fontFamily: "Inter_400Regular", flex: 1 },
   scroll: { padding: 16, flexGrow: 1 },
+  adBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    minHeight: 52,
+  },
+  adBannerText: { fontSize: 13, letterSpacing: 0.5, opacity: 0.7 },
   loadingBox: { alignItems: "center", paddingTop: 60, gap: 12 },
   loadingText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   errorBox: { borderRadius: 14, borderWidth: 1, padding: 20, alignItems: "center", gap: 8, marginTop: 20 },

@@ -25,12 +25,12 @@ const APP_URL = "https://magic-keyword-explainer.replit.app";
 
 function buildRegistrationMailto(showEnglish: boolean) {
   const subject = showEnglish
-    ? "Partner Network Registration – Master of MtG"
-    : "Anmeldung Partnernetzwerk – Master of MtG";
+    ? "Partner Network Registration – MtG Master"
+    : "Anmeldung Partnernetzwerk – MtG Master";
 
   const body = showEnglish
     ? [
-        "Partner Network Registration Form – Master of MtG",
+        "Partner Network Registration Form – MtG Master",
         "",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
         "",
@@ -55,7 +55,7 @@ function buildRegistrationMailto(showEnglish: boolean) {
         `App: ${APP_URL}`,
       ].join("\n")
     : [
-        "Anmeldeformular – Partnernetzwerk Master of MtG",
+        "Anmeldeformular – Partnernetzwerk MtG Master",
         "",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
         "",
@@ -100,7 +100,7 @@ export default function PartnerScreen() {
   const bodyDE = [
     `Hallo,`,
     ``,
-    `ich nutze die App "Master of MtG" – ein kostenloses Tool für Magic: The Gathering-Spieler, das weit mehr kann als ein einfaches Kartenlexikon:`,
+    `ich nutze die App "MtG Master" – ein kostenloses Tool für Magic: The Gathering-Spieler, das weit mehr kann als ein einfaches Kartenlexikon:`,
     ``,
     `- Kartensuche auf Deutsch & Englisch mit allen Details`,
     `- Schlüsselwörter & Regeln einfach erklärt`,
@@ -123,7 +123,7 @@ export default function PartnerScreen() {
   const bodyEN = [
     `Hi,`,
     ``,
-    `I use the app "Master of MtG" – a free tool for Magic: The Gathering players that goes well beyond a simple card encyclopedia:`,
+    `I use the app "MtG Master" – a free tool for Magic: The Gathering players that goes well beyond a simple card encyclopedia:`,
     ``,
     `- Card search in German & English with full details`,
     `- Keywords & rules explained in plain language`,
@@ -143,8 +143,8 @@ export default function PartnerScreen() {
     `Best regards`,
   ].join("\n");
 
-  const subjectDE = "Eine App, die deinen Shop interessieren könnte – Master of MtG";
-  const subjectEN = "An App That Might Interest Your Store – Master of MtG";
+  const subjectDE = "Eine App, die deinen Shop interessieren könnte – MtG Master";
+  const subjectEN = "An App That Might Interest Your Store – MtG Master";
 
   const handleRecommend = async () => {
     const subject = showEnglish ? subjectEN : subjectDE;
@@ -341,7 +341,7 @@ export default function PartnerScreen() {
 const BENEFITS = (t: (de: string, en: string) => string) => [
   { icon: "people-outline", title: t("Mehr Laufkundschaft", "More Walk-In Customers"), text: t("MtG-Spieler aus deiner Region entdecken deinen Shop direkt beim Kartennachschlagen.", "MTG players in your region discover your shop right when they're looking up cards.") },
   { icon: "search-outline", title: t("Sichtbarkeit in der App", "App Visibility"), text: t("Dein Shop erscheint bei relevanten Karten- und Deck-Suchen.", "Your shop appears during relevant card and deck searches.") },
-  { icon: "trending-up-outline", title: t("Wachsende Community", "Growing Community"), text: t("Master of MtG wird täglich von MtG-Spielern genutzt. Dein Shop profitiert direkt.", "Master of MtG is used daily by MTG players. Your shop benefits directly.") },
+  { icon: "trending-up-outline", title: t("Wachsende Community", "Growing Community"), text: t("MtG Master wird täglich von MtG-Spielern genutzt. Dein Shop profitiert direkt.", "MtG Master is used daily by MTG players. Your shop benefits directly.") },
   { icon: "star-outline", title: t("Faire Konditionen", "Fair Pricing"), text: t("Kleine monatliche Gebühr, kein Jahresvertrag, jederzeit kündbar.", "Small monthly fee, no annual contract, cancel any time.") },
 ];
 

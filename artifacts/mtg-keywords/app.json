@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Master of MtG",
+    "name": "MtG Master",
     "slug": "mtg-keywords",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -31,7 +31,7 @@
     },
     "web": {
       "favicon": "./assets/images/favicon.png",
-      "name": "Master of MtG",
+      "name": "MtG Master",
       "shortName": "MoMtG",
       "description": "Magic: The Gathering Kartensuche, Keywords & Deck-Builder",
       "themeColor": "#c8a96e",
