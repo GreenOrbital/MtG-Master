@@ -66,6 +66,7 @@ function WebSidebar() {
       iconActive: "storefront" as const,
       labelDe: "Partner",
       labelEn: "Partners",
+      badge: true,
     },
     {
       route: "/settings",
@@ -115,6 +116,11 @@ function WebSidebar() {
               <Text style={[styles.sidebarItemLabel, { color: active ? colors.primary : colors.foreground }]}>
                 {showEnglish ? item.labelEn : item.labelDe}
               </Text>
+              {(item as any).badge && (
+                <View style={{ backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1, marginLeft: 4 }}>
+                  <Text style={{ color: "#0f0d0a", fontSize: 10, fontFamily: "Inter_700Bold", lineHeight: 14 }}>!</Text>
+                </View>
+              )}
             </TouchableOpacity>
           );
         })}
@@ -251,12 +257,25 @@ function ClassicTabLayout() {
         name="partner"
         options={{
           title: showEnglish ? "Partners" : "Partner",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="storefront" tintColor={color} size={24} />
-            ) : (
-              <Ionicons name="storefront-outline" size={22} color={color} />
-            ),
+          tabBarBadge: "!",
+          tabBarBadgeStyle: { backgroundColor: colors.primary, color: "#0f0d0a", fontSize: 10, fontFamily: "Inter_700Bold", minWidth: 16, height: 16, lineHeight: 16 },
+          tabBarIcon: ({ focused }) => (
+            <View style={{
+              backgroundColor: focused ? colors.primary + "30" : colors.primary + "18",
+              borderRadius: 10,
+              padding: 4,
+              borderWidth: focused ? 1 : 0,
+              borderColor: colors.primary + "60",
+            }}>
+              {isIOS ? (
+                <SymbolView name="storefront.fill" tintColor={colors.primary} size={20} />
+              ) : (
+                <Ionicons name="storefront" size={20} color={colors.primary} />
+              )}
+            </View>
+          ),
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.primary,
         }}
       />
       <Tabs.Screen
