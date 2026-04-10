@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FilterChip } from "@/components/FilterChip";
 import { KeywordCard } from "@/components/KeywordCard";
+import { AdBanner } from "@/components/AdBanner";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { SearchBar } from "@/components/SearchBar";
 import { useSettings } from "@/context/SettingsContext";
@@ -71,6 +72,7 @@ export default function KeywordsScreen() {
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topPad + 12, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+        <AdBanner />
         <View style={styles.headerTop}>
           <Text style={[styles.title, { color: colors.foreground }]}>{showEnglish ? "Keywords" : "Schlüsselwörter"}</Text>
           <LanguageToggle />

@@ -22,6 +22,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AdBanner } from "@/components/AdBanner";
 import { AnimatedCard } from "@/components/AnimatedCard";
 import { KeywordCard } from "@/components/KeywordCard";
 import { ShopNearbyModal } from "@/components/ShopNearbyModal";
@@ -797,6 +798,7 @@ export default function CardSearchScreen() {
       )}
       {/* Header */}
       <View style={[styles.header, { paddingTop: topPad + 12, backgroundColor: colors.background, borderBottomColor: colors.border, zIndex: 10 }]}>
+        <AdBanner />
         <View style={styles.headerRow}>
           <Text style={[styles.title, { color: colors.foreground }]}>
             {showEnglish ? "Card Search" : "Karte suchen"}
@@ -846,13 +848,6 @@ export default function CardSearchScreen() {
 
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-        {/* Ad Banner */}
-        <View style={[styles.adBanner, { borderColor: colors.primary + "60", backgroundColor: colors.card }]}>
-          <Ionicons name="megaphone-outline" size={16} color={colors.primary} style={{ opacity: 0.7 }} />
-          <Text style={[styles.adBannerText, { color: colors.mutedForeground }]}>
-            {showEnglish ? "Advertisement" : "Werbung"}
-          </Text>
-        </View>
 
         {loadingCard && (
           <View style={styles.loadingBox}>

@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AdBanner } from "@/components/AdBanner";
 import { useColors } from "@/hooks/useColors";
 import { useSettings } from "@/context/SettingsContext";
 import { ShopNearbyModal } from "@/components/ShopNearbyModal";
@@ -177,7 +178,10 @@ export default function PartnerScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={{ paddingTop: topPad, paddingBottom: bottomPad }} showsVerticalScrollIndicator={false}>
+      <View style={[{ paddingTop: topPad }]}>
+        <AdBanner />
+      </View>
+      <ScrollView contentContainerStyle={{ paddingBottom: bottomPad }} showsVerticalScrollIndicator={false}>
 
         {/* Header */}
         <View style={styles.header}>

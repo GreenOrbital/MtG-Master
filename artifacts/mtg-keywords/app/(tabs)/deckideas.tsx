@@ -23,6 +23,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { type Deck, type DeckCard, useDecks } from "@/context/DeckContext";
 import { useSettings } from "@/context/SettingsContext";
 import { MTG_KEYWORDS } from "@/data/keywords";
+import { AdBanner } from "@/components/AdBanner";
 import { useColors } from "@/hooks/useColors";
 import { getArchetypeList, getDeckSuggestion, type ArchetypeMeta, type DeckSuggestion, type SuggestedCard } from "@/lib/deckSuggestionService";
 import { calculateCardScore, scoreColor, scoreLabel } from "@/utils/cardScore";
@@ -882,8 +883,11 @@ export default function DeckIdeasScreen() {
   if (!selectedKey) {
     return (
       <View style={[styles.root, { backgroundColor: colors.background }]}>
+        <View style={{ paddingTop: topPad + 4 }}>
+          <AdBanner />
+        </View>
         <ScrollView
-          contentContainerStyle={[styles.listContent, { paddingTop: topPad + 12 }]}
+          contentContainerStyle={[styles.listContent, { paddingTop: 8 }]}
           showsVerticalScrollIndicator={false}
         >
           {/* Header */}

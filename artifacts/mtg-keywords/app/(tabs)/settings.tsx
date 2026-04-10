@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSettings } from "@/context/SettingsContext";
 import { MTG_KEYWORDS } from "@/data/keywords";
 import { useColors } from "@/hooks/useColors";
+import { AdBanner } from "@/components/AdBanner";
 import { GoogleSignIn } from "@/components/GoogleSignIn";
 
 function SettingRow({
@@ -149,6 +150,7 @@ export default function SettingsScreen() {
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topPad + 12 }]}>
+        <AdBanner />
         <Text style={[styles.title, { color: colors.foreground }]}>
           {showEnglish ? "Settings" : "Einstellungen"}
         </Text>

@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Svg, { G, Line, Rect, Text as SvgText } from "react-native-svg";
 
+import { AdBanner } from "@/components/AdBanner";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { type Deck, type DeckCard, type GameFormat, useDecks } from "@/context/DeckContext";
 import { useSettings } from "@/context/SettingsContext";
@@ -1167,6 +1168,7 @@ export default function ManapoolScreen() {
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       {/* ── Header ── */}
       <View style={[styles.header, { paddingTop: topPad + 12 }]}>
+        <AdBanner />
         <View style={styles.headerRow}>
           <TouchableOpacity style={styles.headerLeft} onPress={activeDeck ? closeDeck : undefined}>
             {activeDeck && <Ionicons name="chevron-back" size={22} color={colors.primary} />}

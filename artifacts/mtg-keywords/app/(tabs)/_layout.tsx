@@ -85,9 +85,7 @@ function WebSidebar() {
         </View>
         <View>
           <Text style={[styles.sidebarLogoTitle, { color: colors.foreground }]}>MtG Master</Text>
-          <Text style={[styles.sidebarLogoSub, { color: colors.mutedForeground }]}>
-            {showEnglish ? "Card Encyclopedia" : "Karten-Lexikon"}
-          </Text>
+          <Text style={[styles.sidebarLogoSub, { color: colors.mutedForeground }]} />
         </View>
       </View>
 
