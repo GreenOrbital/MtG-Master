@@ -77,20 +77,31 @@ function notifyListeners() {
   artCropListeners.forEach((fn) => fn());
 }
 
+function fetchWithTimeout(url: string, ms: number): Promise<Response> {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(id));
+}
+
 async function fetchArtCrops(cards: string[]) {
   if (artCropFetchStarted) return;
   artCropFetchStarted = true;
   for (const name of cards) {
-    try {
-      const res = await fetch(
-        `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`
-      );
-      if (!res.ok) continue;
-      const data = await res.json();
-      const url = data?.image_uris?.art_crop ?? data?.card_faces?.[0]?.image_uris?.art_crop;
-      if (url) { artCropCache[name] = url; notifyListeners(); }
-    } catch {}
-    await new Promise((r) => setTimeout(r, 150));
+    let succeeded = false;
+    for (let attempt = 0; attempt < 3 && !succeeded; attempt++) {
+      try {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, 500 * attempt));
+        const res = await fetchWithTimeout(
+          `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`,
+          8000
+        );
+        if (!res.ok) continue;
+        const data = await res.json();
+        const url = data?.image_uris?.art_crop ?? data?.card_faces?.[0]?.image_uris?.art_crop;
+        if (url) { artCropCache[name] = url; notifyListeners(); succeeded = true; }
+      } catch {}
+    }
+    await new Promise((r) => setTimeout(r, 200));
   }
 }
 
