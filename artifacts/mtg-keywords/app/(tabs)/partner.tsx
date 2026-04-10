@@ -302,12 +302,12 @@ export default function PartnerScreen() {
         <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>{t("MITMACHEN", "GET STARTED")}</Text>
 
         <TouchableOpacity style={[styles.ctaBtn, { backgroundColor: colors.primary }]} activeOpacity={0.82} onPress={handleRegister}>
-          <Ionicons name="mail" size={20} color="#fff" />
+          <Ionicons name="mail" size={24} color="#0f0d0a" />
           <View style={{ flex: 1 }}>
             <Text style={styles.ctaBtnTitle}>{t("Meinen Shop anmelden", "Register My Shop")}</Text>
             <Text style={styles.ctaBtnSub}>{t("Anmeldeformular per E-Mail ausfüllen & senden", "Fill in the registration form by email & send")}</Text>
           </View>
-          <Ionicons name="arrow-forward" size={18} color="rgba(255,255,255,0.7)" />
+          <Ionicons name="arrow-forward" size={20} color="#0f0d0a" />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -383,9 +383,23 @@ const styles = StyleSheet.create({
   stepTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", marginBottom: 3 },
   stepText: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
 
-  ctaBtn: { flexDirection: "row", alignItems: "center", gap: 12, marginHorizontal: 16, marginBottom: 12, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14 },
-  ctaBtnTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
-  ctaBtnSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)", marginTop: 2 },
+  ctaBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    shadowColor: "#c8a96e",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 7,
+  },
+  ctaBtnTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#0f0d0a", letterSpacing: 0.2 },
+  ctaBtnSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(15,13,10,0.65)", marginTop: 3 },
   ctaBtnAlt: { flexDirection: "row", alignItems: "center", gap: 12, marginHorizontal: 16, marginBottom: 12, borderRadius: 14, borderWidth: 1.5, paddingHorizontal: 16, paddingVertical: 14 },
   ctaBtnTitleAlt: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   ctaBtnSubAlt: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
