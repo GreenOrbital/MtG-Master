@@ -18,18 +18,15 @@ jobs:
         with:
           node-version: 18
 
-      - name: Setup EAS
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Install EAS CLI
+        run: npm install -g eas-cli@latest
 
-      - name: Install dependencies (workspace root)
-        run: npm install -g yarn && yarn install
+      - name: Install dependencies
+        run: npm install
         working-directory: artifacts/mtg-keywords
 
       - name: Build APK via EAS
-        run: npx eas-cli@latest build --platform android --profile preview --non-interactive
+        run: eas build --platform android --profile preview --non-interactive
         working-directory: artifacts/mtg-keywords
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
