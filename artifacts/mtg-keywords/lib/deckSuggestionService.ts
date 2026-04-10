@@ -151,12 +151,11 @@ export async function getDeckSuggestion(key: string, format: string): Promise<De
   ])];
 
   const cardDataMap = new Map<string, ScryfallCard>();
-  await Promise.all(
-    uniqueNames.map(async (name) => {
-      const card = await fetchCard(name);
-      if (card) cardDataMap.set(name, card);
-    })
-  );
+  for (const name of uniqueNames) {
+    const card = await fetchCard(name);
+    if (card) cardDataMap.set(name, card);
+    await new Promise((r) => setTimeout(r, 80));
+  }
 
   function buildCard(slot: CardSlot, isLand = false): SuggestedCard {
     const card = cardDataMap.get(slot.name);
