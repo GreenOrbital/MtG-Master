@@ -69,6 +69,12 @@ function translateComboEffect(effect: string): string {
   return effect;
 }
 
+function fetchTimeout(url: string, ms: number): Promise<Response> {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(id));
+}
+
 async function fetchDeckCombos(cardNames: string[]): Promise<ComboData[]> {
   const results: ComboData[] = [];
   const seen = new Set<string>();
@@ -76,9 +82,9 @@ async function fetchDeckCombos(cardNames: string[]): Promise<ComboData[]> {
     cardNames.slice(0, 12).map(async (name) => {
       try {
         const q = encodeURIComponent(`card:"${name}"`);
-        const res = await fetch(
+        const res = await fetchTimeout(
           `https://backend.commanderspellbook.com/variants/?q=${q}`,
-          { signal: AbortSignal.timeout(8000) }
+          8000
         );
         if (!res.ok) return;
         const data = (await res.json()) as { results?: unknown[] };

@@ -67,22 +67,44 @@ const BANNERS: BannerConfig[] = [
 
 const ROTATION_INTERVAL = 8000;
 
+// ─── Module-level cache: shared across ALL AdBanner instances ─────────────────
+// Prevents 6 tabs × 4 cards = 24 simultaneous Scryfall requests at startup.
+const artCropCache: Record<string, string> = {};
+const artCropListeners = new Set<() => void>();
+let artCropFetchStarted = false;
+
+function notifyListeners() {
+  artCropListeners.forEach((fn) => fn());
+}
+
+async function fetchArtCrops(cards: string[]) {
+  if (artCropFetchStarted) return;
+  artCropFetchStarted = true;
+  for (const name of cards) {
+    try {
+      const res = await fetch(
+        `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+      const url = data?.image_uris?.art_crop ?? data?.card_faces?.[0]?.image_uris?.art_crop;
+      if (url) { artCropCache[name] = url; notifyListeners(); }
+    } catch {}
+    await new Promise((r) => setTimeout(r, 150));
+  }
+}
+
 function useScryfallArtCrops(cards: string[]) {
-  const [images, setImages] = useState<Record<string, string>>({});
+  const [, forceUpdate] = useState(0);
 
   useEffect(() => {
-    cards.forEach((name) => {
-      fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`)
-        .then((r) => r.json())
-        .then((data) => {
-          const url = data?.image_uris?.art_crop ?? data?.card_faces?.[0]?.image_uris?.art_crop;
-          if (url) setImages((prev) => ({ ...prev, [name]: url }));
-        })
-        .catch(() => {});
-    });
+    const listener = () => forceUpdate((n) => n + 1);
+    artCropListeners.add(listener);
+    fetchArtCrops(cards);
+    return () => { artCropListeners.delete(listener); };
   }, []);
 
-  return images;
+  return artCropCache;
 }
 
 export function AdBanner() {

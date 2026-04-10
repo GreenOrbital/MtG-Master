@@ -64,13 +64,20 @@ export type ArchetypeMeta = {
   summaryEn: string;
 };
 
+// ─── Safe fetch with timeout (AbortController — works on all platforms) ───────
+function fetchTimeout(url: string, ms: number): Promise<Response> {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(id));
+}
+
 // ─── Scryfall fetch ────────────────────────────────────────────────────────
 
 async function fetchCard(name: string): Promise<ScryfallCard | null> {
   try {
     // Try German print first — provides printed_name + printed_text
     const deUrl = `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}&lang=de`;
-    const deRes = await fetch(deUrl, { signal: AbortSignal.timeout(6000) });
+    const deRes = await fetchTimeout(deUrl, 8000);
 
     let data: any = null;
     let nameDe: string | null = null;
@@ -85,7 +92,7 @@ async function fetchCard(name: string): Promise<ScryfallCard | null> {
     // Fallback to English if German print unavailable
     if (!data) {
       const url = `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      const res = await fetchTimeout(url, 8000);
       if (!res.ok) return null;
       data = await res.json() as any;
     }
