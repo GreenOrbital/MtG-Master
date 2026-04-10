@@ -809,42 +809,44 @@ export default function CardSearchScreen() {
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
           {showEnglish ? "Search by English or German card name" : "Deutschen oder englischen Kartennamen eingeben"}
         </Text>
-        <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.primary + "80" },
-          Platform.OS === "ios" ? { shadowColor: colors.primary, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.35, shadowRadius: 10 } : {}
-        ]}>
-          <Ionicons name="search" size={18} color={colors.primary} />
-          <TextInput
-            value={query}
-            onChangeText={(t) => { setQuery(t); if (card) resetCardState(); }}
-            placeholder={showEnglish ? "e.g. Lightning Bolt or Blitzschlag…" : "z.B. Blitzschlag oder Lightning Bolt…"}
-            placeholderTextColor={colors.mutedForeground}
-            style={[styles.input, { color: colors.foreground }]}
-            autoCorrect={false} autoCapitalize="words"
-            returnKeyType="search" onSubmitEditing={submitQuery}
-            onFocus={() => { setInputFocused(true); setShowSuggestions(true); }}
-            onBlur={() => setTimeout(() => setInputFocused(false), 200)}
-          />
-          {loadingSuggestions && <ActivityIndicator size="small" color={colors.primary} />}
-          {query.length > 0 && !loadingSuggestions && (
-            <TouchableOpacity onPress={clearAll}>
-              <Ionicons name="close-circle" size={18} color={colors.mutedForeground} />
-            </TouchableOpacity>
+        <View style={{ position: "relative", zIndex: 100 }}>
+          <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.primary + "80" },
+            Platform.OS === "ios" ? { shadowColor: colors.primary, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.35, shadowRadius: 10 } : {}
+          ]}>
+            <Ionicons name="search" size={18} color={colors.primary} />
+            <TextInput
+              value={query}
+              onChangeText={(t) => { setQuery(t); if (card) resetCardState(); }}
+              placeholder={showEnglish ? "e.g. Lightning Bolt or Blitzschlag…" : "z.B. Blitzschlag oder Lightning Bolt…"}
+              placeholderTextColor={colors.mutedForeground}
+              style={[styles.input, { color: colors.foreground }]}
+              autoCorrect={false} autoCapitalize="words"
+              returnKeyType="search" onSubmitEditing={submitQuery}
+              onFocus={() => { setInputFocused(true); setShowSuggestions(true); }}
+              onBlur={() => setTimeout(() => setInputFocused(false), 200)}
+            />
+            {loadingSuggestions && <ActivityIndicator size="small" color={colors.primary} />}
+            {query.length > 0 && !loadingSuggestions && (
+              <TouchableOpacity onPress={clearAll}>
+                <Ionicons name="close-circle" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            )}
+          </View>
+          {showDropdown && (
+            <View style={[styles.dropdown, { backgroundColor: colors.card, borderColor: colors.border, left: 0, right: 0 }]}>
+              {suggestions.map((s, i) => (
+                <TouchableOpacity
+                  key={`${s.display}-${i}`}
+                  style={[styles.suggestion, i < suggestions.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth }]}
+                  onPress={() => selectSuggestion(s)}
+                >
+                  <Ionicons name="card-outline" size={14} color={colors.mutedForeground} />
+                  <Text style={[styles.suggestionText, { color: colors.foreground }]} numberOfLines={1}>{s.display}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           )}
         </View>
-        {showDropdown && (
-          <View style={[styles.dropdown, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            {suggestions.map((s, i) => (
-              <TouchableOpacity
-                key={`${s.display}-${i}`}
-                style={[styles.suggestion, i < suggestions.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth }]}
-                onPress={() => selectSuggestion(s)}
-              >
-                <Ionicons name="card-outline" size={14} color={colors.mutedForeground} />
-                <Text style={[styles.suggestionText, { color: colors.foreground }]} numberOfLines={1}>{s.display}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
       </View>
 
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">

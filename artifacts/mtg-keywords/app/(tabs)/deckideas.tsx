@@ -236,7 +236,7 @@ function PreconRow({ deck, isLast, colors, langEn }: {
   const [showCommanderCard, setShowCommanderCard] = useState(false);
 
   const productImgUri = deck.asin && !imgFailed
-    ? `https://ws-na.amazon-adsystem.com/widgets/q?_encoding=UTF8&MarketPlace=DE&ASIN=${deck.asin}&ServiceVersion=20070822&ID=AsinImage&WS=1&Format=SL300`
+    ? `https://m.media-amazon.com/images/P/${deck.asin}.01._SX300_SY300_.jpg`
     : null;
 
   const setLabel = langEn ? deck.set : deck.setDe;
