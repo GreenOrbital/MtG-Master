@@ -54,6 +54,18 @@
         {
           "cameraPermission": "Kamera-Zugriff für Master of MtG um Karten zu scannen und automatisch zu erkennen."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "packagingOptions": {
+              "excludes": [
+                "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+              ]
+            }
+          }
+        }
       ]
     ],
     "experiments": {
