@@ -63,6 +63,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "57e3ee18-76ff-4782-85ff-b9dddb216a81"
+      }
+    },
+    "owner": "greenorbital"
   }
 }
