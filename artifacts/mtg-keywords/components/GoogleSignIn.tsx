@@ -99,17 +99,19 @@ export function GoogleSignIn() {
       </View>
 
       <TouchableOpacity
-        style={[styles.googleBtn, { borderColor: colors.primary + "60", backgroundColor: colors.background }]}
+        style={[styles.googleBtn, { backgroundColor: colors.primary }]}
         onPress={handleSignIn}
-        activeOpacity={0.8}
+        activeOpacity={0.82}
         disabled={loading}
       >
         {loading ? (
-          <ActivityIndicator size="small" color={colors.primary} />
+          <ActivityIndicator size="small" color="#0f0d0a" />
         ) : (
           <>
-            <Ionicons name="logo-google" size={18} color="#4285F4" />
-            <Text style={[styles.googleBtnText, { color: colors.foreground }]}>
+            <View style={styles.googleIconBadge}>
+              <Ionicons name="logo-google" size={17} color="#4285F4" />
+            </View>
+            <Text style={styles.googleBtnText}>
               {showEnglish ? "Sign in with Google" : "Mit Google anmelden"}
             </Text>
           </>
@@ -181,12 +183,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 13,
+    borderRadius: 14,
+    paddingVertical: 16,
     paddingHorizontal: 20,
+    shadowColor: "#c8a96e",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  googleBtnText: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  googleIconBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  googleBtnText: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    color: "#0f0d0a",
+    letterSpacing: 0.3,
+  },
   hint: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
