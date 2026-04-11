@@ -75,39 +75,40 @@ function fetchTimeout(url: string, ms: number): Promise<Response> {
 
 async function fetchCard(name: string): Promise<ScryfallCard | null> {
   try {
-    // Try German print first — provides printed_name + printed_text
-    const deUrl = `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}&lang=de`;
-    const deRes = await fetchTimeout(deUrl, 8000);
+    // Fetch English first — guaranteed to have image_uris (same as card search)
+    const enUrl = `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`;
+    const enRes = await fetchTimeout(enUrl, 8000);
+    if (!enRes.ok) return null;
+    const data = await enRes.json() as any;
 
-    let data: any = null;
-    let nameDe: string | null = null;
-    let oracleTextDe: string | null = null;
+    const imageUri = data.image_uris?.normal ?? data.card_faces?.[0]?.image_uris?.normal ?? null;
 
-    if (deRes.ok) {
-      data = await deRes.json() as any;
-      nameDe = data.printed_name ?? null;
-      oracleTextDe = data.printed_text ?? null;
-    }
-
-    // Fallback to English if German print unavailable
-    if (!data) {
-      const url = `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`;
-      const res = await fetchTimeout(url, 8000);
-      if (!res.ok) return null;
-      data = await res.json() as any;
-    }
+    // Try to get German name/text in background (non-blocking, best-effort)
+    let nameDe: string = data.name;
+    let oracleTextDe: string = data.oracle_text ?? "";
+    try {
+      const deRes = await fetchTimeout(
+        `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}&lang=de`,
+        5000
+      );
+      if (deRes.ok) {
+        const deData = await deRes.json() as any;
+        nameDe = deData.printed_name ?? data.name;
+        oracleTextDe = deData.printed_text ?? data.oracle_text ?? "";
+      }
+    } catch {}
 
     return {
       id: data.id,
       name: data.name,
-      nameDe: nameDe ?? data.name,
+      nameDe,
       mana_cost: data.mana_cost ?? "",
       cmc: data.cmc ?? 0,
       type_line: data.type_line ?? "",
-      oracle_text: data.oracle_text ?? data.printed_text ?? "",
-      oracle_text_de: oracleTextDe ?? data.oracle_text ?? "",
+      oracle_text: data.oracle_text ?? "",
+      oracle_text_de: oracleTextDe,
       keywords: data.keywords ?? [],
-      imageUri: data.image_uris?.normal ?? data.card_faces?.[0]?.image_uris?.normal ?? null,
+      imageUri,
       priceEur: data.prices?.eur ? parseFloat(data.prices.eur) : null,
       priceUsd: data.prices?.usd ? parseFloat(data.prices.usd) : null,
       colors: data.colors ?? [],
