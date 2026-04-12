@@ -1198,7 +1198,7 @@ export default function DeckIdeasScreen() {
                 </View>
                 <TouchableOpacity
                   style={styles.commanderCardRow}
-                  onPress={() => router.push({ pathname: "/(tabs)/scan", params: { q: suggestion.commanderCard!.name } })}
+                  onPress={() => router.push({ pathname: "/(tabs)/scan", params: { cardId: suggestion.commanderCard!.id } })}
                   activeOpacity={0.82}
                 >
                   {suggestion.commanderCard.imageUri ? (
@@ -1266,7 +1266,7 @@ export default function DeckIdeasScreen() {
                   card={card}
                   showEnglish={showEnglish}
                   colors={colors}
-                  onPress={(c) => router.push({ pathname: "/(tabs)/scan", params: { q: c.name } })}
+                  onPress={(c) => router.push({ pathname: "/(tabs)/scan", params: { cardId: c.id } })}
                 />
               ))}
             </View>
@@ -1288,7 +1288,7 @@ export default function DeckIdeasScreen() {
                   card={card}
                   showEnglish={showEnglish}
                   colors={colors}
-                  onPress={(c) => router.push({ pathname: "/(tabs)/scan", params: { q: c.name } })}
+                  onPress={(c) => router.push({ pathname: "/(tabs)/scan", params: { cardId: c.id } })}
                 />
               ))}
             </View>

@@ -552,7 +552,7 @@ export default function CardSearchScreen() {
   const { showEnglish, setShowEnglish } = useSettings();
   const { recentCards, favorites, addToRecent, toggleFavorite, isFavorite, clearRecent } = useCardHistory();
   const { decks, addCardToDeck } = useDecks();
-  const { q: incomingCard } = useLocalSearchParams<{ q?: string }>();
+  const { q: incomingCard, cardId: incomingCardId } = useLocalSearchParams<{ q?: string; cardId?: string }>();
 
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -666,7 +666,7 @@ export default function CardSearchScreen() {
     }, 300);
   }, [query]);
 
-  // Auto-search when navigated from deck view
+  // Auto-search when navigated from deck view (by name, legacy)
   useEffect(() => {
     if (!incomingCard) return;
     setQuery(incomingCard);
@@ -678,6 +678,18 @@ export default function CardSearchScreen() {
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incomingCard]);
+
+  // Direct card load by Scryfall ID — no search field, instant display
+  useEffect(() => {
+    if (!incomingCardId) return;
+    setSuggestions([]); setShowSuggestions(false);
+    resetCardState(); setLoadingCard(true);
+    fetchCardById(incomingCardId).then((data) => {
+      setLoadingCard(false);
+      if (data) applyCards(data);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incomingCardId]);
 
   async function refreshCurrentCard() {
     if (!cardEn || loadingCard) return;
