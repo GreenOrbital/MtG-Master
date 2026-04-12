@@ -374,29 +374,18 @@ async function overlayGermanData(card: CardData): Promise<CardData> {
 
 async function fetchCardByName(name: string): Promise<CardData | null> {
   try {
-    // For split / DFC cards the AI might return "Front // Back" or "Front / Back"
-    // Scryfall finds them by front face only
     const primaryName = name.split(/\s*\/+\s*/)[0].trim();
-
-    // Try fuzzy on the primary name
     const res = await fetch(
       `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(primaryName)}`,
       { headers: HEADERS }
     );
-    if (res.ok) {
-      const card = (await res.json()) as CardData;
-      return await overlayGermanData(card);
-    }
-    // Fallback: full name fuzzy (in case the "/" was part of original name)
+    if (res.ok) return (await res.json()) as CardData;
     if (primaryName !== name.trim()) {
       const res2 = await fetch(
         `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name.trim())}`,
         { headers: HEADERS }
       );
-      if (res2.ok) {
-        const card2 = (await res2.json()) as CardData;
-        return await overlayGermanData(card2);
-      }
+      if (res2.ok) return (await res2.json()) as CardData;
     }
     return null;
   } catch { return null; }
@@ -568,7 +557,9 @@ export default function CardSearchScreen() {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
-  const [card, setCard] = useState<CardData | null>(null);
+  const [cardEn, setCardEn] = useState<CardData | null>(null);
+  const [cardDe, setCardDe] = useState<CardData | null>(null);
+  const [cardLocalEn, setCardLocalEn] = useState(true);
   const [loadingCard, setLoadingCard] = useState(false);
   const [lastCardUpdated, setLastCardUpdated] = useState<Date | null>(null);
   const [matchedKeywords, setMatchedKeywords] = useState<MtgKeyword[]>([]);
@@ -622,9 +613,9 @@ export default function CardSearchScreen() {
   }
 
   const cardInDecks = useMemo(() => {
-    if (!card) return [];
-    return decks.filter((d) => d.cards.some((c) => c.id === card.id));
-  }, [card, decks]);
+    if (!cardEn) return [];
+    return decks.filter((d) => d.cards.some((c) => c.id === cardEn.id));
+  }, [cardEn, decks]);
   const [addCount, setAddCount] = useState(1);
   const [showImageZoom, setShowImageZoom] = useState(false);
   const [similarCards, setSimilarCards] = useState<CardData[]>([]);
@@ -639,6 +630,7 @@ export default function CardSearchScreen() {
   const [prints, setPrints] = useState<CardPrint[]>([]);
   const [loadingPrints, setLoadingPrints] = useState(false);
   const [selectedPrint, setSelectedPrint] = useState<CardPrint | null>(null);
+  const [zoomedPrint, setZoomedPrint] = useState<CardPrint | null>(null);
 
   async function expandCombo(comboId: string, description: string) {
     const isOpening = expandedComboId !== comboId;
@@ -682,46 +674,54 @@ export default function CardSearchScreen() {
     resetCardState(); setLoadingCard(true);
     fetchCardByName(incomingCard).then((data) => {
       setLoadingCard(false);
-      if (data) applyCard(data);
+      if (data) applyCards(data);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incomingCard]);
 
   async function refreshCurrentCard() {
-    if (!card || loadingCard) return;
+    if (!cardEn || loadingCard) return;
     setLoadingCard(true);
-    const data = await fetchCardById(card.id);
+    const data = await fetchCardById(cardEn.id);
     setLoadingCard(false);
-    if (data) applyCard(data);
+    if (data) applyCards(data);
   }
 
-  function applyCard(data: CardData) {
+  function applyCards(enCard: CardData, deCard?: CardData) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setLastCardUpdated(new Date());
-    triggerCardAppearance(); // animate layout before state change
-    const oracleText = data.oracle_text ?? data.card_faces?.map((f) => f.oracle_text).join(" ") ?? "";
-    setCard(data);
+    triggerCardAppearance();
+    const oracleText = enCard.oracle_text ?? enCard.card_faces?.map((f) => f.oracle_text).join(" ") ?? "";
+    setCardEn(enCard);
+    setCardDe(deCard ?? null);
+    setCardLocalEn(showEnglish);
     setSelectedPrint(null);
-    setMatchedKeywords(matchLocalKeywords(data.keywords ?? [], oracleText));
+    setMatchedKeywords(matchLocalKeywords(enCard.keywords ?? [], oracleText));
     setSimilarCards([]);
     setLoadingSimilar(true);
-    fetchSimilarCards(data).then((cards) => { setSimilarCards(cards); setLoadingSimilar(false); });
+    fetchSimilarCards(enCard).then((cards) => { setSimilarCards(cards); setLoadingSimilar(false); });
     setCombos([]);
     setExpandedComboId(null);
     setLoadingCombos(true);
-    fetchCombos(data.name).then((c) => { setCombos(c); setLoadingCombos(false); });
+    fetchCombos(enCard.name).then((c) => { setCombos(c); setLoadingCombos(false); });
     setBoosterPacks([]);
     setLoadingBooster(true);
-    fetchBoosterPacks(data.name).then((b) => { setBoosterPacks(b); setLoadingBooster(false); });
+    fetchBoosterPacks(enCard.name).then((b) => { setBoosterPacks(b); setLoadingBooster(false); });
     setPrints([]);
     setLoadingPrints(true);
-    fetchAllPrints(data.name).then((p) => { setPrints(p); setLoadingPrints(false); });
-
+    fetchAllPrints(enCard.name).then((p) => { setPrints(p); setLoadingPrints(false); });
+    // Load German overlay in background if not already provided
+    if (!deCard) {
+      overlayGermanData(enCard).then((de) => {
+        if (de !== enCard) setCardDe(de);
+      });
+    }
     const compact: CompactCard = {
-      id: data.id, name: data.name, printed_name: data.printed_name,
-      type_line: data.type_line, printed_type_line: data.printed_type_line,
-      mana_cost: data.mana_cost, set_name: data.set_name,
-      imageUri: data.image_uris?.normal ?? data.card_faces?.[0]?.image_uris?.normal,
+      id: enCard.id, name: enCard.name,
+      printed_name: deCard?.printed_name ?? enCard.printed_name,
+      type_line: enCard.type_line, printed_type_line: deCard?.printed_type_line ?? enCard.printed_type_line,
+      mana_cost: enCard.mana_cost, set_name: enCard.set_name,
+      imageUri: enCard.image_uris?.normal ?? enCard.card_faces?.[0]?.image_uris?.normal,
     };
     addToRecent(compact);
   }
@@ -729,13 +729,21 @@ export default function CardSearchScreen() {
   async function selectSuggestion(s: Suggestion) {
     setQuery(s.display); setSuggestions([]); setShowSuggestions(false);
     resetCardState(); setLoadingCard(true);
-    const data = s.prefetchedCard
-      ? s.prefetchedCard
-      : s.resolveById ? await fetchCardById(s.resolveById)
-      : s.resolveByName ? await fetchCardByName(s.resolveByName) : null;
-    setLoadingCard(false);
-    if (!data) setErrorMsg(showEnglish ? `"${s.display}" not found — please check your internet connection.` : `„${s.display}" nicht gefunden — bitte Internetverbindung prüfen.`);
-    else applyCard(data); // non-blocking
+    if (s.prefetchedCard) {
+      // German suggestion: prefetchedCard is a German-language card
+      // Fetch English card by canonical name, use prefetchedCard as German overlay
+      const deCard = s.prefetchedCard;
+      const enCard = await fetchCardByName(deCard.name);
+      setLoadingCard(false);
+      if (!enCard) setErrorMsg(showEnglish ? `"${s.display}" not found.` : `„${s.display}" nicht gefunden.`);
+      else applyCards(enCard, deCard);
+    } else {
+      const data = s.resolveById ? await fetchCardById(s.resolveById)
+        : s.resolveByName ? await fetchCardByName(s.resolveByName) : null;
+      setLoadingCard(false);
+      if (!data) setErrorMsg(showEnglish ? `"${s.display}" not found — please check your internet connection.` : `„${s.display}" nicht gefunden — bitte Internetverbindung prüfen.`);
+      else applyCards(data);
+    }
   }
 
   async function selectCompact(c: CompactCard) {
@@ -744,7 +752,7 @@ export default function CardSearchScreen() {
     const data = await fetchCardById(c.id);
     setLoadingCard(false);
     if (!data) setErrorMsg(showEnglish ? "Card not found — please check your internet connection." : "Karte nicht gefunden — bitte Internetverbindung prüfen.");
-    else applyCard(data); // non-blocking
+    else applyCards(data);
   }
 
   async function submitQuery() {
@@ -756,15 +764,16 @@ export default function CardSearchScreen() {
     const data = await fetchCardByName(trimmed);
     setLoadingCard(false);
     if (!data) setErrorMsg(showEnglish ? `"${trimmed}" not found.` : `"${trimmed}" nicht gefunden.`);
-    else applyCard(data); // non-blocking
+    else applyCards(data);
   }
 
   function resetCardState() {
-    setCard(null); setMatchedKeywords([]); setExpandedId(null); setErrorMsg("");
+    setCardEn(null); setCardDe(null); setCardLocalEn(showEnglish);
+    setMatchedKeywords([]); setExpandedId(null); setErrorMsg("");
     setSimilarCards([]); setLoadingSimilar(false);
     setCombos([]); setLoadingCombos(false); setExpandedComboId(null);
     setBoosterPacks([]); setLoadingBooster(false);
-    setPrints([]); setLoadingPrints(false); setSelectedPrint(null);
+    setPrints([]); setLoadingPrints(false); setSelectedPrint(null); setZoomedPrint(null);
     setShowFormatInfo(false); setExpandedFormatKey(null);
     setShowKeywordsSection(false); setShowCombosSection(false);
     setShowSimilarSection(false); setShowBoosterSection(false);
@@ -777,16 +786,27 @@ export default function CardSearchScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 84 + 34 : insets.bottom + 84;
 
-  const displayName      = card?.printed_name ?? card?.name ?? "";
-  const displayTypeLine  = card?.printed_type_line ?? card?.type_line ?? "";
-  const displayOracle    = card?.printed_text ?? card?.card_faces?.map((f) => f.printed_text ?? f.oracle_text).join("\n—\n") ?? card?.oracle_text ?? "";
-  const displayFlavor    = card?.flavor_text ?? card?.card_faces?.find((f) => f.flavor_text)?.flavor_text;
-  const cardImageUri     = card?.image_uris?.normal ?? card?.card_faces?.[0]?.image_uris?.normal;
-  const cardArtUri       = card?.image_uris?.art_crop ?? card?.card_faces?.[0]?.image_uris?.art_crop ?? cardImageUri;
+  // card = English card (source of truth for all logic)
+  const card = cardEn;
+  // activeCard = card shown to user (German or English based on toggle)
+  const activeCard = (cardLocalEn || !cardDe) ? cardEn : cardDe;
+  // Whether a German translation is available for this card
+  const hasDeTranslation = !!(cardDe?.printed_name && cardDe.printed_name !== cardEn?.name);
+
+  const displayName      = activeCard?.printed_name ?? activeCard?.name ?? "";
+  const displayTypeLine  = activeCard?.printed_type_line ?? activeCard?.type_line ?? "";
+  const displayOracle    = activeCard?.printed_text ?? activeCard?.card_faces?.map((f) => f.printed_text ?? f.oracle_text).join("\n—\n") ?? activeCard?.oracle_text ?? "";
+  const displayFlavor    = activeCard?.flavor_text ?? activeCard?.card_faces?.find((f) => f.flavor_text)?.flavor_text;
+  const cardImageUri     = activeCard?.image_uris?.normal ?? activeCard?.card_faces?.[0]?.image_uris?.normal;
+  const cardArtUri       = activeCard?.image_uris?.art_crop ?? activeCard?.card_faces?.[0]?.image_uris?.art_crop ?? cardImageUri;
   const scryfallUrl      = card?.scryfall_uri ?? (card ? `https://scryfall.com/search?q=${encodeURIComponent(card.name)}` : "");
   const cardmarketUrl    = card ? `https://www.cardmarket.com/de/Magic/Products/Search?searchString=${encodeURIComponent(card.name)}` : "";
   const eurPrice         = card?.prices?.eur ? `€ ${parseFloat(card.prices.eur).toFixed(2)}` : null;
   const showEmpty        = !card && !loadingCard && !errorMsg && query.length === 0;
+  // Alt name shown under main name (the "other" language)
+  const altName = hasDeTranslation
+    ? (cardLocalEn ? (cardDe?.printed_name ?? null) : (cardEn?.name ?? null))
+    : null;
   const cardColors       = card?.colors ?? [];
   const rarity           = card?.rarity ? (RARITY_LABEL[card.rarity] ?? null) : null;
 
@@ -891,11 +911,20 @@ export default function CardSearchScreen() {
                 <View style={styles.heroControls}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.heroCardName} numberOfLines={1}>{displayName}</Text>
-                    {card.printed_name && card.name !== card.printed_name && (
-                      <Text style={styles.heroCardEnName}>{card.name}</Text>
-                    )}
+                    {altName ? (
+                      <Text style={styles.heroCardEnName}>{altName}</Text>
+                    ) : null}
                   </View>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                    {hasDeTranslation && (
+                      <TouchableOpacity
+                        onPress={() => setCardLocalEn(v => !v)}
+                        style={[styles.langTogglePill, { backgroundColor: colors.secondary }]}
+                      >
+                        <Text style={[styles.langToggleOpt, !cardLocalEn && { color: colors.primary, fontFamily: "Inter_700Bold" }]}>DE</Text>
+                        <Text style={[styles.langToggleOpt, cardLocalEn && { color: colors.primary, fontFamily: "Inter_700Bold" }]}>EN</Text>
+                      </TouchableOpacity>
+                    )}
                     <TouchableOpacity onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                       bounceStarAnim();
@@ -918,22 +947,100 @@ export default function CardSearchScreen() {
               </View>
             )}
 
+            {/* ── Druckvarianten (standalone, below hero) ── */}
+            {(loadingPrints || prints.length > 1) && (
+              <View style={[styles.printsSectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                  <Text style={[styles.printsLabel, { color: colors.mutedForeground }]}>
+                    {showEnglish ? "Printings" : "Druckvarianten"}
+                    {!loadingPrints && prints.length > 0 && ` (${prints.length})`}
+                  </Text>
+                  <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: "#1da462" }}>
+                    € via Cardmarket
+                  </Text>
+                </View>
+                {loadingPrints ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.printsRow}>
+                    {prints.map((p) => {
+                      const imgUri = p.image_uris?.normal ?? p.image_uris?.small ?? p.card_faces?.[0]?.image_uris?.normal;
+                      const isSelected = selectedPrint ? selectedPrint.id === p.id : p.id === card?.id;
+                      const year = p.released_at ? p.released_at.slice(0, 4) : "";
+                      const priceEur = p.prices?.eur ? parseFloat(p.prices.eur) : null;
+                      const priceEurFoil = p.prices?.eur_foil ? parseFloat(p.prices.eur_foil) : null;
+                      const priceUsd = p.prices?.usd ? parseFloat(p.prices.usd) : null;
+                      return (
+                        <TouchableOpacity key={p.id}
+                          style={[styles.printThumbWrap, isSelected && { borderColor: colors.primary, borderWidth: 2.5 }]}
+                          onPress={() => { setSelectedPrint(p.id === card?.id ? null : p); setZoomedPrint(p); }}>
+                          {imgUri ? (
+                            <Image source={{ uri: imgUri }} style={styles.printThumb} resizeMode="cover" />
+                          ) : (
+                            <View style={[styles.printThumb, { backgroundColor: colors.secondary, justifyContent: "center", alignItems: "center" }]}>
+                              <Ionicons name="image-outline" size={28} color={colors.mutedForeground} />
+                            </View>
+                          )}
+                          <Text style={[styles.printSetName, { color: isSelected ? colors.primary : colors.mutedForeground }]} numberOfLines={2}>
+                            {p.set_name ?? p.set?.toUpperCase() ?? ""}{year ? ` ${year}` : ""}
+                          </Text>
+                          {(priceEur != null || priceUsd != null) && (
+                            <View style={styles.printPriceRow}>
+                              {priceEur != null && (
+                                <Text style={[styles.printPrice, { color: "#1da462" }]}>€{priceEur.toFixed(2)}</Text>
+                              )}
+                              {priceEurFoil != null && (
+                                <Text style={[styles.printPriceFoil, { color: "#e5b94e" }]}>✦€{priceEurFoil.toFixed(2)}</Text>
+                              )}
+                              {priceEur == null && priceUsd != null && (
+                                <Text style={[styles.printPrice, { color: "#1da462" }]}>${priceUsd.toFixed(2)}</Text>
+                              )}
+                            </View>
+                          )}
+                          {isSelected && (
+                            <View style={[styles.printCheckmark, { backgroundColor: colors.primary }]}>
+                              <Ionicons name="checkmark" size={12} color="#fff" />
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                )}
+              </View>
+            )}
+
             {/* ── Card info box ── */}
             <View style={[styles.cardInfoBox, { backgroundColor: colors.card, borderColor: colors.border, borderLeftWidth: 4, borderLeftColor: colors.primary }]}>
               <View style={[styles.cardInfoTop, !cardImageUri && { flexDirection: "row" }]}>
                 <View style={styles.cardInfoLeft}>
-                  {/* Name + star — only shown if no hero image */}
+                  {/* Name + star + toggle — only shown if no hero image */}
                   {!cardImageUri && (
-                    <View style={styles.nameRow}>
-                      <Text style={[styles.cardName, { color: colors.foreground, flex: 1 }]} numberOfLines={2}>{displayName}</Text>
-                      <TouchableOpacity onPress={() => toggleFavorite({
-                        id: card.id, name: card.name, printed_name: card.printed_name,
-                        type_line: card.type_line, printed_type_line: card.printed_type_line,
-                        mana_cost: card.mana_cost, set_name: card.set_name, imageUri: cardImageUri,
-                      })}>
-                        <Ionicons name={isFavorite(card.id) ? "star" : "star-outline"} size={22}
-                          color={isFavorite(card.id) ? "#f59e0b" : colors.mutedForeground} />
-                      </TouchableOpacity>
+                    <View style={{ gap: 4 }}>
+                      <View style={styles.nameRow}>
+                        <Text style={[styles.cardName, { color: colors.foreground, flex: 1 }]} numberOfLines={2}>{displayName}</Text>
+                        {hasDeTranslation && (
+                          <TouchableOpacity
+                            onPress={() => setCardLocalEn(v => !v)}
+                            style={[styles.langTogglePill, { backgroundColor: colors.secondary }]}
+                          >
+                            <Text style={[styles.langToggleOpt, !cardLocalEn && { color: colors.primary, fontFamily: "Inter_700Bold" }]}>DE</Text>
+                            <Text style={[styles.langToggleOpt, cardLocalEn && { color: colors.primary, fontFamily: "Inter_700Bold" }]}>EN</Text>
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity onPress={() => toggleFavorite({
+                          id: card.id, name: card.name, printed_name: card.printed_name,
+                          type_line: card.type_line, printed_type_line: card.printed_type_line,
+                          mana_cost: card.mana_cost, set_name: card.set_name, imageUri: cardImageUri,
+                        })}>
+                          <Ionicons name={isFavorite(card.id) ? "star" : "star-outline"} size={22}
+                            color={isFavorite(card.id) ? "#f59e0b" : colors.mutedForeground} />
+                        </TouchableOpacity>
+                      </View>
+                      {altName ? (
+                        <Text style={[styles.cardEnName, { color: colors.mutedForeground }]}>{altName}</Text>
+                      ) : null}
                     </View>
                   )}
                   {/* Refresh button — always visible when card is loaded */}
@@ -954,11 +1061,6 @@ export default function CardSearchScreen() {
                         : (showEnglish ? "Update card" : "Karte aktualisieren")}
                     </Text>
                   </TouchableOpacity>
-
-                  {/* English name (if German card, when no hero) */}
-                  {!cardImageUri && card.printed_name && card.name !== card.printed_name && (
-                    <Text style={[styles.cardEnName, { color: colors.mutedForeground }]}>{card.name}</Text>
-                  )}
 
                   {/* Type */}
                   {displayTypeLine ? (
@@ -1098,69 +1200,6 @@ export default function CardSearchScreen() {
                 </View>
               ) : null}
 
-              {/* ── Druckvarianten ── */}
-              {(loadingPrints || prints.length > 1) && (
-                <View style={[styles.printsSection, { borderTopColor: colors.border }]}>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                    <Text style={[styles.printsLabel, { color: colors.mutedForeground }]}>
-                      {showEnglish ? "Choose Printing" : "Druckvariante wählen"}
-                      {!loadingPrints && prints.length > 0 && ` (${prints.length})`}
-                    </Text>
-                    <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: "#1da462" }}>
-                      € via Cardmarket
-                    </Text>
-                  </View>
-                  {loadingPrints ? (
-                    <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 6 }} />
-                  ) : (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}
-                      style={styles.printsScroll} contentContainerStyle={styles.printsRow}>
-                      {prints.map((p) => {
-                        const imgUri = p.image_uris?.normal ?? p.image_uris?.small ?? p.card_faces?.[0]?.image_uris?.normal;
-                        const isSelected = selectedPrint ? selectedPrint.id === p.id : p.id === card?.id;
-                        const year = p.released_at ? p.released_at.slice(0, 4) : "";
-                        const priceEur = p.prices?.eur ? parseFloat(p.prices.eur) : null;
-                        const priceEurFoil = p.prices?.eur_foil ? parseFloat(p.prices.eur_foil) : null;
-                        const priceUsd = p.prices?.usd ? parseFloat(p.prices.usd) : null;
-                        return (
-                          <TouchableOpacity key={p.id}
-                            style={[styles.printThumbWrap, isSelected && { borderColor: colors.primary, borderWidth: 2.5 }]}
-                            onPress={() => setSelectedPrint(p.id === card?.id ? null : p)}>
-                            {imgUri ? (
-                              <Image source={{ uri: imgUri }} style={styles.printThumb} resizeMode="cover" />
-                            ) : (
-                              <View style={[styles.printThumb, { backgroundColor: colors.secondary, justifyContent: "center", alignItems: "center" }]}>
-                                <Ionicons name="image-outline" size={28} color={colors.mutedForeground} />
-                              </View>
-                            )}
-                            <Text style={[styles.printSetName, { color: isSelected ? colors.primary : colors.mutedForeground }]} numberOfLines={2}>
-                              {p.set_name ?? p.set?.toUpperCase() ?? ""}{year ? ` ${year}` : ""}
-                            </Text>
-                            {(priceEur != null || priceUsd != null) && (
-                              <View style={styles.printPriceRow}>
-                                {priceEur != null && (
-                                  <Text style={[styles.printPrice, { color: "#1da462" }]}>€{priceEur.toFixed(2)}</Text>
-                                )}
-                                {priceEurFoil != null && (
-                                  <Text style={[styles.printPriceFoil, { color: "#e5b94e" }]}>✦€{priceEurFoil.toFixed(2)}</Text>
-                                )}
-                                {priceEur == null && priceUsd != null && (
-                                  <Text style={[styles.printPrice, { color: "#1da462" }]}>${priceUsd.toFixed(2)}</Text>
-                                )}
-                              </View>
-                            )}
-                            {isSelected && (
-                              <View style={[styles.printCheckmark, { backgroundColor: colors.primary }]}>
-                                <Ionicons name="checkmark" size={12} color="#fff" />
-                              </View>
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </ScrollView>
-                  )}
-                </View>
-              )}
 
               {/* ── External links ── */}
               <View style={[styles.externalLinks, { borderTopColor: colors.border }]}>
@@ -1619,11 +1658,43 @@ export default function CardSearchScreen() {
           onRequestClose={() => setShowImageZoom(false)}>
           <TouchableOpacity style={styles.zoomOverlay} activeOpacity={1} onPress={() => setShowImageZoom(false)}>
             <Image
-              source={{ uri: card?.image_uris?.normal ?? card?.card_faces?.[0]?.image_uris?.normal }}
+              source={{ uri: activeCard?.image_uris?.normal ?? activeCard?.card_faces?.[0]?.image_uris?.normal }}
               style={styles.zoomImage}
               resizeMode="contain"
             />
             <TouchableOpacity style={styles.zoomClose} onPress={() => setShowImageZoom(false)}>
+              <Ionicons name="close-circle" size={34} color="#ffffffcc" />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* ── Print Zoom Modal ── */}
+        <Modal visible={!!zoomedPrint} transparent animationType="fade"
+          onRequestClose={() => setZoomedPrint(null)}>
+          <TouchableOpacity style={styles.zoomOverlay} activeOpacity={1} onPress={() => setZoomedPrint(null)}>
+            {zoomedPrint && (() => {
+              const imgUri = zoomedPrint.image_uris?.normal ?? zoomedPrint.card_faces?.[0]?.image_uris?.normal;
+              const year = zoomedPrint.released_at ? zoomedPrint.released_at.slice(0, 4) : "";
+              const priceEur = zoomedPrint.prices?.eur ? parseFloat(zoomedPrint.prices.eur) : null;
+              const priceEurFoil = zoomedPrint.prices?.eur_foil ? parseFloat(zoomedPrint.prices.eur_foil) : null;
+              return (
+                <View style={styles.printZoomContent}>
+                  {imgUri && (
+                    <Image source={{ uri: imgUri }} style={styles.printZoomImage} resizeMode="contain" />
+                  )}
+                  <View style={styles.printZoomMeta}>
+                    <Text style={styles.printZoomSet}>{zoomedPrint.set_name ?? zoomedPrint.set?.toUpperCase() ?? ""}{year ? ` · ${year}` : ""}</Text>
+                    {priceEur != null && (
+                      <Text style={styles.printZoomPrice}>€{priceEur.toFixed(2)}</Text>
+                    )}
+                    {priceEurFoil != null && (
+                      <Text style={styles.printZoomFoil}>✦ Foil €{priceEurFoil.toFixed(2)}</Text>
+                    )}
+                  </View>
+                </View>
+              );
+            })()}
+            <TouchableOpacity style={styles.zoomClose} onPress={() => setZoomedPrint(null)}>
               <Ionicons name="close-circle" size={34} color="#ffffffcc" />
             </TouchableOpacity>
           </TouchableOpacity>
@@ -1724,7 +1795,7 @@ export default function CardSearchScreen() {
                         addCardToDeck(pickedDeckId, {
                           id: src.id,
                           name: card.name,
-                          printed_name: card.printed_name ?? (selectedPrint as CardPrint | null)?.printed_name,
+                          printed_name: cardDe?.printed_name ?? card.printed_name ?? (selectedPrint as CardPrint | null)?.printed_name,
                           mana_cost: card.mana_cost,
                           cmc: card.cmc,
                           type_line: card.type_line,
@@ -2028,4 +2099,13 @@ const styles = StyleSheet.create({
   quickCountText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   confirmBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 12, paddingVertical: 14, marginTop: 4 },
   confirmBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  printsSectionCard: { borderRadius: 14, borderWidth: 1, padding: 14 },
+  langTogglePill: { flexDirection: "row", borderRadius: 10, paddingHorizontal: 2, paddingVertical: 2, gap: 2, alignItems: "center" },
+  langToggleOpt: { fontSize: 12, fontFamily: "Inter_500Medium", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, color: "#888" },
+  printZoomContent: { alignItems: "center", gap: 16 },
+  printZoomImage: { width: "86%", aspectRatio: 0.72, borderRadius: 16, maxHeight: 520 },
+  printZoomMeta: { alignItems: "center", gap: 4 },
+  printZoomSet: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  printZoomPrice: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#1da462" },
+  printZoomFoil: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#e5b94e" },
 });
