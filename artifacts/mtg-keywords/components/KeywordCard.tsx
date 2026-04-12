@@ -139,6 +139,19 @@ export function KeywordCard({ keyword, showEnglish, expanded, onPress }: Props) 
                   </Text>
                 </View>
               )}
+              {(keyword.tipsDe || keyword.tipsEn) && (
+                <View style={[styles.tipsBox, { backgroundColor: accentColor + "10", borderColor: accentColor + "40" }]}>
+                  <View style={styles.tipsHeader}>
+                    <Ionicons name="bulb-outline" size={13} color={accentColor} />
+                    <Text style={[styles.tipsLabel, { color: accentColor }]}>
+                      {showEnglish ? "Strategy Tips" : "Strategie-Tipps"}
+                    </Text>
+                  </View>
+                  <Text style={[styles.tipsText, { color: colors.cardForeground }]}>
+                    {showEnglish ? (keyword.tipsEn ?? keyword.tipsDe) : (keyword.tipsDe ?? keyword.tipsEn)}
+                  </Text>
+                </View>
+              )}
               {keyword.crRule && (
                 <View style={[styles.crBox, { backgroundColor: accentColor + "12", borderColor: accentColor + "33" }]}>
                   <Ionicons name="book-outline" size={11} color={accentColor} />
@@ -261,5 +274,27 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     letterSpacing: 0.3,
     flexShrink: 0,
+  },
+  tipsBox: {
+    borderWidth: 1,
+    borderRadius: 6,
+    padding: 10,
+    gap: 5,
+  },
+  tipsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  tipsLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  tipsText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 19,
   },
 });
