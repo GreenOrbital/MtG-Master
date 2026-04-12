@@ -63,59 +63,50 @@ const BANNERS: BannerConfig[] = [
 
 const ROTATION_INTERVAL = 8000;
 
-// ─── Per-card cache & in-flight tracking ──────────────────────────────────────
-// Using per-card tracking (not a global flag) so failed fetches can be retried.
+// ─── Art crop cache & listeners ────────────────────────────────────────────
 const artCropCache: Record<string, string> = {};
-const artCropInFlight = new Set<string>();
+let fetchStarted = false;
 const artCropListeners = new Set<() => void>();
 
 function notifyListeners() {
   artCropListeners.forEach((fn) => fn());
 }
 
-function fetchWithTimeout(url: string, ms: number): Promise<Response> {
-  const ctrl = new AbortController();
-  const id = setTimeout(() => ctrl.abort(), ms);
-  return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(id));
-}
+// Fetch all banner art crops in ONE collection request
+async function fetchAllArtCrops(cards: string[]) {
+  if (fetchStarted) return;
+  fetchStarted = true;
 
-async function fetchSingleArtCrop(name: string) {
-  if (artCropCache[name] || artCropInFlight.has(name)) return;
-  artCropInFlight.add(name);
-
-  for (let attempt = 0; attempt < 4; attempt++) {
-    try {
-      if (attempt > 0) await new Promise((r) => setTimeout(r, 800 * attempt));
-      const res = await fetchWithTimeout(
-        `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`,
-        10000
-      );
-      if (!res.ok) continue;
-      const data = await res.json();
-      const url =
-        data?.image_uris?.art_crop ??
-        data?.card_faces?.[0]?.image_uris?.art_crop;
-      if (url) {
-        artCropCache[name] = url;
-        notifyListeners();
-        artCropInFlight.delete(name);
-        return;
-      }
-    } catch {}
-  }
-
-  // Remove from in-flight on failure so next mount can retry
-  artCropInFlight.delete(name);
-}
-
-async function fetchArtCrops(cards: string[]) {
   // On native, wait for network to stabilize after app start
   if (Platform.OS !== "web") {
-    await new Promise((r) => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, 800));
   }
-  for (const name of cards) {
-    fetchSingleArtCrop(name);
-    await new Promise((r) => setTimeout(r, 150));
+
+  try {
+    const res = await fetch("https://api.scryfall.com/cards/collection", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifiers: cards.map((name) => ({ name })) }),
+    });
+    if (!res.ok) { fetchStarted = false; return; }
+    const json = await res.json() as { data: any[] };
+    let changed = false;
+    for (const raw of json.data ?? []) {
+      const artCrop =
+        raw?.image_uris?.art_crop ??
+        raw?.card_faces?.[0]?.image_uris?.art_crop;
+      if (artCrop && raw?.name) {
+        // Match back to our requested name (exact or prefix)
+        const match = cards.find(
+          (c) => c.toLowerCase() === raw.name.toLowerCase()
+        ) ?? raw.name;
+        artCropCache[match] = artCrop;
+        changed = true;
+      }
+    }
+    if (changed) notifyListeners();
+  } catch {
+    fetchStarted = false; // allow retry on next mount
   }
 }
 
@@ -125,13 +116,10 @@ function useScryfallArtCrops(cards: string[]) {
   useEffect(() => {
     const listener = () => forceUpdate((n) => n + 1);
     artCropListeners.add(listener);
-
-    // Trigger fetch for any missing cards
-    const missing = cards.filter((c) => !artCropCache[c] && !artCropInFlight.has(c));
-    if (missing.length > 0) fetchArtCrops(missing);
-
+    fetchAllArtCrops(cards);
     return () => { artCropListeners.delete(listener); };
-  }, [cards.join(",")]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return artCropCache;
 }
