@@ -64,49 +64,36 @@ export type ArchetypeMeta = {
   summaryEn: string;
 };
 
-// ─── Safe fetch with timeout (AbortController — works on all platforms) ───────
+// ─── In-memory cache ────────────────────────────────────────────────────────
+const cardCache = new Map<string, ScryfallCard>();
+
+// ─── Safe fetch with timeout ────────────────────────────────────────────────
 function fetchTimeout(url: string, ms: number): Promise<Response> {
   const ctrl = new AbortController();
   const id = setTimeout(() => ctrl.abort(), ms);
   return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(id));
 }
 
-// ─── Scryfall fetch ────────────────────────────────────────────────────────
-
+// ─── Fetch single card — English only, fast ─────────────────────────────────
 async function fetchCard(name: string): Promise<ScryfallCard | null> {
+  if (cardCache.has(name)) return cardCache.get(name)!;
   try {
-    // Fetch English first — guaranteed to have image_uris (same as card search)
-    const enUrl = `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`;
-    const enRes = await fetchTimeout(enUrl, 8000);
-    if (!enRes.ok) return null;
-    const data = await enRes.json() as any;
-
+    const res = await fetchTimeout(
+      `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`,
+      8000
+    );
+    if (!res.ok) return null;
+    const data = await res.json() as any;
     const imageUri = data.image_uris?.normal ?? data.card_faces?.[0]?.image_uris?.normal ?? null;
-
-    // Try to get German name/text in background (non-blocking, best-effort)
-    let nameDe: string = data.name;
-    let oracleTextDe: string = data.oracle_text ?? "";
-    try {
-      const deRes = await fetchTimeout(
-        `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}&lang=de`,
-        5000
-      );
-      if (deRes.ok) {
-        const deData = await deRes.json() as any;
-        nameDe = deData.printed_name ?? data.name;
-        oracleTextDe = deData.printed_text ?? data.oracle_text ?? "";
-      }
-    } catch {}
-
-    return {
+    const card: ScryfallCard = {
       id: data.id,
       name: data.name,
-      nameDe,
+      nameDe: data.name,
       mana_cost: data.mana_cost ?? "",
       cmc: data.cmc ?? 0,
       type_line: data.type_line ?? "",
       oracle_text: data.oracle_text ?? "",
-      oracle_text_de: oracleTextDe,
+      oracle_text_de: data.oracle_text ?? "",
       keywords: data.keywords ?? [],
       imageUri,
       priceEur: data.prices?.eur ? parseFloat(data.prices.eur) : null,
@@ -117,9 +104,36 @@ async function fetchCard(name: string): Promise<ScryfallCard | null> {
       set_name: data.set_name ?? "",
       legalities: data.legalities ?? {},
     };
+    cardCache.set(name, card);
+    return card;
   } catch {
     return null;
   }
+}
+
+// ─── Parallel batch fetch (max N concurrent to respect Scryfall rate limits) ─
+async function fetchCardsBatch(names: string[], concurrency = 5): Promise<Map<string, ScryfallCard>> {
+  const result = new Map<string, ScryfallCard>();
+  // Filter out already cached
+  const toFetch = names.filter((n) => !cardCache.has(n));
+  const cached = names.filter((n) => cardCache.has(n));
+  for (const n of cached) result.set(n, cardCache.get(n)!);
+
+  // Fetch in parallel batches
+  for (let i = 0; i < toFetch.length; i += concurrency) {
+    const batch = toFetch.slice(i, i + concurrency);
+    const results = await Promise.allSettled(batch.map((name) => fetchCard(name)));
+    results.forEach((r, idx) => {
+      if (r.status === "fulfilled" && r.value) {
+        result.set(batch[idx], r.value);
+      }
+    });
+    // Small delay between batches to respect Scryfall rate limits
+    if (i + concurrency < toFetch.length) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+  }
+  return result;
 }
 
 // ─── Public API ────────────────────────────────────────────────────────────
@@ -151,12 +165,8 @@ export async function getDeckSuggestion(key: string, format: string): Promise<De
     ...archetype.lands.map((l) => l.name),
   ])];
 
-  const cardDataMap = new Map<string, ScryfallCard>();
-  for (const name of uniqueNames) {
-    const card = await fetchCard(name);
-    if (card) cardDataMap.set(name, card);
-    await new Promise((r) => setTimeout(r, 80));
-  }
+  // Fetch all cards in parallel batches
+  const cardDataMap = await fetchCardsBatch(uniqueNames, 5);
 
   function buildCard(slot: CardSlot, isLand = false): SuggestedCard {
     const card = cardDataMap.get(slot.name);
