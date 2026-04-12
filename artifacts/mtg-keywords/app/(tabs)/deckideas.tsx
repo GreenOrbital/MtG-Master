@@ -799,8 +799,6 @@ export default function DeckIdeasScreen() {
   const [loadingSuggestion, setLoadingSuggestion] = useState(false);
   const [suggestionError, setSuggestionError] = useState<string | null>(null);
 
-  const [detailCard, setDetailCard] = useState<SuggestedCard | null>(null);
-  const [showCardDetail, setShowCardDetail] = useState(false);
 
   const [importFeedback, setImportFeedback] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -1200,7 +1198,7 @@ export default function DeckIdeasScreen() {
                 </View>
                 <TouchableOpacity
                   style={styles.commanderCardRow}
-                  onPress={() => { setDetailCard(suggestion.commanderCard!); setShowCardDetail(true); }}
+                  onPress={() => router.push({ pathname: "/(tabs)/scan", params: { q: suggestion.commanderCard!.name } })}
                   activeOpacity={0.82}
                 >
                   {suggestion.commanderCard.imageUri ? (
@@ -1268,7 +1266,7 @@ export default function DeckIdeasScreen() {
                   card={card}
                   showEnglish={showEnglish}
                   colors={colors}
-                  onPress={(c) => { setDetailCard(c); setShowCardDetail(true); }}
+                  onPress={(c) => router.push({ pathname: "/(tabs)/scan", params: { q: c.name } })}
                 />
               ))}
             </View>
@@ -1290,7 +1288,7 @@ export default function DeckIdeasScreen() {
                   card={card}
                   showEnglish={showEnglish}
                   colors={colors}
-                  onPress={(c) => { setDetailCard(c); setShowCardDetail(true); }}
+                  onPress={(c) => router.push({ pathname: "/(tabs)/scan", params: { q: c.name } })}
                 />
               ))}
             </View>
@@ -1356,14 +1354,6 @@ export default function DeckIdeasScreen() {
         )}
       </ScrollView>
 
-      {/* Card detail modal */}
-      <CardDetailModal
-        card={detailCard}
-        visible={showCardDetail}
-        onClose={() => setShowCardDetail(false)}
-        showEnglish={showEnglish}
-        colors={colors}
-      />
     </View>
   );
 }
