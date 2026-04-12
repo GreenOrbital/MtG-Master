@@ -12,10 +12,6 @@ import {
 import { useColors } from "@/hooks/useColors";
 import { useSettings } from "@/context/SettingsContext";
 
-// ─── Banner-Konfiguration ─────────────────────────────────────────────────────
-// DE: tag=masterofmtg-21  |  EN: tag=mtg08d-20
-// Kartenbilder: Scryfall Art Crop (kostenlose, öffentliche CDN-URLs)
-
 interface BannerConfig {
   cardName: string;
   titleDe: string;
@@ -67,11 +63,11 @@ const BANNERS: BannerConfig[] = [
 
 const ROTATION_INTERVAL = 8000;
 
-// ─── Module-level cache: shared across ALL AdBanner instances ─────────────────
-// Prevents 6 tabs × 4 cards = 24 simultaneous Scryfall requests at startup.
+// ─── Per-card cache & in-flight tracking ──────────────────────────────────────
+// Using per-card tracking (not a global flag) so failed fetches can be retried.
 const artCropCache: Record<string, string> = {};
+const artCropInFlight = new Set<string>();
 const artCropListeners = new Set<() => void>();
-let artCropFetchStarted = false;
 
 function notifyListeners() {
   artCropListeners.forEach((fn) => fn());
@@ -83,25 +79,43 @@ function fetchWithTimeout(url: string, ms: number): Promise<Response> {
   return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(id));
 }
 
+async function fetchSingleArtCrop(name: string) {
+  if (artCropCache[name] || artCropInFlight.has(name)) return;
+  artCropInFlight.add(name);
+
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 800 * attempt));
+      const res = await fetchWithTimeout(
+        `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`,
+        10000
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+      const url =
+        data?.image_uris?.art_crop ??
+        data?.card_faces?.[0]?.image_uris?.art_crop;
+      if (url) {
+        artCropCache[name] = url;
+        notifyListeners();
+        artCropInFlight.delete(name);
+        return;
+      }
+    } catch {}
+  }
+
+  // Remove from in-flight on failure so next mount can retry
+  artCropInFlight.delete(name);
+}
+
 async function fetchArtCrops(cards: string[]) {
-  if (artCropFetchStarted) return;
-  artCropFetchStarted = true;
+  // On native, wait for network to stabilize after app start
+  if (Platform.OS !== "web") {
+    await new Promise((r) => setTimeout(r, 1500));
+  }
   for (const name of cards) {
-    let succeeded = false;
-    for (let attempt = 0; attempt < 3 && !succeeded; attempt++) {
-      try {
-        if (attempt > 0) await new Promise((r) => setTimeout(r, 500 * attempt));
-        const res = await fetchWithTimeout(
-          `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}`,
-          8000
-        );
-        if (!res.ok) continue;
-        const data = await res.json();
-        const url = data?.image_uris?.art_crop ?? data?.card_faces?.[0]?.image_uris?.art_crop;
-        if (url) { artCropCache[name] = url; notifyListeners(); succeeded = true; }
-      } catch {}
-    }
-    await new Promise((r) => setTimeout(r, 200));
+    fetchSingleArtCrop(name);
+    await new Promise((r) => setTimeout(r, 150));
   }
 }
 
@@ -111,9 +125,13 @@ function useScryfallArtCrops(cards: string[]) {
   useEffect(() => {
     const listener = () => forceUpdate((n) => n + 1);
     artCropListeners.add(listener);
-    fetchArtCrops(cards);
+
+    // Trigger fetch for any missing cards
+    const missing = cards.filter((c) => !artCropCache[c] && !artCropInFlight.has(c));
+    if (missing.length > 0) fetchArtCrops(missing);
+
     return () => { artCropListeners.delete(listener); };
-  }, []);
+  }, [cards.join(",")]);
 
   return artCropCache;
 }
@@ -125,7 +143,8 @@ export function AdBanner() {
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const nd = Platform.OS !== "web";
 
-  const artCrops = useScryfallArtCrops(BANNERS.map((b) => b.cardName));
+  const cardNames = BANNERS.map((b) => b.cardName);
+  const artCrops = useScryfallArtCrops(cardNames);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -157,9 +176,7 @@ export function AdBanner() {
           imageStyle={styles.bgImage}
           resizeMode="cover"
         >
-          {/* Dark gradient overlay */}
           <View style={[styles.overlay, { backgroundColor: imageUrl ? "rgba(10,8,5,0.68)" : colors.card }]} />
-
           <View style={styles.content}>
             <View style={{ flex: 1 }}>
               <Text style={styles.title} numberOfLines={1}>{title}</Text>
