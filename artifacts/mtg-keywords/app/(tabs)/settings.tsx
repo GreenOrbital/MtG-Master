@@ -220,6 +220,10 @@ export default function SettingsScreen() {
             }
           />
           <SettingRow
+            label={showEnglish ? "Card Prices" : "Kartenpreise"}
+            subtitle={showEnglish ? "Live from Scryfall · Updated daily (Cardmarket / TCGPlayer)" : "Live von Scryfall · Täglich aktualisiert (Cardmarket / TCGPlayer)"}
+          />
+          <SettingRow
             label={showEnglish ? "App Version" : "App-Version"}
             right={
               <Text style={[styles.statValue, { color: colors.mutedForeground }]}>1.0.0</Text>
