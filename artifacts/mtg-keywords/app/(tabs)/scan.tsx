@@ -544,6 +544,21 @@ async function fetchBoosterPacks(cardName: string): Promise<BoosterPrint[]> {
   } catch { return []; }
 }
 
+// ─── Oracle Rulings ──────────────────────────────────────────────────────────
+type Ruling = { comment: string; published_at: string; source: string };
+async function fetchRulings(cardId: string): Promise<Ruling[]> {
+  try {
+    const res = await fetch(`https://api.scryfall.com/cards/${cardId}/rulings`, { headers: HEADERS });
+    if (!res.ok) return [];
+    const json = await res.json() as { data: any[] };
+    return (json.data ?? []).map((r: any) => ({
+      comment: r.comment ?? "",
+      published_at: r.published_at ?? "",
+      source: r.source ?? "",
+    }));
+  } catch { return []; }
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function CardSearchScreen() {
@@ -572,6 +587,9 @@ export default function CardSearchScreen() {
   const [showCombosSection, setShowCombosSection] = useState(false);
   const [showSimilarSection, setShowSimilarSection] = useState(false);
   const [showBoosterSection, setShowBoosterSection] = useState(false);
+  const [rulings, setRulings] = useState<{ comment: string; published_at: string; source: string }[]>([]);
+  const [loadingRulings, setLoadingRulings] = useState(false);
+  const [showRulingsSection, setShowRulingsSection] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
   const [showDeckPicker, setShowDeckPicker] = useState(false);
   const [addedToDeck, setAddedToDeck] = useState<string | null>(null);
@@ -719,6 +737,9 @@ export default function CardSearchScreen() {
     setBoosterPacks([]);
     setLoadingBooster(true);
     fetchBoosterPacks(enCard.name).then((b) => { setBoosterPacks(b); setLoadingBooster(false); });
+    setRulings([]);
+    setLoadingRulings(true);
+    fetchRulings(enCard.id).then((r) => { setRulings(r); setLoadingRulings(false); });
     setPrints([]);
     setLoadingPrints(true);
     fetchAllPrints(enCard.name).then((p) => { setPrints(p); setLoadingPrints(false); });
@@ -785,6 +806,7 @@ export default function CardSearchScreen() {
     setSimilarCards([]); setLoadingSimilar(false);
     setCombos([]); setLoadingCombos(false); setExpandedComboId(null);
     setBoosterPacks([]); setLoadingBooster(false);
+    setRulings([]); setLoadingRulings(false); setShowRulingsSection(false);
     setPrints([]); setLoadingPrints(false); setSelectedPrint(null); setZoomedPrint(null);
     setShowFormatInfo(false); setExpandedFormatKey(null);
     setShowKeywordsSection(false); setShowCombosSection(false);
@@ -1416,6 +1438,49 @@ export default function CardSearchScreen() {
               )}
             </View>
 
+            {/* ── Oracle Rulings ── */}
+            {(loadingRulings || rulings.length > 0) && (
+              <View style={[styles.collapsibleSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <TouchableOpacity style={styles.collapsibleHeader} onPress={() => setShowRulingsSection(v => !v)}>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <Ionicons name="document-text-outline" size={15} color={colors.primary} />
+                      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                        {showEnglish ? "Official Rulings" : "Offizielle Regelfestlegungen"}
+                      </Text>
+                      {loadingRulings ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : rulings.length > 0 ? (
+                        <View style={[styles.comboBadge, { backgroundColor: colors.primary }]}>
+                          <Text style={styles.comboBadgeText}>{rulings.length}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>
+                      {loadingRulings
+                        ? (showEnglish ? "Loading…" : "Lädt…")
+                        : rulings.length > 0
+                          ? (showEnglish ? `${rulings.length} ruling(s) from Wizards of the Coast` : `${rulings.length} Regel-Entscheid(e) von Wizards of the Coast`)
+                          : (showEnglish ? "No rulings for this card" : "Keine Regelfestlegungen für diese Karte")}
+                    </Text>
+                  </View>
+                  <Ionicons name={showRulingsSection ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+                {showRulingsSection && !loadingRulings && rulings.length > 0 && (
+                  <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
+                    {rulings.map((r, i) => (
+                      <View key={i} style={[styles.rulingRow, i < rulings.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
+                        <Text style={[styles.rulingComment, { color: colors.foreground }]}>{r.comment}</Text>
+                        <Text style={[styles.rulingMeta, { color: colors.mutedForeground }]}>
+                          {r.published_at} · {r.source === "wotc" ? "Wizards of the Coast" : r.source.toUpperCase()}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+
             {/* ── Commander Spellbook Combos ── */}
             {(loadingCombos || combos.length > 0) && (
               <View style={[styles.collapsibleSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -2019,6 +2084,9 @@ const styles = StyleSheet.create({
   comboHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
   comboBadge: { borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2, minWidth: 22, alignItems: "center" },
   comboBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#fff" },
+  rulingRow: { paddingVertical: 12 },
+  rulingComment: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 20 },
+  rulingMeta: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 5, opacity: 0.7 },
   comboSource: { fontSize: 11, fontFamily: "Inter_400Regular" },
   comboLoading: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10 },
   comboLoadingText: { fontSize: 13, fontFamily: "Inter_400Regular" },
