@@ -61,6 +61,13 @@ function WebSidebar() {
       labelEn: "Deck Ideas",
     },
     {
+      route: "/rules",
+      iconDefault: "help-circle-outline" as const,
+      iconActive: "help-circle" as const,
+      labelDe: "Regelwerk",
+      labelEn: "Rules FAQ",
+    },
+    {
       route: "/partner",
       iconDefault: "storefront-outline" as const,
       iconActive: "storefront" as const,
@@ -153,6 +160,10 @@ function NativeTabLayout() {
       <NativeTabs.Trigger name="deckideas">
         <Icon sf={{ default: "lightbulb", selected: "lightbulb.fill" }} />
         <Label>{showEnglish ? "Deck Ideas" : "Ideen"}</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="rules">
+        <Icon sf={{ default: "questionmark.circle", selected: "questionmark.circle.fill" }} />
+        <Label>{showEnglish ? "Rules FAQ" : "Regelwerk"}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="partner">
         <Icon sf={{ default: "storefront", selected: "storefront.fill" }} />
@@ -250,6 +261,18 @@ function ClassicTabLayout() {
               <SymbolView name="lightbulb" tintColor={color} size={24} />
             ) : (
               <Ionicons name="bulb-outline" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="rules"
+        options={{
+          title: showEnglish ? "Rules FAQ" : "Regelwerk",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="questionmark.circle" tintColor={color} size={24} />
+            ) : (
+              <Ionicons name="help-circle-outline" size={22} color={color} />
             ),
         }}
       />
