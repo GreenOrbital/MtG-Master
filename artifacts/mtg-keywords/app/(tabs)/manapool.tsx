@@ -669,6 +669,37 @@ function getTypeBreakdown(cards: DeckCard[]): TypeGroup[] {
 type DuplicateCard = { name: string; count: number };
 const BASIC_LANDS = new Set(["Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes", "Snow-Covered Plains", "Snow-Covered Island", "Snow-Covered Swamp", "Snow-Covered Mountain", "Snow-Covered Forest"]);
 
+const LAND_SUBTYPE_INFO: Record<string, { de: string; en: string }> = {
+  Plains:       { de: "{T}: Füge {W} hinzu · Grundland · unbegrenzt im Deck", en: "{T}: Add {W} · Basic land · unlimited copies" },
+  Island:       { de: "{T}: Füge {U} hinzu · Grundland · unbegrenzt im Deck", en: "{T}: Add {U} · Basic land · unlimited copies" },
+  Swamp:        { de: "{T}: Füge {B} hinzu · Grundland · unbegrenzt im Deck", en: "{T}: Add {B} · Basic land · unlimited copies" },
+  Mountain:     { de: "{T}: Füge {R} hinzu · Grundland · unbegrenzt im Deck", en: "{T}: Add {R} · Basic land · unlimited copies" },
+  Forest:       { de: "{T}: Füge {G} hinzu · Grundland · unbegrenzt im Deck", en: "{T}: Add {G} · Basic land · unlimited copies" },
+  Cave:         { de: "Betritt getappt, es sei denn du kontrollierst einen anderen Höhlen. Oft mit ETB-Fähigkeiten.", en: "Enters tapped unless you control another Cave. Often has ETB abilities." },
+  Desert:       { de: "Wüstenländer können für Schaden oder Spezialeffekte geopfert werden; Synergien mit 'Wüste'-Karten.", en: "Can be sacrificed for damage or effects; synergy with other Desert cards." },
+  Gate:         { de: "Betritt getappt · zählt als zwei Farben · Synergie mit Tor-Karten (z.B. Schwall der Tore).", en: "Enters tapped · counts as two colors · synergy with Gate payoffs (e.g. Guild Gate effects)." },
+  Lair:         { de: "Legendäre Höhlenreviere mit starken einzigartigen Fähigkeiten. Max. 1× im Deck (Legende).", en: "Legendary lairs with powerful unique abilities. Max 1 copy per deck (legend rule)." },
+  Locus:        { de: "Locus-Länder (Urzas Mine, Kraftwerk, Turm) erzeugen zusammen 7 Mana bei komplettem Set.", en: "Locus lands (Urza's Mine, Power-Plant, Tower) produce up to 7 mana as a complete set." },
+  Mine:         { de: "Urzas Mine: Teil der Urza-Trifecta. Allein {T}: {1}; mit Power-Plant+Tower: {T}: {3}.", en: "Urza's Mine: Part of the Urza trifecta. Alone: {T}: {1}; with set: {T}: {3}." },
+  "Power-Plant":{ de: "Urzas Kraftwerk: Teil der Urza-Trifecta. Allein {T}: {1}; komplett: {T}: {2}.", en: "Urza's Power-Plant: Part of the Urza trifecta. Alone: {T}: {1}; full set: {T}: {2}." },
+  Tower:        { de: "Urzas Turm: Teil der Urza-Trifecta. Allein {T}: {1}; komplett: {T}: {2}.", en: "Urza's Tower: Part of the Urza trifecta. Alone: {T}: {1}; full set: {T}: {2}." },
+};
+
+function getLandSubtypeInfoForCards(cards: DeckCard[], showEn: boolean): Array<{ subtype: string; desc: string }> {
+  const foundSubtypes = new Set<string>();
+  for (const c of cards) {
+    const tl = c.type_line ?? "";
+    const afterDash = tl.split("—")[1] ?? tl;
+    for (const st of Object.keys(LAND_SUBTYPE_INFO)) {
+      if (afterDash.includes(st)) foundSubtypes.add(st);
+    }
+  }
+  return Array.from(foundSubtypes).map((st) => ({
+    subtype: st,
+    desc: showEn ? LAND_SUBTYPE_INFO[st].en : LAND_SUBTYPE_INFO[st].de,
+  }));
+}
+
 function getSingletonViolations(cards: DeckCard[]): DuplicateCard[] {
   return cards
     .filter((c) => c.count > 1 && !BASIC_LANDS.has(c.name))
@@ -784,6 +815,7 @@ export default function ManapoolScreen() {
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [showFreeCardsModal, setShowFreeCardsModal] = useState(false);
   const [freeCardDeckPicker, setFreeCardDeckPicker] = useState<string | null>(null); // cardId being assigned to a deck
+  const [expandedFreeCategories, setExpandedFreeCategories] = useState<Set<string>>(new Set(["creature", "land"]));
   const [showCardSearch, setShowCardSearch] = useState(false);
 
   // ── Shared simulation controls (format + mulligans) ─────────────────────────
@@ -3431,83 +3463,244 @@ export default function ManapoolScreen() {
                       : "Karten, die aus Decks entfernt werden, landen hier statt dauerhaft gelöscht zu werden."}
                   </Text>
                 </View>
-              ) : (
-                <>
-                  {freeCards.map((card) => (
-                    <View key={card.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border, gap: 10 }}>
-                      {/* Card image */}
-                      {card.imageUri ? (
-                        <Image
-                          source={{ uri: card.imageUri }}
-                          style={{ width: 38, height: 52, borderRadius: 4 }}
-                          resizeMode="cover"
-                        />
-                      ) : (
-                        <View style={{ width: 38, height: 52, borderRadius: 4, backgroundColor: colors.secondary, alignItems: "center", justifyContent: "center" }}>
-                          <Text style={{ fontSize: 16, color: colors.mutedForeground }}>🂠</Text>
-                        </View>
-                      )}
-
-                      {/* Name + type */}
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.foreground }} numberOfLines={1}>{card.name}</Text>
-                        {card.type_line ? (
-                          <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground }} numberOfLines={1}>{card.type_line}</Text>
-                        ) : null}
-                        {card.mana_cost ? (
-                          <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.primary }}>{card.mana_cost}</Text>
-                        ) : null}
+              ) : (() => {
+                // ── Helper: single card row ─────────────────────────────────
+                const renderRow = (card: DeckCard, isLast: boolean) => (
+                  <View key={card.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 9, paddingHorizontal: 12, gap: 9, borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth, borderBottomColor: colors.border }}>
+                    {card.imageUri ? (
+                      <Image source={{ uri: card.imageUri }} style={{ width: 34, height: 48, borderRadius: 4 }} resizeMode="cover" />
+                    ) : (
+                      <View style={{ width: 34, height: 48, borderRadius: 4, backgroundColor: colors.secondary, alignItems: "center", justifyContent: "center" }}>
+                        <Ionicons name="card-outline" size={16} color={colors.mutedForeground} />
                       </View>
-
-                      {/* Count stepper */}
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                        <TouchableOpacity
-                          onPress={() => adjustFreeCardCount(card.id, -1)}
-                          style={{ width: 28, height: 28, borderRadius: 7, backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}
-                        >
-                          <Ionicons name="remove" size={14} color={colors.foreground} />
-                        </TouchableOpacity>
-                        <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.foreground, width: 28, textAlign: "center" }}>{card.count}</Text>
-                        <TouchableOpacity
-                          onPress={() => adjustFreeCardCount(card.id, 1)}
-                          style={{ width: 28, height: 28, borderRadius: 7, backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}
-                        >
-                          <Ionicons name="add" size={14} color={colors.foreground} />
-                        </TouchableOpacity>
-                      </View>
-
-                      {/* Add to Deck button */}
-                      <TouchableOpacity
-                        onPress={() => setFreeCardDeckPicker(card.id)}
-                        style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: colors.primary + "22", borderWidth: 1, borderColor: colors.primary + "55" }}
-                        disabled={decks.length === 0}
-                      >
-                        <Ionicons name="add-circle-outline" size={16} color={decks.length > 0 ? colors.primary : colors.mutedForeground} />
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.foreground }} numberOfLines={1}>{card.printed_name ?? card.name}</Text>
+                      {card.type_line ? <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: colors.mutedForeground }} numberOfLines={1}>{card.type_line}</Text> : null}
+                      {card.mana_cost ? <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: colors.primary }}>{card.mana_cost}</Text> : null}
+                    </View>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                      <TouchableOpacity onPress={() => adjustFreeCardCount(card.id, -1)} style={{ width: 26, height: 26, borderRadius: 6, backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}>
+                        <Ionicons name="remove" size={13} color={colors.foreground} />
                       </TouchableOpacity>
-
-                      {/* Delete permanently */}
-                      <TouchableOpacity
-                        onPress={() => removeFromFreeCards(card.id)}
-                        style={{ paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: colors.destructive + "66" }}
-                      >
-                        <Ionicons name="trash-outline" size={15} color={colors.destructive} />
+                      <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: colors.foreground, width: 26, textAlign: "center" }}>{card.count}</Text>
+                      <TouchableOpacity onPress={() => adjustFreeCardCount(card.id, 1)} style={{ width: 26, height: 26, borderRadius: 6, backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}>
+                        <Ionicons name="add" size={13} color={colors.foreground} />
                       </TouchableOpacity>
                     </View>
-                  ))}
-
-                  {/* Info text */}
-                  <View style={{ marginTop: 24, padding: 14, borderRadius: 12, backgroundColor: colors.primary + "0f", borderWidth: 1, borderColor: colors.primary + "33" }}>
-                    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
-                      <Ionicons name="information-circle-outline" size={16} color={colors.primary} style={{ marginTop: 1 }} />
-                      <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: 18 }}>
-                        {showEnglish
-                          ? "Cards removed from a deck are saved here instead of being permanently deleted. You can reassign them to any deck or delete them individually."
-                          : "Karten, die aus einem Deck entfernt werden, werden hier gespeichert statt dauerhaft gelöscht. Du kannst sie jedem Deck zuweisen oder einzeln löschen."}
-                      </Text>
-                    </View>
+                    <TouchableOpacity onPress={() => setFreeCardDeckPicker(card.id)} style={{ padding: 6, borderRadius: 8, backgroundColor: colors.primary + "22", borderWidth: 1, borderColor: colors.primary + "55" }} disabled={decks.length === 0}>
+                      <Ionicons name="add-circle-outline" size={15} color={decks.length > 0 ? colors.primary : colors.mutedForeground} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => removeFromFreeCards(card.id)} style={{ padding: 6, borderRadius: 8, borderWidth: 1, borderColor: colors.destructive + "66" }}>
+                      <Ionicons name="trash-outline" size={14} color={colors.destructive} />
+                    </TouchableOpacity>
                   </View>
-                </>
-              )}
+                );
+
+                // ── Land color bar ──────────────────────────────────────────
+                const landCards = freeCards.filter(isLand);
+                const colorMap: Record<string, number> = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
+                for (const c of landCards) {
+                  const cols = landColors(c);
+                  if (cols.length === 0) { colorMap.C += c.count; continue; }
+                  for (const col of cols) { colorMap[col] = (colorMap[col] ?? 0) + c.count; }
+                }
+                const colorMeta = [
+                  { key: "W", label: showEnglish ? "White" : "Weiß",     color: "#f5f0e8", border: true  },
+                  { key: "U", label: showEnglish ? "Blue"  : "Blau",     color: "#3b82f6", border: false },
+                  { key: "B", label: showEnglish ? "Black" : "Schwarz",  color: "#374151", border: false },
+                  { key: "R", label: showEnglish ? "Red"   : "Rot",      color: "#ef4444", border: false },
+                  { key: "G", label: showEnglish ? "Green" : "Grün",     color: "#22c55e", border: false },
+                  { key: "C", label: showEnglish ? "Colorless" : "Farblos", color: "#9e9e9e", border: false },
+                ];
+                const landColorTotal = Object.values(colorMap).reduce((a, b) => a + b, 0);
+
+                // ── Type bar ────────────────────────────────────────────────
+                const typeGroups = getTypeBreakdown(freeCards);
+
+                // ── Categories ─────────────────────────────────────────────
+                const FREE_CATS = [
+                  { key: "creature",     labelDe: "Kreaturen",     labelEn: "Creatures",     color: "#d3202a", match: "creature" },
+                  { key: "instant",      labelDe: "Spontanzauber", labelEn: "Instants",      color: "#0e68ab", match: "instant" },
+                  { key: "sorcery",      labelDe: "Hexereien",     labelEn: "Sorceries",     color: "#7c3aed", match: "sorcery" },
+                  { key: "enchantment",  labelDe: "Verzauberungen",labelEn: "Enchantments",  color: "#16a34a", match: "enchantment" },
+                  { key: "artifact",     labelDe: "Artefakte",     labelEn: "Artifacts",     color: "#9e9e9e", match: "artifact" },
+                  { key: "planeswalker", labelDe: "Planeswalker",  labelEn: "Planeswalkers", color: "#f59e0b", match: "planeswalker" },
+                  { key: "land",         labelDe: "Länder",        labelEn: "Lands",         color: "#00733e", match: "land" },
+                  { key: "other",        labelDe: "Sonstiges",     labelEn: "Other",         color: "#718096", match: "" },
+                ];
+                const matchedIds = new Set<string>();
+                const categorized = FREE_CATS.slice(0, 7).map((cat) => {
+                  const cards = freeCards.filter((c) => {
+                    const tl = (c.type_line ?? "").toLowerCase();
+                    if (tl.includes(cat.match)) { matchedIds.add(c.id); return true; }
+                    return false;
+                  });
+                  return { ...cat, cards };
+                });
+                categorized.push({ ...FREE_CATS[7], cards: freeCards.filter((c) => !matchedIds.has(c.id)) });
+
+                return (
+                  <>
+                    {/* ── Kartentypen-Balken ── */}
+                    {typeGroups.length > 0 && (
+                      <View style={{ marginBottom: 12, padding: 12, borderRadius: 12, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}>
+                        <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+                          {showEnglish ? "Card Types" : "Kartentypen"}
+                        </Text>
+                        <View style={{ height: 12, borderRadius: 6, flexDirection: "row", overflow: "hidden", marginBottom: 8 }}>
+                          {typeGroups.map((g) => <View key={g.key} style={{ flex: g.count, backgroundColor: g.color }} />)}
+                        </View>
+                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 5 }}>
+                          {typeGroups.map((g) => (
+                            <View key={g.key} style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 20, backgroundColor: g.color + "22", borderWidth: 1, borderColor: g.color + "66" }}>
+                              <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: g.color }} />
+                              <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: colors.foreground }}>{g.count} {showEnglish ? g.labelEn : g.labelDe}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    )}
+
+                    {/* ── Mana-Farben der Länder ── */}
+                    {landColorTotal > 0 && (
+                      <View style={{ marginBottom: 12, padding: 12, borderRadius: 12, backgroundColor: "#00733e12", borderWidth: 1, borderColor: "#00733e33" }}>
+                        <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#00733e", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+                          {showEnglish ? "Land Colors" : "Mana-Farben der Länder"}
+                        </Text>
+                        <View style={{ height: 12, borderRadius: 6, flexDirection: "row", overflow: "hidden", marginBottom: 8 }}>
+                          {colorMeta.map(({ key, color, border }) => {
+                            const cnt = colorMap[key] ?? 0;
+                            if (cnt === 0) return null;
+                            return <View key={key} style={{ flex: cnt, backgroundColor: color, borderWidth: border ? 0.5 : 0, borderColor: "#d1d5db" }} />;
+                          })}
+                        </View>
+                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 5 }}>
+                          {colorMeta.map(({ key, label, color, border }) => {
+                            const cnt = colorMap[key] ?? 0;
+                            if (cnt === 0) return null;
+                            return (
+                              <View key={key} style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 20, backgroundColor: color + "22", borderWidth: 1, borderColor: color + "66" }}>
+                                <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: color, borderWidth: border ? 0.5 : 0, borderColor: "#d1d5db" }} />
+                                <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: colors.foreground }}>{cnt} {label}</Text>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    )}
+
+                    {/* ── Kategorisierte Karten ── */}
+                    <View style={{ gap: 8 }}>
+                      {categorized.map((cat) => {
+                        if (cat.cards.length === 0) return null;
+                        const isOpen = expandedFreeCategories.has(cat.key);
+                        const totalCount = cat.cards.reduce((a, c) => a + c.count, 0);
+                        const isLandCat = cat.key === "land";
+                        const basicLandCards = isLandCat ? cat.cards.filter((c) => (c.type_line ?? "").toLowerCase().includes("basic")) : [];
+                        const specialLandCards = isLandCat ? cat.cards.filter((c) => !(c.type_line ?? "").toLowerCase().includes("basic")) : [];
+                        const subtypeInfos = isLandCat && isOpen ? getLandSubtypeInfoForCards(specialLandCards, showEnglish) : [];
+
+                        return (
+                          <View key={cat.key} style={{ borderRadius: 12, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, overflow: "hidden" }}>
+                            {/* Category header */}
+                            <TouchableOpacity
+                              style={{ flexDirection: "row", alignItems: "center", padding: 12, gap: 10 }}
+                              activeOpacity={0.75}
+                              onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                                setExpandedFreeCategories((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(cat.key)) next.delete(cat.key); else next.add(cat.key);
+                                  return next;
+                                });
+                              }}
+                            >
+                              <View style={{ width: 4, height: 36, borderRadius: 2, backgroundColor: cat.color }} />
+                              <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: colors.foreground }}>
+                                  {showEnglish ? cat.labelEn : cat.labelDe}
+                                </Text>
+                                <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+                                  {cat.cards.length} {showEnglish ? "type(s)" : "Typ(en)"} · {totalCount} {showEnglish ? "card(s)" : "Karte(n)"}
+                                </Text>
+                              </View>
+                              <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: cat.color + "33", borderWidth: 1, borderColor: cat.color + "88" }}>
+                                <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: cat.color }}>{totalCount}</Text>
+                              </View>
+                              <Ionicons name={isOpen ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} />
+                            </TouchableOpacity>
+
+                            {/* Expanded cards */}
+                            {isOpen && (
+                              <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }}>
+                                {isLandCat ? (
+                                  <>
+                                    {/* ── Standardländer ── */}
+                                    {basicLandCards.length > 0 && (
+                                      <>
+                                        <View style={{ paddingHorizontal: 12, paddingVertical: 7, backgroundColor: "#00733e14" }}>
+                                          <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#00733e", textTransform: "uppercase", letterSpacing: 0.6 }}>
+                                            ⬡ {showEnglish ? "Basic Lands" : "Standardländer"}
+                                          </Text>
+                                          <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 2 }}>
+                                            {showEnglish ? "Fixed mana · unlimited copies per deck" : "Festes Mana · unbegrenzt im Deck"}
+                                          </Text>
+                                        </View>
+                                        {basicLandCards.map((c, i) => renderRow(c, i === basicLandCards.length - 1 && specialLandCards.length === 0))}
+                                      </>
+                                    )}
+
+                                    {/* ── Spezialländer ── */}
+                                    {specialLandCards.length > 0 && (
+                                      <>
+                                        <View style={{ paddingHorizontal: 12, paddingVertical: 7, backgroundColor: "#92400e14", borderTopWidth: basicLandCards.length > 0 ? StyleSheet.hairlineWidth : 0, borderTopColor: colors.border }}>
+                                          <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#92400e", textTransform: "uppercase", letterSpacing: 0.6 }}>
+                                            ◈ {showEnglish ? "Special Lands" : "Spezialländer"}
+                                          </Text>
+                                          <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 2 }}>
+                                            {showEnglish ? "Max. 4× per deck · unique abilities" : "Max. 4× pro Deck · besondere Fähigkeiten"}
+                                          </Text>
+                                          {/* Land subtype infos */}
+                                          {subtypeInfos.length > 0 && (
+                                            <View style={{ marginTop: 6, gap: 3 }}>
+                                              {subtypeInfos.map((info) => (
+                                                <View key={info.subtype} style={{ flexDirection: "row", gap: 5 }}>
+                                                  <Text style={{ fontSize: 10, fontFamily: "Inter_700Bold", color: "#92400e", minWidth: 70 }}>{info.subtype}</Text>
+                                                  <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: colors.mutedForeground, flex: 1, lineHeight: 14 }}>{info.desc}</Text>
+                                                </View>
+                                              ))}
+                                            </View>
+                                          )}
+                                        </View>
+                                        {specialLandCards.map((c, i) => renderRow(c, i === specialLandCards.length - 1))}
+                                      </>
+                                    )}
+                                  </>
+                                ) : (
+                                  cat.cards.map((c, i) => renderRow(c, i === cat.cards.length - 1))
+                                )}
+                              </View>
+                            )}
+                          </View>
+                        );
+                      })}
+                    </View>
+
+                    {/* Info text */}
+                    <View style={{ marginTop: 16, padding: 14, borderRadius: 12, backgroundColor: colors.primary + "0f", borderWidth: 1, borderColor: colors.primary + "33" }}>
+                      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                        <Ionicons name="information-circle-outline" size={16} color={colors.primary} style={{ marginTop: 1 }} />
+                        <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: 18 }}>
+                          {showEnglish
+                            ? "Cards removed from a deck land here. Add them to any deck or delete individually."
+                            : "Karten, die aus Decks entfernt werden, landen hier. Weise sie einem Deck zu oder lösche sie einzeln."}
+                        </Text>
+                      </View>
+                    </View>
+                  </>
+                );
+              })()}
             </ScrollView>
           </View>
         </View>
