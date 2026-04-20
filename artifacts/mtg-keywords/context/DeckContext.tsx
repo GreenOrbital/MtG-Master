@@ -34,6 +34,7 @@ export type Deck = {
 
 type DeckContextType = {
   decks: Deck[];
+  freeCards: DeckCard[];
   createDeck: (name: string, format?: GameFormat) => Deck;
   updateDeck: (deck: Deck) => void;
   deleteDeck: (id: string) => void;
@@ -42,11 +43,16 @@ type DeckContextType = {
   adjustCardCount: (deckId: string, cardId: string, delta: number) => void;
   loadCloudDecks: (decks: Deck[]) => void;
   importDeck: (deck: Deck) => void;
+  addToFreeCards: (card: DeckCard) => void;
+  removeFromFreeCards: (cardId: string) => void;
+  moveFromFreeCardsToDeck: (deckId: string, cardId: string) => void;
+  adjustFreeCardCount: (cardId: string, delta: number) => void;
 };
 
 // ─── Context ─────────────────────────────────────────────────────────────────
 
 const STORAGE_KEY = "mtg_decks_v3";
+const FREE_CARDS_KEY = "mtg_free_cards_v1";
 const EMPTY_LANDS: LandCounts = { W: 0, U: 0, B: 0, R: 0, G: 0 };
 
 function isLand(typeLine?: string) {
@@ -59,6 +65,7 @@ function maxCount(typeLine?: string) {
 
 const DeckContext = createContext<DeckContextType>({
   decks: [],
+  freeCards: [],
   createDeck: () => ({ id: "", name: "", cards: [], lands: { W:0,U:0,B:0,R:0,G:0 }, savedAt: 0 }),
   updateDeck: () => {},
   deleteDeck: () => {},
@@ -67,24 +74,35 @@ const DeckContext = createContext<DeckContextType>({
   adjustCardCount: () => {},
   loadCloudDecks: () => {},
   importDeck: () => {},
+  addToFreeCards: () => {},
+  removeFromFreeCards: () => {},
+  moveFromFreeCardsToDeck: () => {},
+  adjustFreeCardCount: () => {},
 });
 
 // ─── Provider ────────────────────────────────────────────────────────────────
 
 export function DeckProvider({ children }: { children: React.ReactNode }) {
   const [decks, setDecks] = useState<Deck[]>([]);
+  const [freeCards, setFreeCards] = useState<DeckCard[]>([]);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((v) => {
-      if (v) {
-        try { setDecks(JSON.parse(v)); } catch {}
-      }
+      if (v) { try { setDecks(JSON.parse(v)); } catch {} }
+    });
+    AsyncStorage.getItem(FREE_CARDS_KEY).then((v) => {
+      if (v) { try { setFreeCards(JSON.parse(v)); } catch {} }
     });
   }, []);
 
   function persist(d: Deck[]) {
     setDecks(d);
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(d));
+  }
+
+  function persistFree(fc: DeckCard[]) {
+    setFreeCards(fc);
+    AsyncStorage.setItem(FREE_CARDS_KEY, JSON.stringify(fc));
   }
 
   function createDeck(name: string, format?: GameFormat): Deck {
@@ -96,8 +114,7 @@ export function DeckProvider({ children }: { children: React.ReactNode }) {
       lands: { ...EMPTY_LANDS },
       savedAt: Date.now(),
     };
-    const next = [deck, ...decks];
-    persist(next);
+    persist([deck, ...decks]);
     return deck;
   }
 
@@ -123,7 +140,23 @@ export function DeckProvider({ children }: { children: React.ReactNode }) {
     }));
   }
 
+  // When removing a card from a deck it goes to the free cards pool
   function removeCardFromDeck(deckId: string, cardId: string) {
+    const deck = decks.find((d) => d.id === deckId);
+    if (deck) {
+      const card = deck.cards.find((c) => c.id === cardId);
+      if (card) {
+        // Move to free cards pool
+        const existing = freeCards.find((fc) => fc.id === cardId);
+        if (existing) {
+          persistFree(freeCards.map((fc) =>
+            fc.id === cardId ? { ...fc, count: fc.count + card.count } : fc
+          ));
+        } else {
+          persistFree([...freeCards, { ...card }]);
+        }
+      }
+    }
     persist(decks.map((d) => d.id === deckId ? { ...d, cards: d.cards.filter((c) => c.id !== cardId) } : d));
   }
 
@@ -144,19 +177,57 @@ export function DeckProvider({ children }: { children: React.ReactNode }) {
   }
 
   function importDeck(deck: Deck) {
-    // Give it a fresh ID and timestamp to avoid collisions
     const imported: Deck = {
       ...deck,
       id: Date.now().toString(),
       name: deck.name,
       savedAt: Date.now(),
     };
-    const next = [imported, ...decks];
-    persist(next);
+    persist([imported, ...decks]);
+  }
+
+  // ── Free Cards functions ──────────────────────────────────────────────────
+
+  function addToFreeCards(card: DeckCard) {
+    const existing = freeCards.find((fc) => fc.id === card.id);
+    if (existing) {
+      persistFree(freeCards.map((fc) =>
+        fc.id === card.id ? { ...fc, count: fc.count + card.count } : fc
+      ));
+    } else {
+      persistFree([...freeCards, { ...card }]);
+    }
+  }
+
+  function removeFromFreeCards(cardId: string) {
+    persistFree(freeCards.filter((fc) => fc.id !== cardId));
+  }
+
+  function moveFromFreeCardsToDeck(deckId: string, cardId: string) {
+    const card = freeCards.find((fc) => fc.id === cardId);
+    if (!card) return;
+    // Add to deck
+    addCardToDeck(deckId, card, card.count);
+    // Remove from free pool
+    persistFree(freeCards.filter((fc) => fc.id !== cardId));
+  }
+
+  function adjustFreeCardCount(cardId: string, delta: number) {
+    persistFree(freeCards.map((fc) => {
+      if (fc.id !== cardId) return fc;
+      const max = maxCount(fc.type_line);
+      return { ...fc, count: Math.max(1, Math.min(max, fc.count + delta)) };
+    }));
   }
 
   return (
-    <DeckContext.Provider value={{ decks, createDeck, updateDeck, deleteDeck, addCardToDeck, removeCardFromDeck, adjustCardCount, loadCloudDecks, importDeck }}>
+    <DeckContext.Provider value={{
+      decks, freeCards,
+      createDeck, updateDeck, deleteDeck,
+      addCardToDeck, removeCardFromDeck, adjustCardCount,
+      loadCloudDecks, importDeck,
+      addToFreeCards, removeFromFreeCards, moveFromFreeCardsToDeck, adjustFreeCardCount,
+    }}>
       {children}
     </DeckContext.Provider>
   );

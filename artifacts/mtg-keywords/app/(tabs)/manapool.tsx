@@ -759,7 +759,7 @@ export default function ManapoolScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { showEnglish, setShowEnglish } = useSettings();
-  const { decks, createDeck, updateDeck, deleteDeck, removeCardFromDeck, adjustCardCount, importDeck } = useDecks();
+  const { decks, freeCards, createDeck, updateDeck, deleteDeck, removeCardFromDeck, adjustCardCount, importDeck, removeFromFreeCards, moveFromFreeCardsToDeck, adjustFreeCardCount } = useDecks();
 
   const router = useRouter();
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
@@ -781,6 +781,8 @@ export default function ManapoolScreen() {
   const [importError, setImportError] = useState<string | null>(null);
   const [exportFeedback, setExportFeedback] = useState<string | null>(null);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+  const [showFreeCardsModal, setShowFreeCardsModal] = useState(false);
+  const [freeCardDeckPicker, setFreeCardDeckPicker] = useState<string | null>(null); // cardId being assigned to a deck
 
   // ── Shared simulation controls (format + mulligans) ─────────────────────────
   const [simFormat, setSimFormat]         = useState<GameFormat>("standard");
@@ -1219,6 +1221,24 @@ export default function ManapoolScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+
+            {/* ── Freie Karten Button ── */}
+            <TouchableOpacity
+              style={[styles.newDeckBtn, { backgroundColor: colors.card, borderColor: freeCards.length > 0 ? colors.primary + "88" : colors.border, borderWidth: 1, borderStyle: freeCards.length > 0 ? "dashed" : "solid" }]}
+              onPress={() => setShowFreeCardsModal(true)}
+            >
+              <Ionicons name="albums-outline" size={18} color={freeCards.length > 0 ? colors.primary : colors.mutedForeground} />
+              <Text style={[styles.newDeckBtnText, { color: freeCards.length > 0 ? colors.primary : colors.mutedForeground }]}>
+                {showEnglish ? "Free Cards Pool" : "Freie Karten"}
+              </Text>
+              {freeCards.length > 0 && (
+                <View style={{ marginLeft: "auto", paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10, backgroundColor: colors.primary + "22" }}>
+                  <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: colors.primary }}>
+                    {freeCards.reduce((a, c) => a + c.count, 0)}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
 
             {decks.length === 0 ? (
               <View style={styles.emptyHint}>
@@ -3354,6 +3374,167 @@ export default function ManapoolScreen() {
               <Ionicons name="download-outline" size={16} color="#fff" />
               <Text style={styles.modalCreateBtnText}>
                 {showEnglish ? "Import Deck" : "Deck importieren"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── Freie Karten Modal ── */}
+      <Modal visible={showFreeCardsModal} transparent animationType="slide">
+        <View style={{ flex: 1, backgroundColor: "#00000088", justifyContent: "flex-end" }}>
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: "90%", paddingBottom: insets.bottom + 16 }}>
+            {/* Header */}
+            <View style={{ flexDirection: "row", alignItems: "center", padding: 18, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }}>
+              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: colors.primary + "22", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                <Ionicons name="albums-outline" size={20} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: colors.foreground }}>
+                  {showEnglish ? "Free Cards Pool" : "Freie Karten"}
+                </Text>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+                  {freeCards.reduce((a, c) => a + c.count, 0)} {showEnglish ? "cards" : "Karten"}
+                  {" · "}
+                  {freeCards.length} {showEnglish ? "unique" : "einzigartig"}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowFreeCardsModal(false)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                <Ionicons name="close-circle" size={26} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={{ padding: 16, gap: 0 }} showsVerticalScrollIndicator={false}>
+              {freeCards.length === 0 ? (
+                <View style={{ alignItems: "center", paddingVertical: 40, gap: 12 }}>
+                  <Ionicons name="albums-outline" size={48} color={colors.mutedForeground} />
+                  <Text style={{ fontSize: 16, fontFamily: "Inter_600SemiBold", color: colors.foreground }}>
+                    {showEnglish ? "Pool is empty" : "Pool ist leer"}
+                  </Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, textAlign: "center", lineHeight: 19 }}>
+                    {showEnglish
+                      ? "Cards removed from decks land here instead of being deleted permanently."
+                      : "Karten, die aus Decks entfernt werden, landen hier statt dauerhaft gelöscht zu werden."}
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  {freeCards.map((card) => (
+                    <View key={card.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border, gap: 10 }}>
+                      {/* Card image */}
+                      {card.imageUri ? (
+                        <Image
+                          source={{ uri: card.imageUri }}
+                          style={{ width: 38, height: 52, borderRadius: 4 }}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={{ width: 38, height: 52, borderRadius: 4, backgroundColor: colors.secondary, alignItems: "center", justifyContent: "center" }}>
+                          <Text style={{ fontSize: 16, color: colors.mutedForeground }}>🂠</Text>
+                        </View>
+                      )}
+
+                      {/* Name + type */}
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.foreground }} numberOfLines={1}>{card.name}</Text>
+                        {card.type_line ? (
+                          <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground }} numberOfLines={1}>{card.type_line}</Text>
+                        ) : null}
+                        {card.mana_cost ? (
+                          <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.primary }}>{card.mana_cost}</Text>
+                        ) : null}
+                      </View>
+
+                      {/* Count stepper */}
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                        <TouchableOpacity
+                          onPress={() => adjustFreeCardCount(card.id, -1)}
+                          style={{ width: 28, height: 28, borderRadius: 7, backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}
+                        >
+                          <Ionicons name="remove" size={14} color={colors.foreground} />
+                        </TouchableOpacity>
+                        <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.foreground, width: 28, textAlign: "center" }}>{card.count}</Text>
+                        <TouchableOpacity
+                          onPress={() => adjustFreeCardCount(card.id, 1)}
+                          style={{ width: 28, height: 28, borderRadius: 7, backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}
+                        >
+                          <Ionicons name="add" size={14} color={colors.foreground} />
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Add to Deck button */}
+                      <TouchableOpacity
+                        onPress={() => setFreeCardDeckPicker(card.id)}
+                        style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: colors.primary + "22", borderWidth: 1, borderColor: colors.primary + "55" }}
+                        disabled={decks.length === 0}
+                      >
+                        <Ionicons name="add-circle-outline" size={16} color={decks.length > 0 ? colors.primary : colors.mutedForeground} />
+                      </TouchableOpacity>
+
+                      {/* Delete permanently */}
+                      <TouchableOpacity
+                        onPress={() => removeFromFreeCards(card.id)}
+                        style={{ paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: colors.destructive + "66" }}
+                      >
+                        <Ionicons name="trash-outline" size={15} color={colors.destructive} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+
+                  {/* Info text */}
+                  <View style={{ marginTop: 24, padding: 14, borderRadius: 12, backgroundColor: colors.primary + "0f", borderWidth: 1, borderColor: colors.primary + "33" }}>
+                    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                      <Ionicons name="information-circle-outline" size={16} color={colors.primary} style={{ marginTop: 1 }} />
+                      <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: 18 }}>
+                        {showEnglish
+                          ? "Cards removed from a deck are saved here instead of being permanently deleted. You can reassign them to any deck or delete them individually."
+                          : "Karten, die aus einem Deck entfernt werden, werden hier gespeichert statt dauerhaft gelöscht. Du kannst sie jedem Deck zuweisen oder einzeln löschen."}
+                      </Text>
+                    </View>
+                  </View>
+                </>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Deck Picker for Free Card ── */}
+      <Modal visible={!!freeCardDeckPicker} transparent animationType="fade">
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setFreeCardDeckPicker(null)}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.card }]} onStartShouldSetResponder={() => true}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+              {showEnglish ? "Add to Deck" : "Deck wählen"}
+            </Text>
+            <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, textAlign: "center", marginBottom: 14 }}>
+              {showEnglish ? "Select a deck to add this card to:" : "Wähle ein Deck für diese Karte:"}
+            </Text>
+            <View style={{ gap: 8 }}>
+              {decks.map((deck) => (
+                <TouchableOpacity
+                  key={deck.id}
+                  onPress={() => {
+                    if (freeCardDeckPicker) {
+                      moveFromFreeCardsToDeck(deck.id, freeCardDeckPicker);
+                      setFreeCardDeckPicker(null);
+                      // If this was the last free card, close the modal
+                      if (freeCards.length <= 1) setShowFreeCardsModal(false);
+                    }
+                  }}
+                  style={{ flexDirection: "row", alignItems: "center", padding: 12, borderRadius: 10, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, gap: 10 }}
+                >
+                  <Ionicons name="albums-outline" size={16} color={colors.primary} />
+                  <Text style={{ flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.foreground }}>{deck.name}</Text>
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                    {deck.cards.reduce((a, c) => a + c.count, 0)} {showEnglish ? "cards" : "Karten"}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={14} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity onPress={() => setFreeCardDeckPicker(null)} style={{ marginTop: 14, alignItems: "center" }}>
+              <Text style={{ fontSize: 14, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                {showEnglish ? "Cancel" : "Abbrechen"}
               </Text>
             </TouchableOpacity>
           </View>
