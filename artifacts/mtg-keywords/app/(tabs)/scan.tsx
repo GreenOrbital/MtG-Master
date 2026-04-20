@@ -566,7 +566,7 @@ export default function CardSearchScreen() {
   const insets = useSafeAreaInsets();
   const { showEnglish, setShowEnglish } = useSettings();
   const { recentCards, favorites, addToRecent, toggleFavorite, isFavorite, clearRecent } = useCardHistory();
-  const { decks, addCardToDeck } = useDecks();
+  const { decks, addCardToDeck, freeCards, addToFreeCards } = useDecks();
   const { q: incomingCard, cardId: incomingCardId } = useLocalSearchParams<{ q?: string; cardId?: string }>();
 
   const [query, setQuery] = useState("");
@@ -634,6 +634,11 @@ export default function CardSearchScreen() {
     if (!cardEn) return [];
     return decks.filter((d) => d.cards.some((c) => c.id === cardEn.id));
   }, [cardEn, decks]);
+
+  const cardInFreeCards = useMemo(() => {
+    if (!cardEn) return null;
+    return freeCards.find((c) => c.id === cardEn.id) ?? null;
+  }, [cardEn, freeCards]);
   const [addCount, setAddCount] = useState(1);
   const [showImageZoom, setShowImageZoom] = useState(false);
   const [similarCards, setSimilarCards] = useState<CardData[]>([]);
@@ -1303,6 +1308,43 @@ export default function CardSearchScreen() {
                     />
                     <Text style={[styles.addToDeckText, { color: isGreen ? "#16a34a" : colors.primary }]} numberOfLines={1}>
                       {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })()}
+
+              {/* ── Zu Freie Karten hinzufügen ── */}
+              {(() => {
+                const inPool = !!cardInFreeCards;
+                return (
+                  <TouchableOpacity
+                    style={[styles.addToDeckBtn, {
+                      borderTopColor: colors.border,
+                      backgroundColor: inPool ? colors.primary + "12" : "transparent",
+                    }]}
+                    onPress={() => {
+                      if (!cardEn) return;
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                      const imageUri = cardEn.image_uris?.normal ?? (cardEn as any).card_faces?.[0]?.image_uris?.normal;
+                      addToFreeCards({
+                        id: cardEn.id,
+                        name: cardEn.name,
+                        printed_name: cardEn.printed_name,
+                        mana_cost: cardEn.mana_cost,
+                        cmc: cardEn.cmc,
+                        type_line: cardEn.type_line,
+                        oracle_text: cardEn.oracle_text,
+                        keywords: cardEn.keywords,
+                        imageUri,
+                        count: 1,
+                      });
+                    }}
+                  >
+                    <Ionicons name={inPool ? "layers" : "layers-outline"} size={16} color={colors.primary} />
+                    <Text style={[styles.addToDeckText, { color: colors.primary }]} numberOfLines={1}>
+                      {inPool
+                        ? (showEnglish ? `In Free Pool (${cardInFreeCards!.count}×)` : `In Freie Karten (${cardInFreeCards!.count}×)`)
+                        : (showEnglish ? "Add to Free Cards Pool" : "Zu Freie Karten hinzufügen")}
                     </Text>
                   </TouchableOpacity>
                 );
