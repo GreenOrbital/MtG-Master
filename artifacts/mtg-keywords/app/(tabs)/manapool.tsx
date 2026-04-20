@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { G, Line, Rect, Text as SvgText } from "react-native-svg";
 
 import { AdBanner } from "@/components/AdBanner";
+import { CardSearchModal } from "@/components/CardSearchModal";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { type Deck, type DeckCard, type GameFormat, useDecks } from "@/context/DeckContext";
 import { useSettings } from "@/context/SettingsContext";
@@ -783,6 +784,7 @@ export default function ManapoolScreen() {
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [showFreeCardsModal, setShowFreeCardsModal] = useState(false);
   const [freeCardDeckPicker, setFreeCardDeckPicker] = useState<string | null>(null); // cardId being assigned to a deck
+  const [showCardSearch, setShowCardSearch] = useState(false);
 
   // ── Shared simulation controls (format + mulligans) ─────────────────────────
   const [simFormat, setSimFormat]         = useState<GameFormat>("standard");
@@ -1184,7 +1186,16 @@ export default function ManapoolScreen() {
               {activeDeck ? editName || activeDeck.name : (showEnglish ? "Deck Builder" : "Deck-Builder")}
             </Text>
           </TouchableOpacity>
-          <LanguageToggle />
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <TouchableOpacity
+              onPress={() => setShowCardSearch(true)}
+              style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: colors.primary + "22", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.primary + "44" }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="search" size={18} color={colors.primary} />
+            </TouchableOpacity>
+            <LanguageToggle />
+          </View>
         </View>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
           {activeDeck
@@ -3379,6 +3390,9 @@ export default function ManapoolScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* ── Card Search Modal ── */}
+      <CardSearchModal visible={showCardSearch} onClose={() => setShowCardSearch(false)} />
 
       {/* ── Freie Karten Modal ── */}
       <Modal visible={showFreeCardsModal} transparent animationType="slide">
