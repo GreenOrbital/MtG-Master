@@ -873,8 +873,15 @@ export default function ManapoolScreen() {
 
   const activeDeck = decks.find((d) => d.id === activeDeckId) ?? null;
 
+  // Helper: total cards including basic lands in deck.lands
+  const deckTotalCards = (d: typeof activeDeck) => {
+    if (!d) return 0;
+    return d.cards.reduce((a, c) => a + c.count, 0)
+      + Object.values(d.lands ?? {}).reduce((s: number, n) => s + (n as number), 0);
+  };
+
   // Computed from activeDeck — used in both simulation sections
-  const actualDeckSize = activeDeck?.cards.reduce((a, c) => a + c.count, 0) ?? 0;
+  const actualDeckSize = deckTotalCards(activeDeck);
   const actualFormat   = simFormat;
   const isAutoFormat   = !!activeDeck?.format;
 
@@ -884,8 +891,8 @@ export default function ManapoolScreen() {
     if (activeDeck.format) {
       setSimFormat(activeDeck.format);
     } else {
-      // Infer from total card count
-      const total = activeDeck.cards.reduce((a, c) => a + c.count, 0);
+      // Infer from total card count (including basic lands)
+      const total = deckTotalCards(activeDeck);
       if (total >= 90) setSimFormat("commander");
       else if (total <= 45) setSimFormat("limited");
       else setSimFormat("standard");
@@ -1364,13 +1371,18 @@ export default function ManapoolScreen() {
             </View>
 
             {/* ── Karten ── */}
-            <View style={styles.cardListHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                {showEnglish
-                  ? `Cards (${activeDeck.cards.reduce((a,c)=>a+c.count,0)})`
-                  : `Karten (${activeDeck.cards.reduce((a,c)=>a+c.count,0)})`}
-              </Text>
-            </View>
+            {(() => {
+              const spellCount = activeDeck.cards.reduce((a, c) => a + c.count, 0);
+              const basicCount = Object.values(activeDeck.lands ?? {}).reduce((s: number, n) => s + (n as number), 0);
+              const totalCount = spellCount + basicCount;
+              return (
+                <View style={styles.cardListHeader}>
+                  <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                    {showEnglish ? `Cards (${totalCount})` : `Karten (${totalCount})`}
+                  </Text>
+                </View>
+              );
+            })()}
 
             {activeDeck.cards.length === 0 ? (
               <View style={[styles.emptyCards, { borderColor: colors.border }]}>
@@ -2048,7 +2060,7 @@ export default function ManapoolScreen() {
               if (!speed && !hasOracleText) return null;
 
               // Recommended values (rough rule of thumb for 60-card / commander decks)
-              const isCommander = activeDeck.cards.reduce((a, c) => a + c.count, 0) >= 90;
+              const isCommander = deckTotalCards(activeDeck) >= 90;
               const drawTarget    = isCommander ? 12 : 8;
               const removalTarget = isCommander ? 10 : 6;
               const rampTarget    = isCommander ? 10 : 4;
@@ -2196,7 +2208,7 @@ export default function ManapoolScreen() {
 
             {/* ── Ziehwahrscheinlichkeit / Draw Probability ── */}
             {(() => {
-              const totalDeckCards = activeDeck.cards.reduce((a, c) => a + c.count, 0);
+              const totalDeckCards = deckTotalCards(activeDeck);
               if (totalDeckCards < 7) return null;
 
               // ── Text-Ergebnisse (kein Chart) ───────────────────────────
@@ -3737,7 +3749,7 @@ export default function ManapoolScreen() {
                   <Ionicons name="albums-outline" size={16} color={colors.primary} />
                   <Text style={{ flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.foreground }}>{deck.name}</Text>
                   <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
-                    {deck.cards.reduce((a, c) => a + c.count, 0)} {showEnglish ? "cards" : "Karten"}
+                    {deck.cards.reduce((a, c) => a + c.count, 0) + Object.values(deck.lands ?? {}).reduce((s: number, n) => s + (n as number), 0)} {showEnglish ? "cards" : "Karten"}
                   </Text>
                   <Ionicons name="chevron-forward" size={14} color={colors.mutedForeground} />
                 </TouchableOpacity>

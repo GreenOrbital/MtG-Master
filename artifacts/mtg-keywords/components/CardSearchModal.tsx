@@ -430,7 +430,7 @@ export function CardSearchModal({ visible, onClose }: Props) {
                         <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.primary }}>{existing.count}×</Text>
                       )}
                       <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
-                        {deck.cards.reduce((a, c) => a + c.count, 0)} {showEnglish ? "cards" : "Karten"}
+                        {deck.cards.reduce((a, c) => a + c.count, 0) + Object.values(deck.lands ?? {}).reduce((s: number, n) => s + (n as number), 0)} {showEnglish ? "cards" : "Karten"}
                       </Text>
                       <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
                     </TouchableOpacity>

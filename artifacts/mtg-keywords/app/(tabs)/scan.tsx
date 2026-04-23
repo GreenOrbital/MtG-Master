@@ -1854,7 +1854,7 @@ export default function CardSearchScreen() {
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.modalDeckName, { color: colors.foreground }]}>{d.name}</Text>
                           <Text style={[styles.modalDeckMeta, { color: colors.mutedForeground }]}>
-                            {d.cards.reduce((a, c) => a + c.count, 0)} {showEnglish ? "cards" : "Karten"}
+                            {d.cards.reduce((a, c) => a + c.count, 0) + Object.values(d.lands ?? {}).reduce((s: number, n) => s + (n as number), 0)} {showEnglish ? "cards" : "Karten"}
                           </Text>
                         </View>
                         <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
