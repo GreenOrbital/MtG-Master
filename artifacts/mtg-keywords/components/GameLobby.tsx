@@ -282,11 +282,17 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
           if (state.status === "playing" && screenRef.current !== "game") goScreen("game");
           else if (state.status === "waiting" && screenRef.current !== "waiting") goScreen("waiting");
         } else if (msg.type === "error") {
-          // If the room no longer exists, clear saved lobby
-          if (msg.message?.includes("nicht mehr vorhanden") || msg.message?.includes("no longer")) clearSavedLobby();
+          // Clear saved lobby on any rejoin-related error
+          if (
+            msg.message?.includes("nicht mehr vorhanden") ||
+            msg.message?.includes("no longer") ||
+            msg.message?.includes("nicht in diesem Raum") ||
+            msg.message?.includes("not in this room")
+          ) clearSavedLobby();
           setError(msg.message);
           setConnecting(false);
-          goScreen("home");
+          // Only navigate home if we're still on waiting screen (e.g. rejoin failed)
+          if (screenRef.current === "waiting") goScreen("home");
         }
       } catch {}
     };
@@ -464,25 +470,34 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
             )}
 
             {/* ── Reconnect banner ── */}
-            {savedLobby && (
-              <TouchableOpacity
-                style={[s.rejoinBanner, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "55" }]}
-                onPress={() => handleRejoin(savedLobby)}
-                activeOpacity={0.8}
-              >
-                <View style={[s.rejoinIconWrap, { backgroundColor: colors.primary + "22" }]}>
-                  <Ionicons name="arrow-redo-circle" size={22} color={colors.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: colors.primary }}>
-                    {showEnglish ? "Rejoin open lobby" : "Zur offenen Lobby zurückkehren"}
-                  </Text>
-                  <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 1 }}>
-                    {savedLobby.code}  ·  {savedLobby.format}  ·  {savedLobby.isPublic ? (showEnglish ? "Public" : "Öffentlich") : (showEnglish ? "Private" : "Privat")}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.primary} />
-              </TouchableOpacity>
+            {savedLobby && screen === "home" && (
+              <View style={[s.rejoinBanner, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "55" }]}>
+                <TouchableOpacity
+                  style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}
+                  onPress={() => handleRejoin(savedLobby)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[s.rejoinIconWrap, { backgroundColor: colors.primary + "22" }]}>
+                    <Ionicons name="arrow-redo-circle" size={22} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: colors.primary }}>
+                      {showEnglish ? "Rejoin open lobby" : "Zur offenen Lobby zurückkehren"}
+                    </Text>
+                    <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 1 }}>
+                      {savedLobby.code}  ·  {savedLobby.format}  ·  {savedLobby.isPublic ? (showEnglish ? "Public" : "Öffentlich") : (showEnglish ? "Private" : "Privat")}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={clearSavedLobby}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  style={{ marginLeft: 4 }}
+                >
+                  <Ionicons name="close-circle" size={20} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              </View>
             )}
 
             {error && (
