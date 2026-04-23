@@ -470,7 +470,8 @@ export function handleWsMessage(ws: WebSocket, raw: string) {
     if (isGuest) room.guestWs = ws;
     (ws as any).__roomCode = room.code;
     (ws as any).__role = isHost ? "host" : "guest";
-    sendToRole(room, isHost ? "host" : "guest");
+    // Broadcast to both players so the opponent also knows the player reconnected
+    broadcast(room);
     return;
   }
 

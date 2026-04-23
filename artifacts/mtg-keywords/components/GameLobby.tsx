@@ -181,11 +181,14 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
   const pingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const screenRef = useRef<Screen>("home");
   const myRoleRef = useRef<"host" | "guest" | null>(null);
+  const reconnectDataRef = useRef<{ roomCode: string; playerName: string } | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [screen, setScreen] = useState<Screen>("home");
   function goScreen(s: Screen) { screenRef.current = s; setScreen(s); }
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [myRole, setMyRole] = useState<"host" | "guest" | null>(null);
+  const [reconnecting, setReconnecting] = useState(false);
   function setRole(r: "host" | "guest" | null) { myRoleRef.current = r; setMyRole(r); }
 
   // Home form
@@ -259,10 +262,11 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
     wsRef.current = ws;
     ws.onopen = () => {
       setConnecting(false);
+      setReconnecting(false);
       onOpen(ws);
       pingRef.current = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "ping" }));
-      }, 25000);
+      }, 15000);
     };
     ws.onmessage = (e) => {
       try {
@@ -280,6 +284,10 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
               isPublic: state.isPublic ?? true,
             });
           }
+          // Store reconnect data when game is active
+          if (state.status === "playing") {
+            reconnectDataRef.current = { roomCode: state.code, playerName: state.me?.name ?? "" };
+          }
           // Clear saved lobby once game is playing or finished
           if (state.status === "playing" || state.status === "finished") clearSavedLobby();
           if (state.status === "playing" && screenRef.current !== "game") goScreen("game");
@@ -291,9 +299,13 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
             msg.message?.includes("no longer") ||
             msg.message?.includes("nicht in diesem Raum") ||
             msg.message?.includes("not in this room")
-          ) clearSavedLobby();
+          ) {
+            clearSavedLobby();
+            reconnectDataRef.current = null;
+          }
           setError(msg.message);
           setConnecting(false);
+          setReconnecting(false);
           // Only navigate home if we're still on waiting screen (e.g. rejoin failed)
           if (screenRef.current === "waiting") goScreen("home");
         }
@@ -301,17 +313,45 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
     };
     ws.onerror = (e) => {
       console.warn("[WS] onerror", e);
-      setError(showEnglish
-        ? `Connection error — server unreachable (${getWsUrl()})`
-        : `Verbindungsfehler — Server nicht erreichbar`);
-      setConnecting(false);
+      if (screenRef.current !== "game") {
+        setError(showEnglish
+          ? `Connection error — server unreachable`
+          : `Verbindungsfehler — Server nicht erreichbar`);
+        setConnecting(false);
+      }
     };
-    ws.onclose = () => { setConnecting(false); };
+    ws.onclose = () => {
+      setConnecting(false);
+      if (pingRef.current) { clearInterval(pingRef.current); pingRef.current = null; }
+      // Auto-reconnect if we're mid-game
+      if (screenRef.current === "game" && reconnectDataRef.current) {
+        const data = reconnectDataRef.current;
+        setReconnecting(true);
+        if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = setTimeout(() => {
+          if (screenRef.current === "game" && reconnectDataRef.current) {
+            connectWs(ws2 => {
+              ws2.send(JSON.stringify({ type: "rejoin", roomCode: data.roomCode, playerName: data.playerName }));
+            });
+          }
+        }, 3000);
+      }
+    };
   }
 
   function disconnectWs() {
+    if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
     if (pingRef.current) { clearInterval(pingRef.current); pingRef.current = null; }
     if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
+  }
+
+  function leaveGame() {
+    reconnectDataRef.current = null;
+    disconnectWs();
+    setReconnecting(false);
+    setGameState(null);
+    setRole(null);
+    goScreen("home");
   }
 
   function send(msg: object) {
@@ -395,11 +435,8 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
   }
 
   function doLeave() {
-    disconnectWs();
     clearSavedLobby();
-    goScreen("home");
-    setGameState(null);
-    setRole(null);
+    leaveGame();
     setError(null);
     setSelectedHandCard(null);
     setSelectedBfCard(null);
@@ -760,31 +797,55 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
 
         {/* ── GAME SCREEN ── */}
         {screen === "game" && gameState && (
-          <GameBoard
-            gs={gameState}
-            isMyTurn={isMyTurn}
-            isCommander={isCommander}
-            phaseLabels={phaseLabels}
-            showEnglish={showEnglish}
-            colors={colors}
-            insets={insets}
-            selectedHandCard={selectedHandCard}
-            setSelectedHandCard={setSelectedHandCard}
-            selectedBfCard={selectedBfCard}
-            setSelectedBfCard={setSelectedBfCard}
-            showLog={showLog}
-            setShowLog={setShowLog}
-            showZone={showZone}
-            setShowZone={setShowZone}
-            showLifeMenu={showLifeMenu}
-            setShowLifeMenu={setShowLifeMenu}
-            showCounterMenu={showCounterMenu}
-            setShowCounterMenu={setShowCounterMenu}
-            onLeave={handleLeave}
-            onReset={handleReset}
-            onSend={send}
-            haptic={haptic}
-          />
+          <View style={{ flex: 1 }}>
+            <GameBoard
+              gs={gameState}
+              isMyTurn={isMyTurn}
+              isCommander={isCommander}
+              phaseLabels={phaseLabels}
+              showEnglish={showEnglish}
+              colors={colors}
+              insets={insets}
+              selectedHandCard={selectedHandCard}
+              setSelectedHandCard={setSelectedHandCard}
+              selectedBfCard={selectedBfCard}
+              setSelectedBfCard={setSelectedBfCard}
+              showLog={showLog}
+              setShowLog={setShowLog}
+              showZone={showZone}
+              setShowZone={setShowZone}
+              showLifeMenu={showLifeMenu}
+              setShowLifeMenu={setShowLifeMenu}
+              showCounterMenu={showCounterMenu}
+              setShowCounterMenu={setShowCounterMenu}
+              onLeave={handleLeave}
+              onReset={handleReset}
+              onSend={send}
+              haptic={haptic}
+            />
+            {reconnecting && (
+              <View style={{
+                position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center",
+                zIndex: 999,
+              }}>
+                <View style={{ backgroundColor: "#1a1a1a", borderRadius: 14, padding: 24, alignItems: "center", gap: 12 }}>
+                  <ActivityIndicator size="large" color="#c8a96e" />
+                  <Text style={{ color: "#c8a96e", fontFamily: "Inter_700Bold", fontSize: 16 }}>
+                    {showEnglish ? "Reconnecting…" : "Verbinde erneut…"}
+                  </Text>
+                  <Text style={{ color: "#888", fontFamily: "Inter_400Regular", fontSize: 13, textAlign: "center" }}>
+                    {showEnglish ? "Your game is saved." : "Dein Spielstand bleibt erhalten."}
+                  </Text>
+                  <TouchableOpacity onPress={doLeave} style={{ marginTop: 4 }}>
+                    <Text style={{ color: "#c8a96e", fontFamily: "Inter_400Regular", fontSize: 13, textDecorationLine: "underline" }}>
+                      {showEnglish ? "Leave game" : "Spiel verlassen"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
         )}
       </View>
   );
