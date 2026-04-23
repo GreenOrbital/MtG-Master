@@ -173,8 +173,10 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
 
   const wsRef = useRef<WebSocket | null>(null);
   const pingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const screenRef = useRef<Screen>("home");
 
   const [screen, setScreen] = useState<Screen>("home");
+  function goScreen(s: Screen) { screenRef.current = s; setScreen(s); }
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [myRole, setMyRole] = useState<"host" | "guest" | null>(null);
 
@@ -246,8 +248,8 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
         if (msg.type === "game_state") {
           const state: GameState = msg.state;
           setGameState(state);
-          if (state.status === "playing" && screen !== "game") setScreen("game");
-          else if (state.status === "waiting" && screen !== "waiting") setScreen("waiting");
+          if (state.status === "playing" && screenRef.current !== "game") goScreen("game");
+          else if (state.status === "waiting" && screenRef.current !== "waiting") goScreen("waiting");
         } else if (msg.type === "error") {
           setError(msg.message);
           setConnecting(false);
@@ -303,7 +305,7 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
         deckCards: getDeckCards(),
         isPublic,
       }));
-      setScreen("waiting");
+      goScreen("waiting");
     });
   }
 
@@ -321,7 +323,7 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
         deckName,
         deckCards: getDeckCards(),
       }));
-      setScreen("waiting");
+      goScreen("waiting");
     });
   }
 
@@ -345,7 +347,7 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
           style: "destructive",
           onPress: () => {
             disconnectWs();
-            setScreen("home");
+            goScreen("home");
             setGameState(null);
             setMyRole(null);
             setError(null);
@@ -395,22 +397,24 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
             contentContainerStyle={{ padding: 16, paddingBottom: 12, paddingTop: asScreen ? 8 : insets.top + 8 }}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={s.header}>
-              <View style={[s.headerIcon, { backgroundColor: colors.primary + "22" }]}>
-                <Ionicons name="game-controller" size={22} color={colors.primary} />
+            {!asScreen && (
+              <View style={s.header}>
+                <View style={[s.headerIcon, { backgroundColor: colors.primary + "22" }]}>
+                  <Ionicons name="game-controller" size={22} color={colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.headerTitle, { color: colors.foreground }]}>
+                    {showEnglish ? "Play MtG" : "MtG spielen"}
+                  </Text>
+                  <Text style={[s.headerSub, { color: colors.mutedForeground }]}>
+                    {showEnglish ? "Virtual game table — real opponent" : "Virtueller Spieltisch — echter Gegner"}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                  <Ionicons name="close-circle" size={26} color={colors.mutedForeground} />
+                </TouchableOpacity>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[s.headerTitle, { color: colors.foreground }]}>
-                  {showEnglish ? "Play MtG" : "MtG spielen"}
-                </Text>
-                <Text style={[s.headerSub, { color: colors.mutedForeground }]}>
-                  {showEnglish ? "Virtual game table — real opponent" : "Virtueller Spieltisch — echter Gegner"}
-                </Text>
-              </View>
-              <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-                <Ionicons name="close-circle" size={26} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
+            )}
 
             {error && (
               <View style={[s.errorBox, { backgroundColor: "#ef444418", borderColor: "#ef4444" }]}>
