@@ -100,7 +100,7 @@ function normalizeName(n: string) {
 }
 
 // ─── Scryfall Collection API — up to 75 cards in ONE request ────────────────
-async function fetchCardsCollection(names: string[]): Promise<Map<string, ScryfallCard>> {
+export async function fetchCardsCollection(names: string[]): Promise<Map<string, ScryfallCard>> {
   const result = new Map<string, ScryfallCard>();
 
   // Serve from cache first

@@ -26,7 +26,7 @@ import { useSettings } from "@/context/SettingsContext";
 import { MTG_KEYWORDS } from "@/data/keywords";
 import { AdBanner } from "@/components/AdBanner";
 import { useColors } from "@/hooks/useColors";
-import { getArchetypeList, getDeckSuggestion, type ArchetypeMeta, type DeckSuggestion, type SuggestedCard } from "@/lib/deckSuggestionService";
+import { getArchetypeList, getDeckSuggestion, fetchCardsCollection, type ArchetypeMeta, type DeckSuggestion, type SuggestedCard } from "@/lib/deckSuggestionService";
 import { calculateCardScore, scoreColor, scoreLabel } from "@/utils/cardScore";
 import { EXAMPLE_COMMANDER_DECKS, totalCardCount, type ExampleCommanderDeck } from "@/data/exampleCommanderDecks";
 
@@ -811,6 +811,7 @@ export default function DeckIdeasScreen() {
   const [showExampleSection, setShowExampleSection] = useState(false);
   const [selectedExampleId, setSelectedExampleId] = useState<string | null>(null);
   const [importedExampleIds, setImportedExampleIds] = useState<Set<string>>(new Set());
+  const [importingExampleId, setImportingExampleId] = useState<string | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(SELECTED_EXAMPLE_DECK_KEY).then(v => {
@@ -828,29 +829,49 @@ export default function DeckIdeasScreen() {
     }
   }, [selectedExampleId]);
 
-  const handleImportExampleDeck = useCallback((deck: ExampleCommanderDeck) => {
-    const deckCards = deck.cards.map(c => ({
-      id: c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
-      name: c.name,
-      type_line: c.type_line,
-      mana_cost: c.mana_cost,
-      count: c.count,
-    }));
-    const newDeck: Deck = {
-      id: `example-${deck.id}-${Date.now()}`,
-      name: deck.name,
-      format: "commander",
-      cards: deckCards,
-      lands: deck.lands,
-      savedAt: Date.now(),
-    };
-    importDeck(newDeck);
-    setImportedExampleIds(prev => new Set([...prev, deck.id]));
-    setImportFeedback(showEnglish
-      ? `"${deck.name}" added to your decks!`
-      : `"${deck.name}" zu deinen Decks hinzugefügt!`);
-    setTimeout(() => setImportFeedback(null), 4000);
-  }, [importDeck, showEnglish]);
+  const handleImportExampleDeck = useCallback(async (deck: ExampleCommanderDeck) => {
+    if (importingExampleId === deck.id) return;
+    setImportingExampleId(deck.id);
+    try {
+      // Batch-fetch Scryfall data for all cards (imageUri, cmc, mana_cost, etc.)
+      const cardDataMap = await fetchCardsCollection(deck.cards.map(c => c.name));
+
+      const deckCards: DeckCard[] = deck.cards.map(c => {
+        const sf = cardDataMap.get(c.name);
+        return {
+          id: sf?.id ?? c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+          name: c.name,
+          printed_name: sf?.nameDe !== c.name ? sf?.nameDe : undefined,
+          type_line: sf?.type_line ?? c.type_line,
+          mana_cost: sf?.mana_cost ?? c.mana_cost ?? "",
+          cmc: sf?.cmc ?? 0,
+          oracle_text: sf?.oracle_text,
+          keywords: sf?.keywords,
+          imageUri: sf?.imageUri ?? undefined,
+          priceEur: sf?.priceEur ?? undefined,
+          priceUsd: sf?.priceUsd ?? undefined,
+          count: c.count,
+        };
+      });
+
+      const newDeck: Deck = {
+        id: `example-${deck.id}-${Date.now()}`,
+        name: deck.name,
+        format: "commander",
+        cards: deckCards,
+        lands: deck.lands,
+        savedAt: Date.now(),
+      };
+      importDeck(newDeck);
+      setImportedExampleIds(prev => new Set([...prev, deck.id]));
+      setImportFeedback(showEnglish
+        ? `"${deck.name}" added to your decks!`
+        : `"${deck.name}" zu deinen Decks hinzugefügt!`);
+      setTimeout(() => setImportFeedback(null), 4000);
+    } finally {
+      setImportingExampleId(null);
+    }
+  }, [importDeck, showEnglish, importingExampleId]);
 
   const preconYears = Array.from(new Set(COMMANDER_PRECONS.map(d => d.year))).sort((a, b) => Number(b) - Number(a));
   const filteredPrecons = preconYearFilter === "all"
@@ -1185,28 +1206,41 @@ export default function DeckIdeasScreen() {
                         : <Ionicons name="ellipse-outline" size={26} color={colors.border} />
                       }
                       <TouchableOpacity
-                        onPress={(e) => { e.stopPropagation?.(); handleImportExampleDeck(deck); }}
+                        onPress={() => handleImportExampleDeck(deck)}
+                        disabled={importingExampleId === deck.id || importedExampleIds.has(deck.id)}
                         style={{
                           flexDirection: "row", alignItems: "center", gap: 4,
                           paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8,
-                          backgroundColor: importedExampleIds.has(deck.id) ? "#16a34a22" : colors.primary + "22",
+                          backgroundColor: importedExampleIds.has(deck.id) ? "#16a34a22"
+                            : importingExampleId === deck.id ? "#c8a96e22"
+                            : colors.primary + "22",
                           borderWidth: 1,
-                          borderColor: importedExampleIds.has(deck.id) ? "#16a34a55" : colors.primary + "55",
+                          borderColor: importedExampleIds.has(deck.id) ? "#16a34a55"
+                            : importingExampleId === deck.id ? "#c8a96e55"
+                            : colors.primary + "55",
                         }}
                         activeOpacity={0.7}
                       >
-                        <Ionicons
-                          name={importedExampleIds.has(deck.id) ? "checkmark" : "add"}
-                          size={13}
-                          color={importedExampleIds.has(deck.id) ? "#16a34a" : colors.primary}
-                        />
+                        {importingExampleId === deck.id ? (
+                          <ActivityIndicator size={12} color="#c8a96e" />
+                        ) : (
+                          <Ionicons
+                            name={importedExampleIds.has(deck.id) ? "checkmark" : "add"}
+                            size={13}
+                            color={importedExampleIds.has(deck.id) ? "#16a34a" : colors.primary}
+                          />
+                        )}
                         <Text style={{
                           fontSize: 10, fontFamily: "Inter_500Medium",
-                          color: importedExampleIds.has(deck.id) ? "#16a34a" : colors.primary,
+                          color: importedExampleIds.has(deck.id) ? "#16a34a"
+                            : importingExampleId === deck.id ? "#c8a96e"
+                            : colors.primary,
                         }}>
-                          {importedExampleIds.has(deck.id)
-                            ? (showEnglish ? "Added" : "Hinzugefügt")
-                            : (showEnglish ? "Add" : "Hinzufügen")}
+                          {importingExampleId === deck.id
+                            ? (showEnglish ? "Loading…" : "Lädt…")
+                            : importedExampleIds.has(deck.id)
+                              ? (showEnglish ? "Added" : "Hinzugefügt")
+                              : (showEnglish ? "Add to decks" : "Zu Decks")}
                         </Text>
                       </TouchableOpacity>
                     </View>

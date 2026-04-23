@@ -1297,7 +1297,8 @@ export default function ManapoolScreen() {
               </View>
             ) : (
               decks.map((deck) => {
-                const totalCards = deck.cards.reduce((a, c) => a + c.count, 0);
+                const basicsCount = Object.values(deck.lands ?? {}).reduce((s: number, n) => s + (n as number), 0);
+                const totalCards = deck.cards.reduce((a, c) => a + c.count, 0) + basicsCount;
                 const identity = deckColorIdentity(deck.cards);
                 return (
                   <TouchableOpacity
@@ -1635,7 +1636,8 @@ export default function ManapoolScreen() {
               const ds = deckScore(activeDeck.cards);
               const col = scoreColor(ds);
               const lbl = scoreLabel(ds, showEnglish);
-              const totalCards = activeDeck.cards.reduce((a, c) => a + c.count, 0);
+              const totalCards = activeDeck.cards.reduce((a, c) => a + c.count, 0)
+                + Object.values(activeDeck.lands ?? {}).reduce((s: number, n) => s + (n as number), 0);
               return (
                 <>
                   <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -2510,9 +2512,11 @@ export default function ManapoolScreen() {
 
             {/* ── Monte-Carlo Mana-Simulation ── */}
             {(() => {
-              const totalCards  = activeDeck.cards.reduce((a, c) => a + c.count, 0);
+              const basicLandsCount = Object.values(activeDeck.lands ?? {}).reduce((s: number, n) => s + (n as number), 0);
+              const nonBasicLandsInDeck = activeDeck.cards.filter((c) => isLand(c)).reduce((a, c) => a + c.count, 0);
+              const totalLandsInDeck = nonBasicLandsInDeck + basicLandsCount;
+              const totalCards  = activeDeck.cards.reduce((a, c) => a + c.count, 0) + basicLandsCount;
               if (totalCards < 7) return null;
-              const totalLandsInDeck = activeDeck.cards.filter((c) => isLand(c)).reduce((a, c) => a + c.count, 0);
               const landRatio   = totalLandsInDeck / totalCards * 100;
 
               // Bar chart for opening-hand land distribution
