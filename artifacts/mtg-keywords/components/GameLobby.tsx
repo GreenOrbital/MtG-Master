@@ -270,7 +270,20 @@ export default function GameLobby({ visible, onClose }: Props) {
   }
 
   function getDeckCards(): DeckCard[] {
-    return decks.find(d => d.id === selectedDeckId)?.cards ?? [];
+    const deck = decks.find(d => d.id === selectedDeckId);
+    if (!deck) return [];
+    const basicLandNames: Record<string, string> = { W: "Plains", U: "Island", B: "Swamp", R: "Mountain", G: "Forest" };
+    const basicLandIds: Record<string, string> = { W: "plains", U: "island", B: "swamp", R: "mountain", G: "forest" };
+    const basicLandTypes: Record<string, string> = { W: "Basic Land — Plains", U: "Basic Land — Island", B: "Basic Land — Swamp", R: "Basic Land — Mountain", G: "Basic Land — Forest" };
+    const landCards: DeckCard[] = (Object.entries(deck.lands ?? {}) as [string, number][])
+      .filter(([, n]) => n > 0)
+      .map(([color, n]) => ({
+        id: basicLandIds[color] ?? color.toLowerCase(),
+        name: basicLandNames[color] ?? color,
+        type_line: basicLandTypes[color],
+        count: n,
+      }));
+    return [...deck.cards, ...landCards];
   }
 
   function handleCreate() {
@@ -433,7 +446,7 @@ export default function GameLobby({ visible, onClose }: Props) {
                         {deck.name}
                       </Text>
                       <Text style={{ fontSize: 10, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
-                        {deck.cards.reduce((sum, c) => sum + (c.count ?? 1), 0)} Karten
+                        {deck.cards.reduce((sum, c) => sum + (c.count ?? 1), 0) + Object.values(deck.lands ?? {}).reduce((s: number, n) => s + (n as number), 0)} Karten
                       </Text>
                     </TouchableOpacity>
                   ))}
