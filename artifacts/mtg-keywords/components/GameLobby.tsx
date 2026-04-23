@@ -400,8 +400,8 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
   }
 
   function handleLeave() {
-    // On the waiting screen no game has started — leave directly without confirmation
-    if (screenRef.current === "waiting") { doLeave(); return; }
+    // On the waiting screen: just navigate home — lobby stays alive on the server
+    if (screenRef.current === "waiting") { goScreen("home"); return; }
     Alert.alert(
       showEnglish ? "Leave Game?" : "Spiel verlassen?",
       showEnglish ? "You will disconnect." : "Du trennst dich vom Spiel.",
