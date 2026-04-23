@@ -388,26 +388,26 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
     });
   }
 
+  function doLeave() {
+    disconnectWs();
+    clearSavedLobby();
+    goScreen("home");
+    setGameState(null);
+    setRole(null);
+    setError(null);
+    setSelectedHandCard(null);
+    setSelectedBfCard(null);
+  }
+
   function handleLeave() {
+    // On the waiting screen no game has started — leave directly without confirmation
+    if (screenRef.current === "waiting") { doLeave(); return; }
     Alert.alert(
       showEnglish ? "Leave Game?" : "Spiel verlassen?",
       showEnglish ? "You will disconnect." : "Du trennst dich vom Spiel.",
       [
         { text: showEnglish ? "Cancel" : "Abbrechen", style: "cancel" },
-        {
-          text: showEnglish ? "Leave" : "Verlassen",
-          style: "destructive",
-          onPress: () => {
-            disconnectWs();
-            clearSavedLobby();
-            goScreen("home");
-            setGameState(null);
-            setRole(null);
-            setError(null);
-            setSelectedHandCard(null);
-            setSelectedBfCard(null);
-          },
-        },
+        { text: showEnglish ? "Leave" : "Verlassen", style: "destructive", onPress: doLeave },
       ]
     );
   }
