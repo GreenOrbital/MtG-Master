@@ -95,7 +95,7 @@ export const EXAMPLE_COMMANDER_DECKS: ExampleCommanderDeck[] = [
       { name: "Reflecting Pool",            type_line: "Land",                count: 1 },
       { name: "Urborg, Tomb of Yawgmoth",   type_line: "Legendary Land",      count: 1 },
     ],
-    lands: { W: 9, U: 9, B: 8, R: 0, G: 10 },
+    lands: { W: 10, U: 9,  B: 8,  R: 0,  G: 10 },
   },
 
   // ─── 2. Kaalia of the Vast ───────────────────────────────────────────────
@@ -169,7 +169,7 @@ export const EXAMPLE_COMMANDER_DECKS: ExampleCommanderDeck[] = [
       { name: "Vault of the Archangel",      type_line: "Land",                count: 1 },
       { name: "Exotic Orchard",              type_line: "Land",                count: 1 },
     ],
-    lands: { W: 10, U: 0, B: 14, R: 13, G: 0 },
+    lands: { W: 15, U: 0,  B: 15, R: 14, G: 0  },
   },
 
   // ─── 3. The Ur-Dragon ────────────────────────────────────────────────────
@@ -247,7 +247,7 @@ export const EXAMPLE_COMMANDER_DECKS: ExampleCommanderDeck[] = [
       { name: "Watery Grave",                 type_line: "Land",                count: 1 },
       { name: "Exotic Orchard",               type_line: "Land",                count: 1 },
     ],
-    lands: { W: 6, U: 7, B: 6, R: 9, G: 9 },
+    lands: { W: 8,  U: 8,  B: 8,  R: 8,  G: 8  },
   },
 
   // ─── 4. Edgar Markov Vampires ────────────────────────────────────────────
@@ -322,7 +322,7 @@ export const EXAMPLE_COMMANDER_DECKS: ExampleCommanderDeck[] = [
       { name: "Vault of the Archangel",      type_line: "Land",                count: 1 },
       { name: "Exotic Orchard",              type_line: "Land",                count: 1 },
     ],
-    lands: { W: 10, U: 0, B: 14, R: 13, G: 0 },
+    lands: { W: 15, U: 0,  B: 14, R: 14, G: 0  },
   },
 
   // ─── 5. Meren of Clan Nel Toth ───────────────────────────────────────────
@@ -398,7 +398,7 @@ export const EXAMPLE_COMMANDER_DECKS: ExampleCommanderDeck[] = [
       { name: "Volrath's Stronghold",        type_line: "Legendary Land",      count: 1 },
       { name: "Bojuka Bog",                  type_line: "Land",                count: 1 },
     ],
-    lands: { W: 0, U: 0, B: 18, R: 0, G: 19 },
+    lands: { W: 0,  U: 0,  B: 21, R: 0,  G: 21 },
   },
 
   // ─── 6. Omnath, Locus of Rage ────────────────────────────────────────────
@@ -470,7 +470,7 @@ export const EXAMPLE_COMMANDER_DECKS: ExampleCommanderDeck[] = [
       { name: "Exotic Orchard",               type_line: "Land",                count: 1 },
       { name: "Yavimaya, Cradle of Growth",   type_line: "Legendary Land",      count: 1 },
     ],
-    lands: { W: 0, U: 8, B: 0, R: 11, G: 10 },
+    lands: { W: 12, U: 12, B: 0,  R: 11, G: 11 },
   },
 
   // ─── 7. Oloro Lifegain ───────────────────────────────────────────────────
@@ -545,7 +545,7 @@ export const EXAMPLE_COMMANDER_DECKS: ExampleCommanderDeck[] = [
       { name: "Urborg, Tomb of Yawgmoth",    type_line: "Legendary Land",      count: 1 },
       { name: "Exotic Orchard",              type_line: "Land",                count: 1 },
     ],
-    lands: { W: 12, U: 12, B: 12, R: 0, G: 0 },
+    lands: { W: 15, U: 15, B: 13, R: 0,  G: 0  },
   },
 
   // ─── 8. Yidris Cascade ───────────────────────────────────────────────────
@@ -619,7 +619,7 @@ export const EXAMPLE_COMMANDER_DECKS: ExampleCommanderDeck[] = [
       { name: "Ancient Tomb",                 type_line: "Land",                count: 1 },
       { name: "City of Brass",                type_line: "Land",                count: 1 },
     ],
-    lands: { W: 0, U: 9, B: 10, R: 9, G: 9 },
+    lands: { W: 0,  U: 12, B: 12, R: 10, G: 10 },
   },
 
   // ─── 9. Krenko Goblins ───────────────────────────────────────────────────
@@ -691,7 +691,7 @@ export const EXAMPLE_COMMANDER_DECKS: ExampleCommanderDeck[] = [
       { name: "Smoldering Crater",            type_line: "Land",                count: 1 },
       { name: "Exotic Orchard",               type_line: "Land",                count: 1 },
     ],
-    lands: { W: 0, U: 0, B: 0, R: 35, G: 0 },
+    lands: { W: 0,  U: 0,  B: 0,  R: 46, G: 0  },
   },
 
   // ─── 10. Breya Artifacts ─────────────────────────────────────────────────
@@ -766,7 +766,7 @@ export const EXAMPLE_COMMANDER_DECKS: ExampleCommanderDeck[] = [
       { name: "Exotic Orchard",                type_line: "Land",                count: 1 },
       { name: "Reflecting Pool",               type_line: "Land",                count: 1 },
     ],
-    lands: { W: 9, U: 9, B: 9, R: 9, G: 0 },
+    lands: { W: 12, U: 11, B: 11, R: 9,  G: 0  },
   },
 
   // ─── 11. The Gitrog Monster ──────────────────────────────────────────────
@@ -839,7 +839,7 @@ export const EXAMPLE_COMMANDER_DECKS: ExampleCommanderDeck[] = [
       { name: "High Market",                  type_line: "Land",                count: 1 },
       { name: "Hissing Quagmire",             type_line: "Land",                count: 1 },
     ],
-    lands: { W: 0, U: 0, B: 20, R: 0, G: 19 },
+    lands: { W: 0,  U: 0,  B: 23, R: 0,  G: 22 },
   },
 
   // ─── 12. Mizzix Spells ───────────────────────────────────────────────────
@@ -912,7 +912,7 @@ export const EXAMPLE_COMMANDER_DECKS: ExampleCommanderDeck[] = [
       { name: "Wandering Fumarole",            type_line: "Land",                count: 1 },
       { name: "Swiftwater Cliffs",             type_line: "Land",                count: 1 },
     ],
-    lands: { W: 0, U: 19, B: 0, R: 19, G: 0 },
+    lands: { W: 0,  U: 23, B: 0,  R: 22, G: 0  },
   },
 
   // ─── 13. Prossh Sacrifice ────────────────────────────────────────────────
@@ -987,7 +987,7 @@ export const EXAMPLE_COMMANDER_DECKS: ExampleCommanderDeck[] = [
       { name: "Cabal Coffers",                type_line: "Land",                count: 1 },
       { name: "Urborg, Tomb of Yawgmoth",     type_line: "Legendary Land",      count: 1 },
     ],
-    lands: { W: 0, U: 0, B: 12, R: 12, G: 13 },
+    lands: { W: 0,  U: 0,  B: 15, R: 14, G: 14 },
   },
 
   // ─── 14. Sliver Overlord ─────────────────────────────────────────────────
@@ -1064,7 +1064,7 @@ export const EXAMPLE_COMMANDER_DECKS: ExampleCommanderDeck[] = [
       { name: "Cavern of Souls",              type_line: "Land",                count: 1 },
       { name: "Hallowed Fountain",            type_line: "Land",                count: 1 },
     ],
-    lands: { W: 7, U: 7, B: 7, R: 7, G: 8 },
+    lands: { W: 9,  U: 9,  B: 8,  R: 8,  G: 7  },
   },
 
   // ─── 15. Ezuri Counters ──────────────────────────────────────────────────
@@ -1140,7 +1140,7 @@ export const EXAMPLE_COMMANDER_DECKS: ExampleCommanderDeck[] = [
       { name: "Reflecting Pool",               type_line: "Land",                count: 1 },
       { name: "Reliquary Tower",               type_line: "Land",                count: 1 },
     ],
-    lands: { W: 0, U: 19, B: 0, R: 0, G: 18 },
+    lands: { W: 0,  U: 21, B: 0,  R: 0,  G: 21 },
   },
 
   // ─── 16. Narset Extra Turns ──────────────────────────────────────────────
@@ -1214,7 +1214,7 @@ export const EXAMPLE_COMMANDER_DECKS: ExampleCommanderDeck[] = [
       { name: "Desolate Lighthouse",           type_line: "Land",                count: 1 },
       { name: "Reliquary Tower",               type_line: "Land",                count: 1 },
     ],
-    lands: { W: 13, U: 12, B: 0, R: 12, G: 0 },
+    lands: { W: 15, U: 15, B: 0,  R: 14, G: 0  },
   },
 
   // ─── 17. Sram Equipment ──────────────────────────────────────────────────
@@ -1290,7 +1290,7 @@ export const EXAMPLE_COMMANDER_DECKS: ExampleCommanderDeck[] = [
       { name: "Windbrisk Heights",            type_line: "Land",                count: 1 },
       { name: "Rugged Prairie",               type_line: "Land",                count: 1 },
     ],
-    lands: { W: 37, U: 0, B: 0, R: 0, G: 0 },
+    lands: { W: 42, U: 0,  B: 0,  R: 0,  G: 0  },
   },
 
   // ─── 18. Animar Creatures ────────────────────────────────────────────────
@@ -1364,7 +1364,7 @@ export const EXAMPLE_COMMANDER_DECKS: ExampleCommanderDeck[] = [
       { name: "Yavimaya, Cradle of Growth",    type_line: "Legendary Land",      count: 1 },
       { name: "Rootbound Crag",                type_line: "Land",                count: 1 },
     ],
-    lands: { W: 0, U: 12, B: 0, R: 12, G: 13 },
+    lands: { W: 0,  U: 15, B: 0,  R: 15, G: 14 },
   },
 
   // ─── 19. Nekusar Wheels ──────────────────────────────────────────────────
@@ -1439,7 +1439,7 @@ export const EXAMPLE_COMMANDER_DECKS: ExampleCommanderDeck[] = [
       { name: "Urborg, Tomb of Yawgmoth",      type_line: "Legendary Land",      count: 1 },
       { name: "Smoldering Crater",             type_line: "Land",                count: 1 },
     ],
-    lands: { W: 0, U: 12, B: 13, R: 12, G: 0 },
+    lands: { W: 0,  U: 15, B: 14, R: 14, G: 0  },
   },
 
   // ─── 20. Zacama Dinosaurs ────────────────────────────────────────────────
@@ -1516,7 +1516,7 @@ export const EXAMPLE_COMMANDER_DECKS: ExampleCommanderDeck[] = [
       { name: "Nykthos, Shrine to Nyx",        type_line: "Legendary Land",      count: 1 },
       { name: "Cinder Glade",                  type_line: "Land",                count: 1 },
     ],
-    lands: { W: 12, U: 0, B: 0, R: 12, G: 13 },
+    lands: { W: 14, U: 0,  B: 0,  R: 13, G: 14 },
   },
 ];
 
