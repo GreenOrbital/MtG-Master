@@ -87,6 +87,8 @@ async function buildAll() {
       "ref-napi",
       "rocksdb",
       "sass-embedded",
+      "drizzle-orm",
+      "drizzle-orm/*",
       "sequelize",
       "serialport",
       "snappy",
