@@ -20,6 +20,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import OfflineGuard from "@/components/OfflineGuard";
 import { CookieBanner } from "@/components/CookieBanner";
+import { DisclaimerModal } from "@/components/DisclaimerModal";
 import { CardHistoryProvider } from "@/context/CardHistoryContext";
 import { DeckProvider } from "@/context/DeckContext";
 import { SettingsProvider, useSettings } from "@/context/SettingsContext";
@@ -46,6 +47,7 @@ function AppInner({ children }: { children: React.ReactNode }) {
     <>
       {children}
       <CookieBanner showEnglish={showEnglish} />
+      <DisclaimerModal />
     </>
   );
 }

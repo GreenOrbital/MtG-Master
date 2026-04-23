@@ -151,12 +151,20 @@ export function AdBanner() {
   const url = showEnglish ? banner.urlEn : banner.urlDe;
   const adLabel = showEnglish ? "Amazon Ad" : "Amazon-Anzeige";
 
+  const werbungLabel = showEnglish ? "Advertisement · Amazon Affiliate" : "Werbung · Amazon-Affiliate-Link";
+
   return (
     <Animated.View style={[styles.wrapper, { opacity: fadeAnim }]}>
+      {/* ── Werbungs-Trennlinie ── */}
+      <View style={[styles.adLabel, { borderColor: colors.border }]}>
+        <View style={[styles.adLabelLine, { backgroundColor: colors.border }]} />
+        <Text style={[styles.adLabelText, { color: colors.mutedForeground }]}>{werbungLabel}</Text>
+        <View style={[styles.adLabelLine, { backgroundColor: colors.border }]} />
+      </View>
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={() => Linking.openURL(url)}
-        style={[styles.touch, { borderColor: colors.primary + "55" }]}
+        style={[styles.touch, { borderColor: colors.border }]}
       >
         <ImageBackground
           source={imageUrl ? { uri: imageUrl } : undefined}
@@ -185,8 +193,23 @@ const styles = StyleSheet.create({
   wrapper: {
     marginHorizontal: 16,
     marginBottom: 8,
-    borderRadius: 10,
-    overflow: "hidden",
+  },
+  adLabel: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 5,
+    paddingHorizontal: 2,
+  },
+  adLabelLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+  },
+  adLabelText: {
+    fontSize: 9,
+    fontFamily: "Inter_400Regular",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
   },
   touch: {
     borderRadius: 10,

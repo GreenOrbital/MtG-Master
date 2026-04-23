@@ -202,6 +202,22 @@ export default function PartnerScreen() {
           </Text>
         </View>
 
+        {/* ── Affiliate-Hinweis ── */}
+        <View style={[styles.affiliateBox, { backgroundColor: "#fb923c11", borderColor: "#fb923c44" }]}>
+          <Ionicons name="pricetag-outline" size={16} color="#fb923c" style={{ marginTop: 1 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.affiliateTitle, { color: "#fb923c" }]}>
+              {t("Werbung · Affiliate-Hinweis", "Advertisement · Affiliate Disclosure")}
+            </Text>
+            <Text style={[styles.affiliateText, { color: colors.mutedForeground }]}>
+              {t(
+                "Diese Seite enthält Affiliate-Links zu Amazon.de und Amazon.com. Wenn du über diese Links kaufst, erhalten wir eine kleine Provision — ohne Mehrkosten für dich. Die App ist unabhängig von Wizards of the Coast.",
+                "This page contains affiliate links to Amazon.de and Amazon.com. If you make a purchase through these links, we receive a small commission at no extra cost to you. This app is independent from Wizards of the Coast."
+              )}
+            </Text>
+          </View>
+        </View>
+
         {/* Directory CTA */}
         <TouchableOpacity
           style={[styles.directoryCta, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -363,6 +379,10 @@ const styles = StyleSheet.create({
   headerIconWrap: { width: 64, height: 64, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   headerTitle: { fontSize: 26, fontFamily: "Inter_700Bold", flex: 1 },
   headerSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
+
+  affiliateBox: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginHorizontal: 16, marginBottom: 14, borderRadius: 12, borderWidth: 1, padding: 12 },
+  affiliateTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.3, marginBottom: 3 },
+  affiliateText: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
 
   directoryCta: { flexDirection: "row", alignItems: "center", gap: 12, marginHorizontal: 16, marginBottom: 20, borderRadius: 14, borderWidth: 1, padding: 14 },
   directoryCtaTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },

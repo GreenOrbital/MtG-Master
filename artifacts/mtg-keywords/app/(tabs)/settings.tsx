@@ -123,10 +123,10 @@ function AboutSection({ showEnglish, colors }: { showEnglish: boolean; colors: R
         </View>
       ))}
 
-      <View style={[styles.disclaimerBox, { backgroundColor: colors.muted + "40", borderColor: colors.border }]}>
-        <Ionicons name="information-circle-outline" size={16} color={colors.mutedForeground} style={{ marginRight: 6, marginTop: 1 }} />
+      <View style={[styles.disclaimerBox, { backgroundColor: "#c8a96e11", borderColor: "#c8a96e44" }]}>
+        <Ionicons name="shield-checkmark-outline" size={18} color="#c8a96e" style={{ marginRight: 6, marginTop: 1 }} />
         <View style={{ flex: 1 }}>
-          <Text style={[styles.disclaimerTitle, { color: colors.mutedForeground }]}>{disclaimerTitle}</Text>
+          <Text style={[styles.disclaimerTitle, { color: "#c8a96e" }]}>{disclaimerTitle}</Text>
           <Text style={[styles.disclaimerText, { color: colors.mutedForeground }]}>{disclaimerText}</Text>
         </View>
       </View>
