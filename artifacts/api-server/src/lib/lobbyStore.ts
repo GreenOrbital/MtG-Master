@@ -1,4 +1,6 @@
 import type { WebSocket } from "ws";
+import { db, gameRoomsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 // ─── Card types ───────────────────────────────────────────────────────────────
 
@@ -104,6 +106,60 @@ function emptyBoard(): PlayerBoard {
 
 const rooms = new Map<string, Room>();
 
+// ─── DB persistence ───────────────────────────────────────────────────────────
+
+type PersistedRoom = Omit<Room, "hostWs" | "guestWs">;
+
+function toPersistedRoom(room: Room): PersistedRoom {
+  const { hostWs: _h, guestWs: _g, ...rest } = room;
+  return rest;
+}
+
+function persistRoom(room: Room): void {
+  const state = toPersistedRoom(room);
+  db.insert(gameRoomsTable).values({
+    code: room.code,
+    state: state as any,
+    status: room.status,
+    isPublic: room.isPublic ? "true" : "false",
+  }).onConflictDoUpdate({
+    target: gameRoomsTable.code,
+    set: { state: state as any, status: room.status, updatedAt: new Date() },
+  }).catch(err => console.error("persistRoom error:", err));
+}
+
+export async function loadRoomsFromDb(): Promise<void> {
+  try {
+    const allRows = await db.select().from(gameRoomsTable);
+    for (const row of allRows) {
+      if (row.status === "finished") continue;
+      const state = row.state as PersistedRoom;
+      const room: Room = { ...state, hostWs: null, guestWs: null };
+      rooms.set(room.code, room);
+    }
+    console.log(`[lobbyStore] Loaded ${rooms.size} room(s) from DB`);
+  } catch (err) {
+    console.error("[lobbyStore] Failed to load rooms from DB:", err);
+  }
+}
+
+// Clean up finished rooms from DB after 7 days
+setInterval(async () => {
+  try {
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    await db.delete(gameRoomsTable)
+      .where(eq(gameRoomsTable.status, "finished"))
+      .catch(() => {});
+    // Remove old waiting rooms (7+ days) from memory
+    const now = Date.now();
+    for (const [code, room] of rooms) {
+      if (room.status === "waiting" && now - room.createdAt > 7 * 24 * 60 * 60 * 1000) {
+        rooms.delete(code);
+      }
+    }
+  } catch {}
+}, 60 * 60 * 1000); // hourly
+
 function generateCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
@@ -160,6 +216,7 @@ function viewFor(room: Room, role: "host" | "guest") {
 }
 
 function broadcast(room: Room) {
+  persistRoom(room);
   const hostView = viewFor(room, "host");
   const guestView = viewFor(room, "guest");
   if (room.hostWs?.readyState === 1) {
@@ -272,7 +329,7 @@ export function createRoom(opts: {
   };
 
   rooms.set(code, room);
-  setTimeout(() => rooms.delete(code), 2 * 60 * 60 * 1000);
+  persistRoom(room);
   return room;
 }
 

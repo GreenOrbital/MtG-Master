@@ -2,7 +2,7 @@ import { createServer } from "http";
 import { WebSocketServer } from "ws";
 import app from "./app";
 import { logger } from "./lib/logger";
-import { handleWsMessage, handleWsClose } from "./lib/lobbyStore";
+import { handleWsMessage, handleWsClose, loadRoomsFromDb } from "./lib/lobbyStore";
 
 const rawPort = process.env["PORT"];
 
@@ -50,4 +50,5 @@ httpServer.listen(port, (err?: Error) => {
     process.exit(1);
   }
   logger.info({ port }, "Server listening (HTTP + WebSocket)");
+  loadRoomsFromDb();
 });
