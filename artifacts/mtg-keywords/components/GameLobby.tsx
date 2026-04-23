@@ -94,6 +94,7 @@ type GameState = {
   turn: number; phase: Phase; activePlayer: string;
   gameLog: { time: number; msg: string }[];
   createdAt: number;
+  isPublic?: boolean;
   me: MyState | null;
   opponent: OppState | null;
 };
@@ -181,6 +182,7 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
   const [playerName, setPlayerName] = useState("");
   const [selectedDeckId, setSelectedDeckId] = useState("");
   const [selectedFormat, setSelectedFormat] = useState("commander");
+  const [isPublic, setIsPublic] = useState(true);
   const [joinCode, setJoinCode] = useState("");
   const [homeMode, setHomeMode] = useState<"create" | "join">("create");
   const [openRooms, setOpenRooms] = useState<PublicRoom[]>([]);
@@ -299,6 +301,7 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
         format: selectedFormat,
         startingLife: fmt.life,
         deckCards: getDeckCards(),
+        isPublic,
       }));
       setScreen("waiting");
     });
@@ -386,9 +389,10 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
 
         {/* ── HOME SCREEN ── */}
         {screen === "home" && (
-          <>
+          <View style={{ flex: 1 }}>
           <ScrollView
-            contentContainerStyle={{ padding: 20, paddingBottom: 16, paddingTop: asScreen ? 10 : insets.top + 10 }}
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: 16, paddingBottom: 12, paddingTop: asScreen ? 8 : insets.top + 8 }}
             keyboardShouldPersistTaps="handled"
           >
             <View style={s.header}>
@@ -468,6 +472,38 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
 
             {homeMode === "create" ? (
               <>
+                {/* Public / Private toggle */}
+                <View style={[s.visibilityRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <TouchableOpacity
+                    style={[s.visibilityBtn, isPublic && { backgroundColor: colors.primary + "22" }]}
+                    onPress={() => setIsPublic(true)}
+                  >
+                    <Ionicons name="globe-outline" size={14} color={isPublic ? colors.primary : colors.mutedForeground} />
+                    <View>
+                      <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: isPublic ? colors.primary : colors.mutedForeground }}>
+                        {showEnglish ? "Public" : "Öffentlich"}
+                      </Text>
+                      <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+                        {showEnglish ? "Listed — first joiner in" : "Gelistet — erster tritt ein"}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.visibilityBtn, !isPublic && { backgroundColor: colors.primary + "22" }]}
+                    onPress={() => setIsPublic(false)}
+                  >
+                    <Ionicons name="lock-closed-outline" size={14} color={!isPublic ? colors.primary : colors.mutedForeground} />
+                    <View>
+                      <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: !isPublic ? colors.primary : colors.mutedForeground }}>
+                        {showEnglish ? "Private" : "Privat"}
+                      </Text>
+                      <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+                        {showEnglish ? "Invite link required" : "Nur per Einladungslink"}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+
                 <Text style={[s.label, { color: colors.foreground }]}>Format</Text>
                 <View style={s.formatGrid}>
                   {FORMAT_OPTIONS.map(f => {
@@ -563,7 +599,7 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
               </TouchableOpacity>
             </View>
           )}
-          </>
+          </View>
         )}
 
         {/* ── WAITING SCREEN ── */}
@@ -576,22 +612,44 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
             {myRole === "host" && gameState?.status !== "playing" ? (
               <>
                 <View style={[s.waitIcon, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "44" }]}>
-                  <Ionicons name="people-outline" size={44} color={colors.primary} />
+                  <Ionicons name={gameState?.isPublic ? "globe-outline" : "lock-closed-outline"} size={44} color={colors.primary} />
                 </View>
                 <Text style={[s.waitTitle, { color: colors.foreground }]}>
                   {showEnglish ? "Waiting for opponent…" : "Warte auf Mitspieler…"}
                 </Text>
-                <Text style={[s.waitSub, { color: colors.mutedForeground }]}>
-                  {showEnglish ? "Share the code:" : "Teile den Code:"}
-                </Text>
-                <View style={[s.codeDisplay, { backgroundColor: colors.card, borderColor: colors.primary + "66" }]}>
-                  <Text style={[s.codeText, { color: colors.primary }]}>{gameState?.code ?? "…"}</Text>
-                </View>
-                <TouchableOpacity style={[s.shareBtn, { backgroundColor: colors.primary }]} onPress={handleShare}>
-                  <Ionicons name="share-outline" size={18} color="#0f0d0a" />
-                  <Text style={s.primaryBtnText}>{showEnglish ? "Share Invitation" : "Einladung teilen"}</Text>
-                </TouchableOpacity>
-                <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 12 }}>
+
+                {gameState?.isPublic ? (
+                  /* ── Public lobby ── */
+                  <>
+                    <View style={[s.publicBadge, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "44" }]}>
+                      <Ionicons name="globe-outline" size={15} color={colors.primary} />
+                      <Text style={{ fontSize: 13, color: colors.primary, fontFamily: "Inter_600SemiBold" }}>
+                        {showEnglish ? "Public — visible in lobby list" : "Öffentlich — in der Lobby-Liste sichtbar"}
+                      </Text>
+                    </View>
+                    <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 8 }}>
+                      {showEnglish
+                        ? "The lobby closes automatically when a player joins."
+                        : "Die Lobby schließt automatisch, sobald ein Spieler beitritt."}
+                    </Text>
+                  </>
+                ) : (
+                  /* ── Private lobby ── */
+                  <>
+                    <Text style={[s.waitSub, { color: colors.mutedForeground }]}>
+                      {showEnglish ? "Share the room code:" : "Teile den Raumcode:"}
+                    </Text>
+                    <View style={[s.codeDisplay, { backgroundColor: colors.card, borderColor: colors.primary + "66" }]}>
+                      <Text style={[s.codeText, { color: colors.primary }]}>{gameState?.code ?? "…"}</Text>
+                    </View>
+                    <TouchableOpacity style={[s.shareBtn, { backgroundColor: colors.primary }]} onPress={handleShare}>
+                      <Ionicons name="share-outline" size={18} color="#0f0d0a" />
+                      <Text style={s.primaryBtnText}>{showEnglish ? "Share Invite Link" : "Einladungslink teilen"}</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+
+                <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 16 }}>
                   Format: {fmt?.label ?? gameState?.format}  ·  {gameState?.startingLife} LP
                 </Text>
               </>
@@ -1190,7 +1248,10 @@ const s = StyleSheet.create({
   modeTab: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11 },
   formatGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
   formatChip: { width: "48%", flexDirection: "column", alignItems: "flex-start", gap: 2, padding: 10, borderRadius: 10, borderWidth: 1 },
-  stickyFooter: { paddingHorizontal: 20, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth },
+  visibilityRow: { flexDirection: "row", borderRadius: 12, borderWidth: 1, marginBottom: 14, overflow: "hidden" },
+  visibilityBtn: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, padding: 10 },
+  publicBadge: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1, marginTop: 8 },
+  stickyFooter: { paddingHorizontal: 16, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth },
   primaryBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 14, borderRadius: 14, marginTop: 10 },
   primaryBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#0f0d0a" },
   openRoomsHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 20, marginBottom: 12 },

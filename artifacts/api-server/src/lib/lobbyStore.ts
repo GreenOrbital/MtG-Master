@@ -60,6 +60,7 @@ export type Room = {
   activePlayer: string;
   gameLog: GameLogEntry[];
   createdAt: number;
+  isPublic: boolean;
   hostWs: WebSocket | null;
   guestWs: WebSocket | null;
 };
@@ -130,6 +131,7 @@ function viewFor(room: Room, role: "host" | "guest") {
     activePlayer: room.activePlayer,
     gameLog: room.gameLog.slice(-30),
     createdAt: room.createdAt,
+    isPublic: room.isPublic,
     me: me ? {
       name: me.name,
       deckName: me.deckName,
@@ -237,7 +239,7 @@ function advancePhase(room: Room, role: "host" | "guest") {
 
 export function createRoom(opts: {
   hostName: string; deckName: string; format: string; startingLife: number;
-  deckCards?: InputCard[];
+  deckCards?: InputCard[]; isPublic?: boolean;
 }): Room {
   let code = generateCode();
   while (rooms.has(code)) code = generateCode();
@@ -264,6 +266,7 @@ export function createRoom(opts: {
     activePlayer: opts.hostName,
     gameLog: [{ time: Date.now(), msg: `Raum erstellt von ${opts.hostName} (${opts.deckName})` }],
     createdAt: Date.now(),
+    isPublic: opts.isPublic ?? true,
     hostWs: null,
     guestWs: null,
   };
@@ -314,7 +317,7 @@ export function getRoom(code: string): Room | null {
 
 export function listWaitingRooms() {
   return Array.from(rooms.values())
-    .filter((r) => r.status === "waiting" && Date.now() - r.createdAt < 30 * 60 * 1000)
+    .filter((r) => r.status === "waiting" && r.isPublic && Date.now() - r.createdAt < 30 * 60 * 1000)
     .map((r) => ({
       code: r.code,
       host: { name: r.host.name, deckName: r.host.deckName },
@@ -322,6 +325,7 @@ export function listWaitingRooms() {
       startingLife: r.startingLife,
       status: r.status,
       createdAt: r.createdAt,
+      isPublic: r.isPublic,
     }))
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, 20);
@@ -330,7 +334,7 @@ export function listWaitingRooms() {
 // ─── WebSocket message handling ───────────────────────────────────────────────
 
 type ClientMsg =
-  | { type: "create"; playerName: string; deckName: string; format: string; startingLife: number; deckCards?: InputCard[] }
+  | { type: "create"; playerName: string; deckName: string; format: string; startingLife: number; deckCards?: InputCard[]; isPublic?: boolean }
   | { type: "join"; roomCode: string; playerName: string; deckName: string; deckCards?: InputCard[] }
   | { type: "rejoin"; roomCode: string; playerName: string }
   | { type: "update_life"; delta: number }
@@ -373,6 +377,7 @@ export function handleWsMessage(ws: WebSocket, raw: string) {
       format: msg.format,
       startingLife: msg.startingLife,
       deckCards: msg.deckCards,
+      isPublic: msg.isPublic ?? true,
     });
     room.hostWs = ws;
     (ws as any).__roomCode = room.code;
