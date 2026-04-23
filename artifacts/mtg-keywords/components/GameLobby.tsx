@@ -120,6 +120,9 @@ const FORMAT_OPTIONS = [
 ];
 
 const STORAGE_PLAYER_NAME = "game_player_name";
+const STORAGE_ACTIVE_LOBBY = "game_active_lobby_v1";
+
+type SavedLobby = { code: string; playerName: string; role: "host" | "guest"; format: string; isPublic: boolean };
 
 // ─── Mini sub-components ──────────────────────────────────────────────────────
 
@@ -174,11 +177,13 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
   const wsRef = useRef<WebSocket | null>(null);
   const pingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const screenRef = useRef<Screen>("home");
+  const myRoleRef = useRef<"host" | "guest" | null>(null);
 
   const [screen, setScreen] = useState<Screen>("home");
   function goScreen(s: Screen) { screenRef.current = s; setScreen(s); }
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [myRole, setMyRole] = useState<"host" | "guest" | null>(null);
+  function setRole(r: "host" | "guest" | null) { myRoleRef.current = r; setMyRole(r); }
 
   // Home form
   const [playerName, setPlayerName] = useState("");
@@ -191,6 +196,7 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savedLobby, setSavedLobby] = useState<SavedLobby | null>(null);
 
   // Game UI state
   const [showLog, setShowLog] = useState(false);
@@ -202,8 +208,21 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_PLAYER_NAME).then(v => { if (v) setPlayerName(v); });
+    AsyncStorage.getItem(STORAGE_ACTIVE_LOBBY).then(v => {
+      if (v) { try { setSavedLobby(JSON.parse(v)); } catch {} }
+    });
     if (decks.length > 0 && !selectedDeckId) setSelectedDeckId(decks[0].id);
   }, []);
+
+  function saveLobby(lobby: SavedLobby) {
+    setSavedLobby(lobby);
+    AsyncStorage.setItem(STORAGE_ACTIVE_LOBBY, JSON.stringify(lobby));
+  }
+
+  function clearSavedLobby() {
+    setSavedLobby(null);
+    AsyncStorage.removeItem(STORAGE_ACTIVE_LOBBY);
+  }
 
   useEffect(() => {
     if (playerName) AsyncStorage.setItem(STORAGE_PLAYER_NAME, playerName);
@@ -248,11 +267,26 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
         if (msg.type === "game_state") {
           const state: GameState = msg.state;
           setGameState(state);
+          // Save lobby code for reconnection whenever we have a waiting room
+          if (state.status === "waiting") {
+            saveLobby({
+              code: state.code,
+              playerName: (state.me?.name ?? ""),
+              role: myRoleRef.current ?? "host",
+              format: state.format,
+              isPublic: state.isPublic ?? true,
+            });
+          }
+          // Clear saved lobby once game is playing or finished
+          if (state.status === "playing" || state.status === "finished") clearSavedLobby();
           if (state.status === "playing" && screenRef.current !== "game") goScreen("game");
           else if (state.status === "waiting" && screenRef.current !== "waiting") goScreen("waiting");
         } else if (msg.type === "error") {
+          // If the room no longer exists, clear saved lobby
+          if (msg.message?.includes("nicht mehr vorhanden") || msg.message?.includes("no longer")) clearSavedLobby();
           setError(msg.message);
           setConnecting(false);
+          goScreen("home");
         }
       } catch {}
     };
@@ -294,7 +328,7 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
     if (!playerName.trim()) { setError(showEnglish ? "Please enter your name" : "Bitte Namen eingeben"); return; }
     const fmt = FORMAT_OPTIONS.find(f => f.key === selectedFormat)!;
     const deckName = decks.find(d => d.id === selectedDeckId)?.name ?? "—";
-    setMyRole("host");
+    setRole("host");
     connectWs(ws => {
       ws.send(JSON.stringify({
         type: "create",
@@ -309,12 +343,24 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
     });
   }
 
+  function handleRejoin(lobby: SavedLobby) {
+    setRole(lobby.role);
+    connectWs(ws => {
+      ws.send(JSON.stringify({
+        type: "rejoin",
+        roomCode: lobby.code,
+        playerName: lobby.playerName,
+      }));
+      goScreen("waiting");
+    });
+  }
+
   function handleJoin(code?: string) {
     const roomCode = (code ?? joinCode).trim().toUpperCase();
     if (!roomCode) { setError(showEnglish ? "Please enter a room code" : "Bitte Raumcode eingeben"); return; }
     if (!playerName.trim()) { setError(showEnglish ? "Please enter your name" : "Bitte Namen eingeben"); return; }
     const deckName = decks.find(d => d.id === selectedDeckId)?.name ?? "—";
-    setMyRole("guest");
+    setRole("guest");
     connectWs(ws => {
       ws.send(JSON.stringify({
         type: "join",
@@ -347,9 +393,10 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
           style: "destructive",
           onPress: () => {
             disconnectWs();
+            clearSavedLobby();
             goScreen("home");
             setGameState(null);
-            setMyRole(null);
+            setRole(null);
             setError(null);
             setSelectedHandCard(null);
             setSelectedBfCard(null);
@@ -414,6 +461,28 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
                   <Ionicons name="close-circle" size={26} color={colors.mutedForeground} />
                 </TouchableOpacity>
               </View>
+            )}
+
+            {/* ── Reconnect banner ── */}
+            {savedLobby && (
+              <TouchableOpacity
+                style={[s.rejoinBanner, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "55" }]}
+                onPress={() => handleRejoin(savedLobby)}
+                activeOpacity={0.8}
+              >
+                <View style={[s.rejoinIconWrap, { backgroundColor: colors.primary + "22" }]}>
+                  <Ionicons name="arrow-redo-circle" size={22} color={colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: colors.primary }}>
+                    {showEnglish ? "Rejoin open lobby" : "Zur offenen Lobby zurückkehren"}
+                  </Text>
+                  <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 1 }}>
+                    {savedLobby.code}  ·  {savedLobby.format}  ·  {savedLobby.isPublic ? (showEnglish ? "Public" : "Öffentlich") : (showEnglish ? "Private" : "Privat")}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+              </TouchableOpacity>
             )}
 
             {error && (
@@ -1252,6 +1321,8 @@ const s = StyleSheet.create({
   modeTab: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11 },
   formatGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
   formatChip: { width: "48%", flexDirection: "column", alignItems: "flex-start", gap: 2, padding: 10, borderRadius: 10, borderWidth: 1 },
+  rejoinBanner: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, borderWidth: 1, marginBottom: 14 },
+  rejoinIconWrap: { width: 40, height: 40, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   visibilityRow: { flexDirection: "row", borderRadius: 12, borderWidth: 1, marginBottom: 14, overflow: "hidden" },
   visibilityBtn: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, padding: 10 },
   publicBadge: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1, marginTop: 8 },
