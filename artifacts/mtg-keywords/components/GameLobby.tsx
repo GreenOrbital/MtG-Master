@@ -386,8 +386,9 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
 
         {/* ── HOME SCREEN ── */}
         {screen === "home" && (
+          <>
           <ScrollView
-            contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 30, paddingTop: insets.top + 10 }}
+            contentContainerStyle={{ padding: 20, paddingBottom: 16, paddingTop: asScreen ? 10 : insets.top + 10 }}
             keyboardShouldPersistTaps="handled"
           >
             <View style={s.header}>
@@ -468,32 +469,28 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
             {homeMode === "create" ? (
               <>
                 <Text style={[s.label, { color: colors.foreground }]}>Format</Text>
-                {FORMAT_OPTIONS.map(f => (
-                  <TouchableOpacity
-                    key={f.key}
-                    style={[s.formatRow, { backgroundColor: colors.card, borderColor: selectedFormat === f.key ? colors.primary : colors.border }]}
-                    onPress={() => setSelectedFormat(f.key)}
-                  >
-                    <View style={[s.radio, { borderColor: selectedFormat === f.key ? colors.primary : colors.mutedForeground }]}>
-                      {selectedFormat === f.key && <View style={[s.radioDot, { backgroundColor: colors.primary }]} />}
-                    </View>
-                    <Text style={{ flex: 1, fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>
-                      {showEnglish ? f.labelEn : f.label}
-                    </Text>
-                    <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>{f.life} LP</Text>
-                  </TouchableOpacity>
-                ))}
-                <TouchableOpacity
-                  style={[s.primaryBtn, { backgroundColor: colors.primary, opacity: connecting ? 0.7 : 1 }]}
-                  onPress={handleCreate} disabled={connecting}
-                >
-                  {connecting ? <ActivityIndicator color="#0f0d0a" size="small" /> : (
-                    <>
-                      <Ionicons name="add-circle" size={18} color="#0f0d0a" />
-                      <Text style={s.primaryBtnText}>{showEnglish ? "Create Room" : "Raum erstellen"}</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
+                <View style={s.formatGrid}>
+                  {FORMAT_OPTIONS.map(f => {
+                    const sel = selectedFormat === f.key;
+                    return (
+                      <TouchableOpacity
+                        key={f.key}
+                        style={[s.formatChip, {
+                          backgroundColor: sel ? colors.primary + "22" : colors.card,
+                          borderColor: sel ? colors.primary : colors.border,
+                        }]}
+                        onPress={() => setSelectedFormat(f.key)}
+                      >
+                        <Text numberOfLines={1} style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: sel ? colors.primary : colors.foreground }}>
+                          {showEnglish ? f.labelEn : f.label}
+                        </Text>
+                        <Text style={{ fontSize: 10, color: sel ? colors.primary + "cc" : colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                          {f.life} LP
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </>
             ) : (
               <>
@@ -549,6 +546,24 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
               </>
             )}
           </ScrollView>
+
+          {/* ── Sticky create button ── */}
+          {homeMode === "create" && (
+            <View style={[s.stickyFooter, { borderTopColor: colors.border, paddingBottom: asScreen ? insets.bottom + 10 : 16, backgroundColor: colors.background }]}>
+              <TouchableOpacity
+                style={[s.primaryBtn, { backgroundColor: colors.primary, opacity: connecting ? 0.7 : 1, marginTop: 0 }]}
+                onPress={handleCreate} disabled={connecting}
+              >
+                {connecting ? <ActivityIndicator color="#0f0d0a" size="small" /> : (
+                  <>
+                    <Ionicons name="add-circle" size={18} color="#0f0d0a" />
+                    <Text style={s.primaryBtnText}>{showEnglish ? "Create Room" : "Lobby erstellen"}</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+          </>
         )}
 
         {/* ── WAITING SCREEN ── */}
@@ -1173,9 +1188,9 @@ const s = StyleSheet.create({
   deckChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, marginRight: 8 },
   modeTabs: { flexDirection: "row", borderRadius: 12, borderWidth: 1, marginBottom: 18, overflow: "hidden" },
   modeTab: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11 },
-  formatRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 10, borderWidth: 1, marginBottom: 8 },
-  radio: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, alignItems: "center", justifyContent: "center" },
-  radioDot: { width: 8, height: 8, borderRadius: 4 },
+  formatGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
+  formatChip: { width: "48%", flexDirection: "column", alignItems: "flex-start", gap: 2, padding: 10, borderRadius: 10, borderWidth: 1 },
+  stickyFooter: { paddingHorizontal: 20, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth },
   primaryBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 14, borderRadius: 14, marginTop: 10 },
   primaryBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#0f0d0a" },
   openRoomsHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 20, marginBottom: 12 },
