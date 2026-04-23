@@ -125,7 +125,7 @@ const FORMAT_OPTIONS = [
 const STORAGE_PLAYER_NAME = "game_player_name";
 const STORAGE_ACTIVE_LOBBY = "game_active_lobby_v1";
 
-type SavedLobby = { code: string; playerName: string; role: "host" | "guest"; format: string; isPublic: boolean };
+type SavedLobby = { code: string; playerName: string; role: "host" | "guest"; format: string; isPublic: boolean; status?: "waiting" | "playing" };
 
 // ─── Mini sub-components ──────────────────────────────────────────────────────
 
@@ -289,6 +289,7 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
               role: myRoleRef.current ?? "host",
               format: state.format,
               isPublic: state.isPublic ?? true,
+              status: "waiting",
             });
           }
           // Store reconnect data when game is active
@@ -301,6 +302,7 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
               role: myRoleRef.current ?? "host",
               format: state.format,
               isPublic: state.isPublic ?? true,
+              status: "playing",
             });
           }
           // Only clear saved lobby when game is truly over
@@ -397,6 +399,9 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
 
   function handleCreate() {
     if (!playerName.trim()) { setError(showEnglish ? "Please enter your name" : "Bitte Namen eingeben"); return; }
+    // Always start fresh — discard any lingering saved lobby
+    clearSavedLobby();
+    reconnectDataRef.current = null;
     const fmt = FORMAT_OPTIONS.find(f => f.key === selectedFormat)!;
     const deckName = decks.find(d => d.id === selectedDeckId)?.name ?? "—";
     setRole("host");
@@ -430,6 +435,9 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
     const roomCode = (code ?? joinCode).trim().toUpperCase();
     if (!roomCode) { setError(showEnglish ? "Please enter a room code" : "Bitte Raumcode eingeben"); return; }
     if (!playerName.trim()) { setError(showEnglish ? "Please enter your name" : "Bitte Namen eingeben"); return; }
+    // Discard any lingering saved lobby when intentionally joining a new room
+    clearSavedLobby();
+    reconnectDataRef.current = null;
     const deckName = decks.find(d => d.id === selectedDeckId)?.name ?? "—";
     setRole("guest");
     connectWs(ws => {
@@ -533,31 +541,41 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
 
             {/* ── Reconnect banner ── */}
             {savedLobby && screen === "home" && (
-              <View style={[s.rejoinBanner, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "55" }]}>
-                <TouchableOpacity
-                  style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}
-                  onPress={() => handleRejoin(savedLobby)}
-                  activeOpacity={0.8}
-                >
-                  <View style={[s.rejoinIconWrap, { backgroundColor: colors.primary + "22" }]}>
-                    <Ionicons name="arrow-redo-circle" size={22} color={colors.primary} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: colors.primary }}>
-                      {showEnglish ? "Rejoin open lobby" : "Zur offenen Lobby zurückkehren"}
+              <View style={[s.rejoinBanner, {
+                backgroundColor: savedLobby.status === "playing" ? "#1a2d1a" : colors.primary + "15",
+                borderColor: savedLobby.status === "playing" ? "#4ade8088" : colors.primary + "55",
+              }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: savedLobby.status === "playing" ? "#4ade80" : colors.primary, marginBottom: 2 }}>
+                    {savedLobby.status === "playing"
+                      ? (showEnglish ? "Active game" : "Laufendes Spiel")
+                      : (showEnglish ? "Open lobby" : "Offene Lobby")}
+                  </Text>
+                  <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+                    {savedLobby.code} · {savedLobby.format} · {savedLobby.playerName}
+                  </Text>
+                  <TouchableOpacity
+                    style={{ marginTop: 8, flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start",
+                      backgroundColor: savedLobby.status === "playing" ? "#4ade8022" : colors.primary + "22",
+                      paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
+                    onPress={() => handleRejoin(savedLobby)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name={savedLobby.status === "playing" ? "game-controller-outline" : "arrow-redo-circle-outline"}
+                      size={14} color={savedLobby.status === "playing" ? "#4ade80" : colors.primary} />
+                    <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: savedLobby.status === "playing" ? "#4ade80" : colors.primary }}>
+                      {savedLobby.status === "playing"
+                        ? (showEnglish ? "Continue game" : "Spiel fortsetzen")
+                        : (showEnglish ? "Rejoin lobby" : "Lobby beitreten")}
                     </Text>
-                    <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 1 }}>
-                      {savedLobby.code}  ·  {savedLobby.format}  ·  {savedLobby.isPublic ? (showEnglish ? "Public" : "Öffentlich") : (showEnglish ? "Private" : "Privat")}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={colors.primary} />
-                </TouchableOpacity>
+                  </TouchableOpacity>
+                </View>
                 <TouchableOpacity
                   onPress={clearSavedLobby}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                  style={{ marginLeft: 4 }}
+                  hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+                  style={{ padding: 4 }}
                 >
-                  <Ionicons name="close-circle" size={20} color={colors.mutedForeground} />
+                  <Ionicons name="close-circle" size={24} color={colors.mutedForeground} />
                 </TouchableOpacity>
               </View>
             )}
