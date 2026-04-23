@@ -33,7 +33,7 @@ Expo mobile app (+ PWA) for Magic: The Gathering keyword lookup. Fully client-si
 - Cardmarket links for buying
 - Deck builder with mana/speed analysis
 - Synergy groups with card images + detail modals
-- **Deck Ideas** tab — 5 formats (Modern/Standard/Pioneer/Commander/Pauper), 40+ archetypes loaded locally (no network for list), card images fetched from Scryfall
+- **Deck Ideas** tab — 5 formats (Modern/Standard/Pioneer/Commander/Pauper), 40+ archetypes loaded locally (no network for list), card images fetched from Scryfall; **Beispiel Decks** collapsible section with 20 complete Commander decks (each ~100 cards) selectable for the game lobby via AsyncStorage key `selected_example_deck_v1`
 - **Freie Karten (Free Cards Pool)** — cards removed from decks go here instead of being deleted; can be reassigned to any deck or deleted permanently; stored in separate AsyncStorage key `mtg_free_cards_v1`; accessible via button in deck list with count badge
 - **Regelwerk (Rules FAQ)** tab — 41 pre-written Q&A entries in 6 categories; DE/EN; verdict badges; searchable with category filter chips
 - 137 keywords with DE/EN descriptions

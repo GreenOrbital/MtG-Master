@@ -22,6 +22,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useSettings } from "@/context/SettingsContext";
 import { useDecks, type DeckCard } from "@/context/DeckContext";
+import { EXAMPLE_COMMANDER_DECKS, exampleDeckToCards, totalCardCount } from "@/data/exampleCommanderDecks";
+
+const SELECTED_EXAMPLE_DECK_KEY = "selected_example_deck_v1";
 
 // ─── URL helpers ──────────────────────────────────────────────────────────────
 
@@ -201,6 +204,7 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
   // Home form
   const [playerName, setPlayerName] = useState("");
   const [selectedDeckId, setSelectedDeckId] = useState("");
+  const [selectedExampleId, setSelectedExampleId] = useState<string | null>(null);
   const [selectedFormat, setSelectedFormat] = useState("commander");
   const [isPublic, setIsPublic] = useState(true);
   const [joinCode, setJoinCode] = useState("");
@@ -224,6 +228,7 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
     AsyncStorage.getItem(STORAGE_ACTIVE_LOBBY).then(v => {
       if (v) { try { setSavedLobby(JSON.parse(v)); } catch {} }
     });
+    AsyncStorage.getItem(SELECTED_EXAMPLE_DECK_KEY).then(v => { if (v) setSelectedExampleId(v); });
     if (decks.length > 0 && !selectedDeckId) setSelectedDeckId(decks[0].id);
   }, []);
 
@@ -380,21 +385,54 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
     if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
   }
 
+  function getActiveDeckName(): string {
+    if (selectedDeckId && decks.find(d => d.id === selectedDeckId)) {
+      return decks.find(d => d.id === selectedDeckId)!.name;
+    }
+    if (selectedExampleId) {
+      const ex = EXAMPLE_COMMANDER_DECKS.find(d => d.id === selectedExampleId);
+      if (ex) return ex.name;
+    }
+    return "—";
+  }
+
   function getDeckCards(): DeckCard[] {
+    // First try user deck
     const deck = decks.find(d => d.id === selectedDeckId);
-    if (!deck) return [];
-    const basicLandNames: Record<string, string> = { W: "Plains", U: "Island", B: "Swamp", R: "Mountain", G: "Forest" };
-    const basicLandIds: Record<string, string> = { W: "plains", U: "island", B: "swamp", R: "mountain", G: "forest" };
-    const basicLandTypes: Record<string, string> = { W: "Basic Land — Plains", U: "Basic Land — Island", B: "Basic Land — Swamp", R: "Basic Land — Mountain", G: "Basic Land — Forest" };
-    const landCards: DeckCard[] = (Object.entries(deck.lands ?? {}) as [string, number][])
-      .filter(([, n]) => n > 0)
-      .map(([color, n]) => ({
-        id: basicLandIds[color] ?? color.toLowerCase(),
-        name: basicLandNames[color] ?? color,
-        type_line: basicLandTypes[color],
-        count: n,
-      }));
-    return [...deck.cards, ...landCards];
+    if (deck) {
+      const basicLandNames: Record<string, string> = { W: "Plains", U: "Island", B: "Swamp", R: "Mountain", G: "Forest" };
+      const basicLandIds: Record<string, string> = { W: "plains", U: "island", B: "swamp", R: "mountain", G: "forest" };
+      const basicLandTypes: Record<string, string> = { W: "Basic Land — Plains", U: "Basic Land — Island", B: "Basic Land — Swamp", R: "Basic Land — Mountain", G: "Basic Land — Forest" };
+      const landCards: DeckCard[] = (Object.entries(deck.lands ?? {}) as [string, number][])
+        .filter(([, n]) => n > 0)
+        .map(([color, n]) => ({
+          id: basicLandIds[color] ?? color.toLowerCase(),
+          name: basicLandNames[color] ?? color,
+          type_line: basicLandTypes[color],
+          count: n,
+        }));
+      return [...deck.cards, ...landCards];
+    }
+    // Fall back to selected example deck
+    if (selectedExampleId) {
+      const ex = EXAMPLE_COMMANDER_DECKS.find(d => d.id === selectedExampleId);
+      if (ex) {
+        const basicLandNames: Record<string, string> = { W: "Plains", U: "Island", B: "Swamp", R: "Mountain", G: "Forest" };
+        const basicLandIds: Record<string, string> = { W: "plains", U: "island", B: "swamp", R: "mountain", G: "forest" };
+        const basicLandTypes: Record<string, string> = { W: "Basic Land — Plains", U: "Basic Land — Island", B: "Basic Land — Swamp", R: "Basic Land — Mountain", G: "Basic Land — Forest" };
+        const spells: DeckCard[] = exampleDeckToCards(ex);
+        const landCards: DeckCard[] = (Object.entries(ex.lands) as [string, number][])
+          .filter(([, n]) => n > 0)
+          .map(([color, n]) => ({
+            id: basicLandIds[color] ?? color.toLowerCase(),
+            name: basicLandNames[color] ?? color,
+            type_line: basicLandTypes[color],
+            count: n,
+          }));
+        return [...spells, ...landCards];
+      }
+    }
+    return [];
   }
 
   function handleCreate() {
@@ -403,7 +441,7 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
     clearSavedLobby();
     reconnectDataRef.current = null;
     const fmt = FORMAT_OPTIONS.find(f => f.key === selectedFormat)!;
-    const deckName = decks.find(d => d.id === selectedDeckId)?.name ?? "—";
+    const deckName = getActiveDeckName();
     setRole("host");
     connectWs(ws => {
       ws.send(JSON.stringify({
@@ -438,7 +476,7 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
     // Discard any lingering saved lobby when intentionally joining a new room
     clearSavedLobby();
     reconnectDataRef.current = null;
-    const deckName = decks.find(d => d.id === selectedDeckId)?.name ?? "—";
+    const deckName = getActiveDeckName();
     setRole("guest");
     connectWs(ws => {
       ws.send(JSON.stringify({
@@ -595,7 +633,7 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
               placeholderTextColor={colors.mutedForeground} maxLength={24} autoCorrect={false}
             />
 
-            {decks.length > 0 && (
+            {(decks.length > 0 || selectedExampleId) && (
               <>
                 <Text style={[s.label, { color: colors.foreground }]}>{showEnglish ? "Your deck" : "Dein Deck"}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
@@ -606,7 +644,7 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
                         backgroundColor: selectedDeckId === deck.id ? colors.primary + "22" : colors.card,
                         borderColor: selectedDeckId === deck.id ? colors.primary : colors.border,
                       }]}
-                      onPress={() => setSelectedDeckId(deck.id)}
+                      onPress={() => { setSelectedDeckId(deck.id); setSelectedExampleId(null); }}
                     >
                       <Ionicons name="albums-outline" size={13} color={selectedDeckId === deck.id ? colors.primary : colors.mutedForeground} />
                       <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: selectedDeckId === deck.id ? colors.primary : colors.foreground }} numberOfLines={1}>
@@ -617,8 +655,41 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
                       </Text>
                     </TouchableOpacity>
                   ))}
+                  {selectedExampleId && (() => {
+                    const ex = EXAMPLE_COMMANDER_DECKS.find(d => d.id === selectedExampleId);
+                    if (!ex) return null;
+                    const isActive = !selectedDeckId || !decks.find(d => d.id === selectedDeckId);
+                    return (
+                      <TouchableOpacity
+                        key={ex.id}
+                        style={[s.deckChip, {
+                          backgroundColor: isActive ? "#c8a96e22" : colors.card,
+                          borderColor: isActive ? "#c8a96e" : colors.border,
+                        }]}
+                        onPress={() => setSelectedDeckId("")}
+                      >
+                        <Ionicons name="game-controller-outline" size={13} color={isActive ? "#c8a96e" : colors.mutedForeground} />
+                        <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: isActive ? "#c8a96e" : colors.foreground }} numberOfLines={1}>
+                          {ex.name}
+                        </Text>
+                        <Text style={{ fontSize: 10, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                          {totalCardCount(ex)} Karten
+                        </Text>
+                        {isActive && <Ionicons name="checkmark-circle" size={13} color="#c8a96e" />}
+                      </TouchableOpacity>
+                    );
+                  })()}
                 </ScrollView>
               </>
+            )}
+            {decks.length === 0 && !selectedExampleId && (
+              <View style={{ marginBottom: 16, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: "#c8a96e44", backgroundColor: "#c8a96e11" }}>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: 18 }}>
+                  {showEnglish
+                    ? "No deck selected. Go to Deck Ideas → Example Decks to pick one for the lobby."
+                    : "Kein Deck ausgewählt. Gehe zu Deck-Ideen → Beispiel Decks um eines für die Lobby auszuwählen."}
+                </Text>
+              </View>
             )}
 
             {/* Mode tabs */}

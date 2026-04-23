@@ -17,6 +17,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { KeywordCard } from "@/components/KeywordCard";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -27,6 +28,9 @@ import { AdBanner } from "@/components/AdBanner";
 import { useColors } from "@/hooks/useColors";
 import { getArchetypeList, getDeckSuggestion, type ArchetypeMeta, type DeckSuggestion, type SuggestedCard } from "@/lib/deckSuggestionService";
 import { calculateCardScore, scoreColor, scoreLabel } from "@/utils/cardScore";
+import { EXAMPLE_COMMANDER_DECKS, totalCardCount, type ExampleCommanderDeck } from "@/data/exampleCommanderDecks";
+
+const SELECTED_EXAMPLE_DECK_KEY = "selected_example_deck_v1";
 
 // ─── Commander Precon Decks ───────────────────────────────────────────────────
 
@@ -804,6 +808,24 @@ export default function DeckIdeasScreen() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showPreconSection, setShowPreconSection] = useState(false);
   const [preconYearFilter, setPreconYearFilter] = useState<string>("all");
+  const [showExampleSection, setShowExampleSection] = useState(false);
+  const [selectedExampleId, setSelectedExampleId] = useState<string | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(SELECTED_EXAMPLE_DECK_KEY).then(v => {
+      if (v) setSelectedExampleId(v);
+    });
+  }, []);
+
+  const handleSelectExampleDeck = useCallback(async (deck: ExampleCommanderDeck) => {
+    const newId = selectedExampleId === deck.id ? null : deck.id;
+    setSelectedExampleId(newId);
+    if (newId) {
+      await AsyncStorage.setItem(SELECTED_EXAMPLE_DECK_KEY, newId);
+    } else {
+      await AsyncStorage.removeItem(SELECTED_EXAMPLE_DECK_KEY);
+    }
+  }, [selectedExampleId]);
 
   const preconYears = Array.from(new Set(COMMANDER_PRECONS.map(d => d.year))).sort((a, b) => Number(b) - Number(a));
   const filteredPrecons = preconYearFilter === "all"
@@ -1028,6 +1050,120 @@ export default function DeckIdeasScreen() {
             </View>
           )}
           </>}
+
+          {/* ── Beispiel Commander Decks (spielbar) ────────────────────── */}
+          <TouchableOpacity
+            style={[styles.preconHeader, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => setShowExampleSection(v => !v)}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.preconIconWrap, { backgroundColor: "#c8a96e" }]}>
+              <Ionicons name="game-controller-outline" size={22} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.preconTitle, { color: "#c8a96e" }]}>
+                {showEnglish ? "Example Decks (Playable)" : "Beispiel Decks (Spielbar)"}
+              </Text>
+              <Text style={[styles.preconSubtitle, { color: colors.mutedForeground }]}>
+                {selectedExampleId
+                  ? (showEnglish ? "1 deck selected for game lobby" : "1 Deck für die Lobby ausgewählt")
+                  : (showEnglish
+                    ? `${EXAMPLE_COMMANDER_DECKS.length} Commander decks – tap to select for the lobby`
+                    : `${EXAMPLE_COMMANDER_DECKS.length} Commander-Decks – tippen zum Auswählen für die Lobby`)}
+              </Text>
+            </View>
+            {selectedExampleId && (
+              <View style={{ marginRight: 6, backgroundColor: "#c8a96e22", borderRadius: 99, padding: 4 }}>
+                <Ionicons name="checkmark-circle" size={18} color="#c8a96e" />
+              </View>
+            )}
+            <Ionicons name={showExampleSection ? "chevron-up" : "chevron-down"} size={18} color="#c8a96e" />
+          </TouchableOpacity>
+
+          {showExampleSection && (
+            <View style={[styles.preconList, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={{ paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8 }}>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: 17 }}>
+                  {showEnglish
+                    ? "Select a deck to use it in the game lobby when you don't have your own deck yet. The selected deck is marked with a checkmark."
+                    : "Wähle ein Deck aus, um es in der Spiellobby zu nutzen, wenn du noch kein eigenes Deck hast. Das ausgewählte Deck wird mit einem Haken markiert."}
+                </Text>
+              </View>
+              {EXAMPLE_COMMANDER_DECKS.map((deck, i) => {
+                const isSelected = selectedExampleId === deck.id;
+                const cardCount = totalCardCount(deck);
+                return (
+                  <TouchableOpacity
+                    key={deck.id}
+                    onPress={() => handleSelectExampleDeck(deck)}
+                    activeOpacity={0.75}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      paddingHorizontal: 14,
+                      paddingVertical: 12,
+                      gap: 12,
+                      borderTopWidth: i === 0 ? 0 : StyleSheet.hairlineWidth,
+                      borderTopColor: colors.border,
+                      backgroundColor: isSelected ? "#c8a96e12" : "transparent",
+                    }}
+                  >
+                    {/* Color dot */}
+                    <View style={{
+                      width: 36, height: 36, borderRadius: 18,
+                      backgroundColor: deck.colorHex + "33",
+                      alignItems: "center", justifyContent: "center",
+                      borderWidth: 1, borderColor: deck.colorHex + "66",
+                    }}>
+                      <Ionicons name="layers-outline" size={18} color={deck.colorHex} />
+                    </View>
+                    {/* Info */}
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: colors.foreground }}>
+                          {deck.name}
+                        </Text>
+                        <View style={{
+                          paddingHorizontal: 6, paddingVertical: 1,
+                          borderRadius: 6, borderWidth: 1,
+                          borderColor: deck.difficultyDe === "Einsteiger" ? "#16a34a55" : deck.difficultyDe === "Mittel" ? "#f59e0b55" : "#ef444455",
+                          backgroundColor: deck.difficultyDe === "Einsteiger" ? "#16a34a15" : deck.difficultyDe === "Mittel" ? "#f59e0b15" : "#ef444415",
+                        }}>
+                          <Text style={{
+                            fontSize: 10, fontFamily: "Inter_500Medium",
+                            color: deck.difficultyDe === "Einsteiger" ? "#16a34a" : deck.difficultyDe === "Mittel" ? "#f59e0b" : "#ef4444",
+                          }}>
+                            {showEnglish ? deck.difficultyEn : deck.difficultyDe}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground }} numberOfLines={1}>
+                        {deck.commanderName}
+                      </Text>
+                      <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: deck.colorHex, fontStyle: "italic" }} numberOfLines={1}>
+                        {showEnglish ? deck.themeEn : deck.themeDe}
+                      </Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
+                        {deck.colors.map(c => (
+                          <View key={c} style={[styles.colorPip, { backgroundColor: COLOR_HEX[c] ?? "#888" }]}>
+                            <Text style={[styles.colorPipText, { color: COLOR_TEXT[c] ?? "#fff" }]}>{c}</Text>
+                          </View>
+                        ))}
+                        <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginLeft: 4 }}>
+                          {cardCount} {showEnglish ? "cards" : "Karten"}
+                        </Text>
+                      </View>
+                    </View>
+                    {/* Checkmark */}
+                    {isSelected
+                      ? <Ionicons name="checkmark-circle" size={24} color="#c8a96e" />
+                      : <Ionicons name="ellipse-outline" size={24} color={colors.border} />
+                    }
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
 
           {archetypes.map((a) => (
             <TouchableOpacity
