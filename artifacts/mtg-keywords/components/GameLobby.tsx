@@ -183,12 +183,19 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
   const myRoleRef = useRef<"host" | "guest" | null>(null);
   const reconnectDataRef = useRef<{ roomCode: string; playerName: string } | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gameToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [screen, setScreen] = useState<Screen>("home");
   function goScreen(s: Screen) { screenRef.current = s; setScreen(s); }
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [myRole, setMyRole] = useState<"host" | "guest" | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
+  const [gameToast, setGameToast] = useState<string | null>(null);
+  function showGameToast(msg: string) {
+    setGameToast(msg);
+    if (gameToastTimerRef.current) clearTimeout(gameToastTimerRef.current);
+    gameToastTimerRef.current = setTimeout(() => setGameToast(null), 3500);
+  }
   function setRole(r: "host" | "guest" | null) { myRoleRef.current = r; setMyRole(r); }
 
   // Home form
@@ -303,11 +310,15 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
             clearSavedLobby();
             reconnectDataRef.current = null;
           }
-          setError(msg.message);
-          setConnecting(false);
-          setReconnecting(false);
-          // Only navigate home if we're still on waiting screen (e.g. rejoin failed)
-          if (screenRef.current === "waiting") goScreen("home");
+          if (screenRef.current === "game") {
+            // Show in-game toast for errors that happen during gameplay
+            showGameToast(msg.message);
+          } else {
+            setError(msg.message);
+            setConnecting(false);
+            setReconnecting(false);
+            if (screenRef.current === "waiting") goScreen("home");
+          }
         }
       } catch {}
     };
@@ -823,6 +834,18 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
               onSend={send}
               haptic={haptic}
             />
+            {gameToast && (
+              <View style={{
+                position: "absolute", bottom: 100, left: 16, right: 16,
+                backgroundColor: "#2a1f10", borderRadius: 12, padding: 12,
+                borderWidth: 1, borderColor: "#c8a96e55", zIndex: 998,
+                alignItems: "center",
+              }}>
+                <Text style={{ color: "#c8a96e", fontFamily: "Inter_600SemiBold", fontSize: 13, textAlign: "center" }}>
+                  {gameToast}
+                </Text>
+              </View>
+            )}
             {reconnecting && (
               <View style={{
                 position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
@@ -906,6 +929,7 @@ function GameBoard({
 
   const me = gs.me;
   const opp = gs.opponent;
+  const [cardDetail, setCardDetail] = useState<{ card: GameCard; zone: "hand" | "bf" } | null>(null);
 
   function lifeBtn(delta: number, who: "me" | "opp") {
     haptic(delta < 0 ? "medium" : "light");
@@ -1037,6 +1061,7 @@ function GameBoard({
   }
 
   return (
+    <>
     <View style={[s.root, { backgroundColor: "#0a0808" }]}>
 
       {/* ── Top bar ── */}
@@ -1299,55 +1324,93 @@ function GameBoard({
             </Text>
           )}
           {(me?.hand ?? []).map(card => {
-            const isSelected = selectedHandCard === card.instanceId;
             return (
-              <View key={card.instanceId}>
-                <TouchableOpacity
-                  onPress={() => {
-                    setSelectedHandCard(isSelected ? null : card.instanceId);
-                    setSelectedBfCard(null);
-                  }}
-                  style={{ transform: [{ translateY: isSelected ? -12 : 0 }] }}
-                >
-                  <MiniCard card={card} colors={colors} width={54} height={76} selected={isSelected} />
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                key={card.instanceId}
+                onPress={() => { haptic("light"); setCardDetail({ card, zone: "hand" }); }}
+                activeOpacity={0.8}
+              >
+                <MiniCard card={card} colors={colors} width={54} height={76} />
+              </TouchableOpacity>
             );
           })}
         </ScrollView>
 
-        {/* Hand card actions */}
-        {selectedHandCard && (
-          <View style={[s.handActions, { backgroundColor: "#1a1610", borderTopColor: "#2a2520" }]}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingHorizontal: 10, paddingVertical: 6 }}>
-              <TouchableOpacity style={[s.bfActionBtn, { backgroundColor: "#c8a96e22", borderColor: "#c8a96e55" }]}
-                onPress={() => playCard(selectedHandCard, "battlefield")}>
-                <Ionicons name="play-outline" size={13} color="#c8a96e" />
-                <Text style={{ fontSize: 11, color: "#c8a96e", fontFamily: "Inter_600SemiBold" }}>
-                  {showEnglish ? "Play" : "Ausspielen"}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[s.bfActionBtn, { backgroundColor: "#ef444422", borderColor: "#ef444455" }]}
-                onPress={() => discardCard(selectedHandCard)}>
-                <Ionicons name="trash-outline" size={13} color="#ef4444" />
-                <Text style={{ fontSize: 11, color: "#ef4444", fontFamily: "Inter_600SemiBold" }}>
-                  {showEnglish ? "Discard" : "Abwerfen"}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[s.bfActionBtn, { backgroundColor: "#88229922", borderColor: "#88229955" }]}
-                onPress={() => playCard(selectedHandCard, "exile")}>
-                <Ionicons name="infinite-outline" size={13} color="#cc66ee" />
-                <Text style={{ fontSize: 11, color: "#cc66ee", fontFamily: "Inter_600SemiBold" }}>Exil</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[s.bfActionBtn, { backgroundColor: "#33333322", borderColor: "#33333344" }]}
-                onPress={() => setSelectedHandCard(null)}>
-                <Ionicons name="close-outline" size={13} color="#666" />
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        )}
       </View>
     </View>
+
+    {/* ── Card Detail Modal ── */}
+    <Modal
+      visible={cardDetail !== null}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setCardDetail(null)}
+    >
+      <Pressable
+        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.82)", alignItems: "center", justifyContent: "center", padding: 24 }}
+        onPress={() => setCardDetail(null)}
+      >
+        <Pressable onPress={e => e.stopPropagation()} style={{ width: "100%", alignItems: "center" }}>
+          {/* Card image */}
+          {cardDetail?.card.imageUri ? (
+            <Image
+              source={{ uri: cardDetail.card.imageUri }}
+              style={{ width: 240, height: 336, borderRadius: 14, marginBottom: 16 }}
+              resizeMode="contain"
+            />
+          ) : (
+            <View style={{ width: 240, height: 336, borderRadius: 14, backgroundColor: "#1a1810", borderWidth: 2, borderColor: "#3a2a10", alignItems: "center", justifyContent: "center", padding: 18, marginBottom: 16 }}>
+              {cardDetail?.card.mana_cost && <ManaCost cost={cardDetail.card.mana_cost} size={14} />}
+              <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: "#c8a96e", textAlign: "center", marginTop: 10 }}>{cardDetail?.card.name}</Text>
+              {cardDetail?.card.type_line && (
+                <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: "#888", textAlign: "center", marginTop: 6 }}>{cardDetail.card.type_line}</Text>
+              )}
+            </View>
+          )}
+
+          {/* Card name + type below image */}
+          <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff", marginBottom: 4 }}>{cardDetail?.card.name}</Text>
+          {cardDetail?.card.type_line && (
+            <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: "#aaa", marginBottom: 16 }}>{cardDetail.card.type_line}</Text>
+          )}
+
+          {/* Actions */}
+          {cardDetail?.zone === "hand" && (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
+              <TouchableOpacity
+                style={{ backgroundColor: "#c8a96e", borderRadius: 10, paddingVertical: 10, paddingHorizontal: 22, flexDirection: "row", alignItems: "center", gap: 6 }}
+                onPress={() => { playCard(cardDetail.card.instanceId, "battlefield"); setCardDetail(null); }}
+              >
+                <Ionicons name="play-outline" size={16} color="#000" />
+                <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: "#000" }}>{showEnglish ? "Play" : "Ausspielen"}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ backgroundColor: "#1e1a16", borderRadius: 10, paddingVertical: 10, paddingHorizontal: 18, borderWidth: 1, borderColor: "#ef444455", flexDirection: "row", alignItems: "center", gap: 6 }}
+                onPress={() => { discardCard(cardDetail.card.instanceId); setCardDetail(null); }}
+              >
+                <Ionicons name="trash-outline" size={15} color="#ef4444" />
+                <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#ef4444" }}>{showEnglish ? "Discard" : "Abwerfen"}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ backgroundColor: "#1e1a16", borderRadius: 10, paddingVertical: 10, paddingHorizontal: 18, borderWidth: 1, borderColor: "#88229955", flexDirection: "row", alignItems: "center", gap: 6 }}
+                onPress={() => { playCard(cardDetail.card.instanceId, "exile"); setCardDetail(null); }}
+              >
+                <Ionicons name="infinite-outline" size={15} color="#cc66ee" />
+                <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#cc66ee" }}>Exil</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Close hint */}
+          <TouchableOpacity onPress={() => setCardDetail(null)} style={{ marginTop: 20 }}>
+            <Text style={{ color: "#666", fontFamily: "Inter_400Regular", fontSize: 13 }}>
+              {showEnglish ? "Tap outside to close" : "Außerhalb tippen zum Schließen"}
+            </Text>
+          </TouchableOpacity>
+        </Pressable>
+      </Pressable>
+    </Modal>
+    </>
   );
 }
 

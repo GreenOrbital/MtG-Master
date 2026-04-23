@@ -510,7 +510,10 @@ export function handleWsMessage(ws: WebSocket, raw: string) {
   }
 
   if (msg.type === "draw_card") {
-    drawCard(player, room);
+    if (!drawCard(player, room)) {
+      send({ type: "error", message: "Deck leer — keine Karte mehr vorhanden!" });
+      return;
+    }
     broadcast(room);
     return;
   }
