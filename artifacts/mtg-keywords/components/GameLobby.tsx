@@ -28,13 +28,16 @@ import { useDecks, type DeckCard } from "@/context/DeckContext";
 function getApiBase(): string {
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
+    // Dev: Expo preview domain → strip .expo to reach the API server domain
     if (host.includes(".expo.riker.replit.dev")) {
       return `https://${host.replace(".expo.riker.replit.dev", ".riker.replit.dev")}`;
     }
-    if (host.includes(".riker.replit.dev")) {
+    // Dev or prod on riker / replit.app → same origin, path routing handles /api/*
+    if (host.includes(".riker.replit.dev") || host.endsWith(".replit.app")) {
       return `https://${host}`;
     }
   }
+  // Local fallback
   return "https://57d2c256-8628-427d-8d8a-603da6b0641d-00-3mfkn8k0aya4z.riker.replit.dev";
 }
 
