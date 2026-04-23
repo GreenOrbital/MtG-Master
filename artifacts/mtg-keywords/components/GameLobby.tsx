@@ -294,9 +294,17 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
           // Store reconnect data when game is active
           if (state.status === "playing") {
             reconnectDataRef.current = { roomCode: state.code, playerName: state.me?.name ?? "" };
+            // Keep saved lobby alive during play so app-restart reconnect still works
+            saveLobby({
+              code: state.code,
+              playerName: state.me?.name ?? "",
+              role: myRoleRef.current ?? "host",
+              format: state.format,
+              isPublic: state.isPublic ?? true,
+            });
           }
-          // Clear saved lobby once game is playing or finished
-          if (state.status === "playing" || state.status === "finished") clearSavedLobby();
+          // Only clear saved lobby when game is truly over
+          if (state.status === "finished") clearSavedLobby();
           if (state.status === "playing" && screenRef.current !== "game") goScreen("game");
           else if (state.status === "waiting" && screenRef.current !== "waiting") goScreen("waiting");
         } else if (msg.type === "error") {
