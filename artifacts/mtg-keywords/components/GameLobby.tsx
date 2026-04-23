@@ -433,7 +433,7 @@ export default function GameLobby({ visible, onClose }: Props) {
                         {deck.name}
                       </Text>
                       <Text style={{ fontSize: 10, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
-                        {deck.cards.length} Karten
+                        {deck.cards.reduce((sum, c) => sum + (c.count ?? 1), 0)} Karten
                       </Text>
                     </TouchableOpacity>
                   ))}
