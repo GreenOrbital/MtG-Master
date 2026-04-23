@@ -85,6 +85,9 @@ type MyState = {
   commanderDamageReceived: Record<string, number>;
   deckCount: number; hand: GameCard[]; battlefield: GameCard[];
   graveyard: GameCard[]; exile: GameCard[];
+  landPlayedThisTurn: boolean;
+  handConfirmed: boolean;
+  mulliganCount: number;
 };
 
 type OppState = {
@@ -92,12 +95,15 @@ type OppState = {
   commanderDamageReceived: Record<string, number>;
   deckCount: number; handCount: number; battlefield: GameCard[];
   graveyard: GameCard[]; exile: GameCard[];
+  handConfirmed: boolean;
+  mulliganCount: number;
 };
 
 type GameState = {
   code: string; format: string; startingLife: number;
   status: "waiting" | "playing" | "finished";
   turn: number; phase: Phase; activePlayer: string;
+  bothHandsConfirmed: boolean;
   gameLog: { time: number; msg: string }[];
   createdAt: number;
   isPublic?: boolean;
@@ -1076,6 +1082,11 @@ function GameBoard({
     onSend({ type: "mulligan" });
   }
 
+  function confirmHand() {
+    haptic("heavy");
+    onSend({ type: "confirm_hand" });
+  }
+
   const phaseIdx = PHASE_ORDER.indexOf(gs.phase);
 
   // Zone modal content
@@ -1089,6 +1100,143 @@ function GameBoard({
     : showZone === "exile" ? "Exil"
     : showZone === "oppGraveyard" ? (showEnglish ? "Opponent's Graveyard" : "Friedhof Gegner")
     : "Exil Gegner";
+
+  // ── Mulligan / Hand-confirmation screen ──────────────────────────────────────
+  if (!gs.bothHandsConfirmed) {
+    const myHand = me?.hand ?? [];
+    const myConfirmed = me?.handConfirmed ?? false;
+    const oppConfirmed = gs.opponent?.handConfirmed ?? false;
+    const myMulls = me?.mulliganCount ?? 0;
+
+    return (
+      <View style={[s.root, { backgroundColor: "#0a0808" }]}>
+        {/* Header */}
+        <View style={[s.gameTopBar, { paddingTop: insets.top + 4, backgroundColor: "#14110e", borderBottomColor: "#2a2520" }]}>
+          <TouchableOpacity onPress={onLeave} style={s.gameTopBtn}>
+            <Ionicons name="arrow-back-outline" size={20} color="#c8a96e" />
+          </TouchableOpacity>
+          <View style={{ flex: 1, alignItems: "center" }}>
+            <Text style={s.gameTopFormat}>
+              {showEnglish ? "Opening Hand" : "Eröffnungshand"}
+            </Text>
+            <Text style={s.gameTopTurn}>
+              {showEnglish ? "Decide: Keep or Mulligan?" : "Entscheide: Halten oder Mulliganen?"}
+            </Text>
+          </View>
+          <View style={{ width: 32 }} />
+        </View>
+
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+          {/* Status row */}
+          <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
+            <View style={{ flex: 1, padding: 12, borderRadius: 12, borderWidth: 1,
+              backgroundColor: myConfirmed ? "#16301688" : "#c8a96e11",
+              borderColor: myConfirmed ? "#4ade8066" : "#c8a96e55" }}>
+              <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: myConfirmed ? "#4ade80" : "#c8a96e", marginBottom: 2 }}>
+                {me?.name ?? "Du"}
+              </Text>
+              <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: "#888" }}>
+                {myConfirmed
+                  ? (showEnglish ? "✓ Hand kept" : "✓ Hand gehalten")
+                  : (myMulls === 0
+                    ? (showEnglish ? "Deciding…" : "Entscheide…")
+                    : `${myMulls}× Mull · ${showEnglish ? "Deciding…" : "Entscheide…"}`)}
+              </Text>
+            </View>
+            <View style={{ flex: 1, padding: 12, borderRadius: 12, borderWidth: 1,
+              backgroundColor: oppConfirmed ? "#16301688" : "#1a1610",
+              borderColor: oppConfirmed ? "#4ade8066" : "#2a2520" }}>
+              <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: oppConfirmed ? "#4ade80" : "#888", marginBottom: 2 }}>
+                {gs.opponent?.name ?? (showEnglish ? "Opponent" : "Gegner")}
+              </Text>
+              <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: "#666" }}>
+                {oppConfirmed
+                  ? (showEnglish ? "✓ Hand kept" : "✓ Hand gehalten")
+                  : ((gs.opponent?.mulliganCount ?? 0) > 0
+                    ? `${gs.opponent!.mulliganCount}× Mull · ${showEnglish ? "Deciding…" : "Entscheide…"}`
+                    : (showEnglish ? "Deciding…" : "Entscheide…"))}
+              </Text>
+            </View>
+          </View>
+
+          {/* Hand display */}
+          <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#c8a96e", marginBottom: 10 }}>
+            {showEnglish ? `Your Hand (${myHand.length} cards)` : `Deine Hand (${myHand.length} Karten)`}
+            {myMulls > 0 && (
+              <Text style={{ fontSize: 11, color: "#888", fontFamily: "Inter_400Regular" }}>
+                {showEnglish ? `  — after ${myMulls} mulligan(s)` : `  — nach ${myMulls}× Mull`}
+              </Text>
+            )}
+          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
+            {myHand.map(card => (
+              <View key={card.instanceId} style={{ alignItems: "center" }}>
+                <MiniCard card={card} colors={colors} width={72} height={100} />
+                <Text style={{ fontSize: 8, color: "#888", fontFamily: "Inter_400Regular", marginTop: 3, maxWidth: 72 }} numberOfLines={2}>
+                  {card.name}
+                </Text>
+              </View>
+            ))}
+            {myHand.length === 0 && (
+              <Text style={{ color: "#555", fontFamily: "Inter_400Regular", fontSize: 13 }}>
+                {showEnglish ? "No cards in hand" : "Keine Karten auf Hand"}
+              </Text>
+            )}
+          </View>
+
+          {/* Mulligan info */}
+          <View style={{ backgroundColor: "#1a1610", borderRadius: 12, padding: 14, marginBottom: 20, borderWidth: 1, borderColor: "#2a2520" }}>
+            <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#c8a96e", marginBottom: 6 }}>
+              {showEnglish ? "Mulligan Rules" : "Mulligan-Regeln"}
+            </Text>
+            <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#888", lineHeight: 18 }}>
+              {showEnglish
+                ? "1st mulligan: draw 7 cards again\n2nd mulligan: draw 6 cards\n3rd mulligan: draw 5 cards, etc."
+                : "1. Mulligan: erneut 7 Karten ziehen\n2. Mulligan: 6 Karten\n3. Mulligan: 5 Karten, usw."}
+            </Text>
+          </View>
+
+          {/* Actions */}
+          {!myConfirmed ? (
+            <View style={{ gap: 12 }}>
+              <TouchableOpacity
+                style={{ backgroundColor: "#c8a96e", borderRadius: 14, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}
+                onPress={confirmHand}
+              >
+                <Ionicons name="checkmark-circle" size={20} color="#0f0d0a" />
+                <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: "#0f0d0a" }}>
+                  {showEnglish ? "Keep Hand" : "Hand halten"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ backgroundColor: "#1e1a16", borderRadius: 14, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1, borderColor: "#3a3530" }}
+                onPress={() => { haptic("medium"); mulligan(); }}
+              >
+                <Ionicons name="dice-outline" size={20} color="#aaa" />
+                <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: "#aaa" }}>
+                  {showEnglish
+                    ? `Mulligan → ${Math.max(1, myHand.length - 1)} cards`
+                    : `Mulliganen → ${Math.max(1, myHand.length - 1)} Karten`}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={{ backgroundColor: "#163016", borderRadius: 14, padding: 16, alignItems: "center", borderWidth: 1, borderColor: "#4ade8044" }}>
+              <Ionicons name="checkmark-circle" size={24} color="#4ade80" />
+              <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: "#4ade80", marginTop: 8 }}>
+                {showEnglish ? "Hand confirmed!" : "Hand bestätigt!"}
+              </Text>
+              <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: "#666", marginTop: 4 }}>
+                {oppConfirmed
+                  ? (showEnglish ? "Both ready — starting game…" : "Beide bereit — Spiel startet…")
+                  : (showEnglish ? `Waiting for ${gs.opponent?.name ?? "opponent"}…` : `Warte auf ${gs.opponent?.name ?? "Gegner"}…`)}
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      </View>
+    );
+  }
 
   if (showZone) {
     return (
@@ -1212,6 +1360,66 @@ function GameBoard({
           })}
         </ScrollView>
       </View>
+
+      {/* ── Phase guidance banner ── */}
+      {(() => {
+        const ph = gs.phase;
+        const isMy = isMyTurn;
+        const landDone = me?.landPlayedThisTurn ?? false;
+
+        type BannerConfig = { icon: string; color: string; msg: string };
+        let banner: BannerConfig | null = null;
+
+        if (isMy) {
+          if (ph === "untap") {
+            banner = { icon: "refresh-circle-outline", color: "#60a5fa",
+              msg: showEnglish ? "Untap Phase — all your permanents untap automatically." : "Aufklärungsphase — alle deine Permanenten werden enttappt." };
+          } else if (ph === "upkeep") {
+            banner = { icon: "time-outline", color: "#a78bfa",
+              msg: showEnglish ? "Upkeep — resolve any beginning-of-turn effects, then advance." : "Vorbereitungsphase — löse Effekte zum Zugebeginn auf, dann weiter." };
+          } else if (ph === "draw") {
+            banner = { icon: "layers-outline", color: "#34d399",
+              msg: showEnglish ? "Draw Phase — a card was drawn automatically. Advance to Main Phase." : "Ziehphase — eine Karte wurde automatisch gezogen. Weiter zur Hauptphase." };
+          } else if (ph === "main1") {
+            banner = { icon: "construct-outline", color: "#c8a96e",
+              msg: showEnglish
+                ? `Main Phase 1 — play spells and creatures.${landDone ? " ✓ Land played this turn." : " You may play 1 land."}`
+                : `Hauptphase 1 — spiele Karten und Kreaturen.${landDone ? " ✓ Land bereits gespielt." : " Du kannst 1 Land spielen."}` };
+          } else if (ph === "combat") {
+            banner = { icon: "flash-outline", color: "#f87171",
+              msg: showEnglish ? "Combat — declare attackers by tapping them, then advance for blockers." : "Kampfphase — tippe Angreifer, dann weiter für Blocker-Deklaration." };
+          } else if (ph === "main2") {
+            banner = { icon: "construct-outline", color: "#c8a96e",
+              msg: showEnglish
+                ? `Main Phase 2 — play more spells.${landDone ? " ✓ Land already played." : " You may still play 1 land."}`
+                : `Hauptphase 2 — weitere Karten spielen.${landDone ? " ✓ Land bereits gespielt." : " Noch 1 Land möglich."}` };
+          } else if (ph === "end") {
+            const handCount = me?.hand.length ?? 0;
+            const excess = handCount - 7;
+            banner = { icon: "moon-outline", color: excess > 0 ? "#f87171" : "#888",
+              msg: excess > 0
+                ? (showEnglish ? `End Phase — discard ${excess} card(s) to reach hand limit of 7!` : `Endphase — bitte ${excess} Karte(n) abwerfen (Handkartenlimit: 7)!`)
+                : (showEnglish ? "End Phase — check hand limit (7), then end your turn." : "Endphase — Handlimit prüfen (7 Karten), dann Zug beenden.") };
+          }
+        } else {
+          banner = { icon: "hourglass-outline", color: "#555",
+            msg: showEnglish
+              ? `${gs.opponent?.name ?? "Opponent"}'s ${PHASE_LABELS_EN[ph]} — wait for their action.`
+              : `${gs.opponent?.name ?? "Gegner"}: ${PHASE_LABELS_DE[ph]} — warte auf ihre Aktion.` };
+        }
+
+        if (!banner) return null;
+        return (
+          <View style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: banner.color + "11", borderBottomWidth: 1, borderBottomColor: banner.color + "33" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Ionicons name={banner.icon as any} size={13} color={banner.color} />
+              <Text style={{ flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", color: banner.color, lineHeight: 16 }}>
+                {banner.msg}
+              </Text>
+            </View>
+          </View>
+        );
+      })()}
 
       {/* ── Opponent section ── */}
       <View style={[s.oppSection, { borderBottomColor: "#1e1a16" }]}>
@@ -1472,31 +1680,71 @@ function GameBoard({
           )}
 
           {/* Actions */}
-          {cardDetail?.zone === "hand" && (
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
-              <TouchableOpacity
-                style={{ backgroundColor: "#c8a96e", borderRadius: 10, paddingVertical: 10, paddingHorizontal: 22, flexDirection: "row", alignItems: "center", gap: 6 }}
-                onPress={() => { playCard(cardDetail.card.instanceId, "battlefield"); setCardDetail(null); }}
-              >
-                <Ionicons name="play-outline" size={16} color="#000" />
-                <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: "#000" }}>{showEnglish ? "Play" : "Ausspielen"}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{ backgroundColor: "#1e1a16", borderRadius: 10, paddingVertical: 10, paddingHorizontal: 18, borderWidth: 1, borderColor: "#ef444455", flexDirection: "row", alignItems: "center", gap: 6 }}
-                onPress={() => { discardCard(cardDetail.card.instanceId); setCardDetail(null); }}
-              >
-                <Ionicons name="trash-outline" size={15} color="#ef4444" />
-                <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#ef4444" }}>{showEnglish ? "Discard" : "Abwerfen"}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{ backgroundColor: "#1e1a16", borderRadius: 10, paddingVertical: 10, paddingHorizontal: 18, borderWidth: 1, borderColor: "#88229955", flexDirection: "row", alignItems: "center", gap: 6 }}
-                onPress={() => { playCard(cardDetail.card.instanceId, "exile"); setCardDetail(null); }}
-              >
-                <Ionicons name="infinite-outline" size={15} color="#cc66ee" />
-                <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#cc66ee" }}>Exil</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          {cardDetail?.zone === "hand" && (() => {
+            const card = cardDetail.card;
+            const isLandCard = !!card.type_line?.toLowerCase().includes("land");
+            const landAlreadyPlayed = me?.landPlayedThisTurn ?? false;
+            const inMainPhase = gs.phase === "main1" || gs.phase === "main2";
+            const canPlayToField = isMyTurn && inMainPhase;
+            const landBlocked = isLandCard && landAlreadyPlayed;
+            const phaseBlocked = !canPlayToField;
+
+            return (
+              <View style={{ width: "100%", gap: 10 }}>
+                {/* Phase warning */}
+                {phaseBlocked && isMyTurn && (
+                  <View style={{ backgroundColor: "#f8713122", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: "#f8713155", alignItems: "center" }}>
+                    <Text style={{ fontSize: 12, color: "#f87131", fontFamily: "Inter_600SemiBold", textAlign: "center" }}>
+                      {showEnglish
+                        ? `Cards can only be played during Main Phase (current: ${PHASE_LABELS_EN[gs.phase]})`
+                        : `Karten können nur in der Hauptphase gespielt werden (aktuell: ${PHASE_LABELS_DE[gs.phase]})`}
+                    </Text>
+                  </View>
+                )}
+                {/* Land limit warning */}
+                {isLandCard && landAlreadyPlayed && (
+                  <View style={{ backgroundColor: "#ef444422", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: "#ef444455", alignItems: "center" }}>
+                    <Text style={{ fontSize: 12, color: "#ef4444", fontFamily: "Inter_600SemiBold", textAlign: "center" }}>
+                      {showEnglish ? "✗ Land already played this turn (1 per turn limit)" : "✗ Land bereits gespielt — nur 1 Land pro Zug erlaubt!"}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Play button */}
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: (landBlocked || phaseBlocked) ? "#333" : "#c8a96e",
+                      borderRadius: 10, paddingVertical: 10, paddingHorizontal: 22,
+                      flexDirection: "row", alignItems: "center", gap: 6,
+                      opacity: (landBlocked || phaseBlocked) ? 0.5 : 1,
+                    }}
+                    disabled={landBlocked || phaseBlocked}
+                    onPress={() => { playCard(card.instanceId, "battlefield"); setCardDetail(null); }}
+                  >
+                    <Ionicons name="play-outline" size={16} color={(landBlocked || phaseBlocked) ? "#888" : "#000"} />
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: (landBlocked || phaseBlocked) ? "#888" : "#000" }}>
+                      {isLandCard ? (showEnglish ? "Play Land" : "Land spielen") : (showEnglish ? "Play" : "Ausspielen")}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ backgroundColor: "#1e1a16", borderRadius: 10, paddingVertical: 10, paddingHorizontal: 18, borderWidth: 1, borderColor: "#ef444455", flexDirection: "row", alignItems: "center", gap: 6 }}
+                    onPress={() => { discardCard(card.instanceId); setCardDetail(null); }}
+                  >
+                    <Ionicons name="trash-outline" size={15} color="#ef4444" />
+                    <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#ef4444" }}>{showEnglish ? "Discard" : "Abwerfen"}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ backgroundColor: "#1e1a16", borderRadius: 10, paddingVertical: 10, paddingHorizontal: 18, borderWidth: 1, borderColor: "#88229955", flexDirection: "row", alignItems: "center", gap: 6 }}
+                    onPress={() => { playCard(card.instanceId, "exile"); setCardDetail(null); }}
+                  >
+                    <Ionicons name="infinite-outline" size={15} color="#cc66ee" />
+                    <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#cc66ee" }}>Exil</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })()}
 
           {/* Close hint */}
           <TouchableOpacity onPress={() => setCardDetail(null)} style={{ marginTop: 20 }}>

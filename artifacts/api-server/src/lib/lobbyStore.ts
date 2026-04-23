@@ -46,6 +46,9 @@ export type PlayerState = {
   poison: number;
   commanderDamageReceived: Record<string, number>;
   board: PlayerBoard;
+  landPlayedThisTurn: boolean;
+  handConfirmed: boolean;
+  mulliganCount: number;
 };
 
 export type GameLogEntry = { time: number; msg: string };
@@ -60,6 +63,7 @@ export type Room = {
   turn: number;
   phase: Phase;
   activePlayer: string;
+  firstPlayerName: string;
   gameLog: GameLogEntry[];
   createdAt: number;
   isPublic: boolean;
@@ -68,6 +72,10 @@ export type Room = {
 };
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
+
+function isLandCard(card: GameCard): boolean {
+  return !!card.type_line?.toLowerCase().includes("land");
+}
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -104,6 +112,21 @@ function emptyBoard(): PlayerBoard {
   return { deck: [], hand: [], battlefield: [], graveyard: [], exile: [] };
 }
 
+function makePlayer(name: string, deckName: string, life: number, deckCards?: InputCard[]): PlayerState {
+  const deck = deckCards ? shuffle(expandCards(deckCards)) : [];
+  return {
+    name,
+    deckName,
+    life,
+    poison: 0,
+    commanderDamageReceived: {},
+    board: { ...emptyBoard(), deck },
+    landPlayedThisTurn: false,
+    handConfirmed: false,
+    mulliganCount: 0,
+  };
+}
+
 const rooms = new Map<string, Room>();
 
 // ─── DB persistence ───────────────────────────────────────────────────────────
@@ -135,6 +158,16 @@ export async function loadRoomsFromDb(): Promise<void> {
       if (row.status === "finished") continue;
       const state = row.state as PersistedRoom;
       const room: Room = { ...state, hostWs: null, guestWs: null };
+      // Migrate old rooms that may not have new fields
+      if (room.host.landPlayedThisTurn === undefined) room.host.landPlayedThisTurn = false;
+      if (room.host.handConfirmed === undefined) room.host.handConfirmed = true; // treat old rooms as already past mulligan
+      if (room.host.mulliganCount === undefined) room.host.mulliganCount = 0;
+      if (room.guest) {
+        if (room.guest.landPlayedThisTurn === undefined) room.guest.landPlayedThisTurn = false;
+        if (room.guest.handConfirmed === undefined) room.guest.handConfirmed = true;
+        if (room.guest.mulliganCount === undefined) room.guest.mulliganCount = 0;
+      }
+      if (!room.firstPlayerName) room.firstPlayerName = room.host.name;
       rooms.set(room.code, room);
     }
     console.log(`[lobbyStore] Loaded ${rooms.size} room(s) from DB`);
@@ -146,11 +179,9 @@ export async function loadRoomsFromDb(): Promise<void> {
 // Clean up finished rooms from DB after 7 days
 setInterval(async () => {
   try {
-    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     await db.delete(gameRoomsTable)
       .where(eq(gameRoomsTable.status, "finished"))
       .catch(() => {});
-    // Remove old waiting rooms (7+ days) from memory
     const now = Date.now();
     for (const [code, room] of rooms) {
       if (room.status === "waiting" && now - room.createdAt > 7 * 24 * 60 * 60 * 1000) {
@@ -158,7 +189,7 @@ setInterval(async () => {
       }
     }
   } catch {}
-}, 60 * 60 * 1000); // hourly
+}, 60 * 60 * 1000);
 
 function generateCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -169,14 +200,19 @@ function generateCode(): string {
 
 function log(room: Room, msg: string) {
   room.gameLog.push({ time: Date.now(), msg });
-  if (room.gameLog.length > 80) room.gameLog.shift();
+  if (room.gameLog.length > 100) room.gameLog.shift();
 }
 
 // ─── Personalized state ───────────────────────────────────────────────────────
 
+function bothHandsConfirmed(room: Room): boolean {
+  return room.host.handConfirmed && (room.guest?.handConfirmed ?? false);
+}
+
 function viewFor(room: Room, role: "host" | "guest") {
   const me = role === "host" ? room.host : room.guest;
   const opp = role === "host" ? room.guest : room.host;
+  const handsConfirmed = bothHandsConfirmed(room);
   return {
     code: room.code,
     format: room.format,
@@ -185,6 +221,7 @@ function viewFor(room: Room, role: "host" | "guest") {
     turn: room.turn,
     phase: room.phase,
     activePlayer: room.activePlayer,
+    bothHandsConfirmed: handsConfirmed,
     gameLog: room.gameLog.slice(-30),
     createdAt: room.createdAt,
     isPublic: room.isPublic,
@@ -199,6 +236,9 @@ function viewFor(room: Room, role: "host" | "guest") {
       battlefield: me.board.battlefield,
       graveyard: me.board.graveyard,
       exile: me.board.exile,
+      landPlayedThisTurn: me.landPlayedThisTurn,
+      handConfirmed: me.handConfirmed,
+      mulliganCount: me.mulliganCount,
     } : null,
     opponent: opp ? {
       name: opp.name,
@@ -211,6 +251,8 @@ function viewFor(room: Room, role: "host" | "guest") {
       battlefield: opp.board.battlefield,
       graveyard: opp.board.graveyard,
       exile: opp.board.exile,
+      handConfirmed: opp.handConfirmed,
+      mulliganCount: opp.mulliganCount,
     } : null,
   };
 }
@@ -238,56 +280,77 @@ function sendToRole(room: Room, role: "host" | "guest") {
 
 function drawCard(player: PlayerState, room: Room): boolean {
   if (player.board.deck.length === 0) {
-    log(room, `${player.name}: Deck leer! Kann nicht ziehen.`);
+    log(room, `${player.name}: Deck leer — kann nicht ziehen!`);
     return false;
   }
   const card = player.board.deck.shift()!;
   player.board.hand.push(card);
-  log(room, `${player.name}: zieht eine Karte (${player.board.hand.length} auf Hand)`);
+  log(room, `${player.name}: zieht 1 Karte (${player.board.hand.length} auf Hand)`);
   return true;
 }
 
 // ─── Phase advancement ────────────────────────────────────────────────────────
 
+const PHASE_NAMES_DE: Record<Phase, string> = {
+  untap: "Aufklärungsphase", upkeep: "Vorbereitungsphase", draw: "Ziehphase",
+  main1: "Hauptphase 1", combat: "Kampfphase", main2: "Hauptphase 2", end: "Endphase",
+};
+
 function advancePhase(room: Room, role: "host" | "guest") {
   const player = role === "host" ? room.host : room.guest;
   if (!player || room.activePlayer !== player.name) return;
+  if (!bothHandsConfirmed(room)) return; // Block phase advance during mulligan phase
 
   const currentIdx = PHASE_ORDER.indexOf(room.phase);
 
   if (currentIdx === PHASE_ORDER.length - 1) {
-    // End of END phase → switch active player
+    // End of END phase → switch to next player's turn
     room.activePlayer = room.activePlayer === room.host.name
       ? (room.guest?.name ?? room.host.name)
       : room.host.name;
     room.turn += 1;
     room.phase = "untap";
+
+    // Reset land limit for next player
     const nextPlayer = room.activePlayer === room.host.name ? room.host : room.guest;
     if (nextPlayer) {
-      // Auto-untap all permanents
+      nextPlayer.landPlayedThisTurn = false;
+      // Auto-untap all permanents of next player
       nextPlayer.board.battlefield.forEach(c => { c.tapped = false; });
-      log(room, `Runde ${room.turn} — ${room.activePlayer} ist am Zug`);
+      log(room, `⚔ Runde ${room.turn} — ${room.activePlayer} ist am Zug`);
     }
-    // Skip untap phase, go straight to upkeep
+    // Skip to upkeep (untap is instant)
     room.phase = "upkeep";
-    log(room, `${room.activePlayer}: Aufklärungsphase → Vorbereitungsphase`);
+    log(room, `${room.activePlayer}: Vorbereitungsphase — Effekte zu Zugebeginn`);
   } else {
     const nextPhase = PHASE_ORDER[currentIdx + 1];
 
     if (room.phase === "untap") {
       player.board.battlefield.forEach(c => { c.tapped = false; });
-      log(room, `${player.name}: Alle Karten bereit`);
+      player.landPlayedThisTurn = false;
+      log(room, `${player.name}: Alle Permanenten bereit gemacht`);
     }
 
     room.phase = nextPhase;
-    const phaseNames: Record<Phase, string> = {
-      untap: "Aufklärung", upkeep: "Vorbereitung", draw: "Ziehphase",
-      main1: "Hauptphase 1", combat: "Kampfphase", main2: "Hauptphase 2", end: "Endphase",
-    };
-    log(room, `${player.name}: ${phaseNames[nextPhase]}`);
+    log(room, `${player.name}: ${PHASE_NAMES_DE[nextPhase]}`);
 
+    // Auto-draw when entering draw phase (except: turn 1 for the first player)
     if (nextPhase === "draw") {
-      drawCard(player, room);
+      const isFirstPlayerFirstTurn = room.turn === 1 && player.name === room.firstPlayerName;
+      if (isFirstPlayerFirstTurn) {
+        log(room, `${player.name}: Kein Karten ziehen in Runde 1 (Startspieler-Regel)`);
+      } else {
+        drawCard(player, room);
+      }
+    }
+
+    if (nextPhase === "end") {
+      // Check hand limit (7 cards default; for Commander also 7)
+      const handLimit = 7;
+      const excess = player.board.hand.length - handLimit;
+      if (excess > 0) {
+        log(room, `⚠ ${player.name}: Hand hat ${player.board.hand.length} Karten — bitte ${excess} Karte(n) abwerfen!`);
+      }
     }
   }
 }
@@ -301,15 +364,7 @@ export function createRoom(opts: {
   let code = generateCode();
   while (rooms.has(code)) code = generateCode();
 
-  const deck = opts.deckCards ? shuffle(expandCards(opts.deckCards)) : [];
-  const host: PlayerState = {
-    name: opts.hostName,
-    deckName: opts.deckName,
-    life: opts.startingLife,
-    poison: 0,
-    commanderDamageReceived: {},
-    board: { ...emptyBoard(), deck },
-  };
+  const host = makePlayer(opts.hostName, opts.deckName, opts.startingLife, opts.deckCards);
 
   const room: Room = {
     code,
@@ -319,8 +374,9 @@ export function createRoom(opts: {
     startingLife: opts.startingLife,
     status: "waiting",
     turn: 1,
-    phase: "main1",
+    phase: "untap",
     activePlayer: opts.hostName,
+    firstPlayerName: opts.hostName,
     gameLog: [{ time: Date.now(), msg: `Raum erstellt von ${opts.hostName} (${opts.deckName})` }],
     createdAt: Date.now(),
     isPublic: opts.isPublic ?? true,
@@ -339,31 +395,21 @@ export function joinRoom(code: string, opts: {
   const room = rooms.get(code.toUpperCase());
   if (!room || room.guest || room.status !== "waiting") return null;
 
-  const deck = opts.deckCards ? shuffle(expandCards(opts.deckCards)) : [];
-  room.guest = {
-    name: opts.guestName,
-    deckName: opts.deckName,
-    life: room.startingLife,
-    poison: 0,
-    commanderDamageReceived: {},
-    board: { ...emptyBoard(), deck },
-  };
+  room.guest = makePlayer(opts.guestName, opts.deckName, room.startingLife, opts.deckCards);
   room.status = "playing";
   room.phase = "untap";
 
-  // Deal starting hands
+  // Deal starting hands (7 cards each)
   const handSize = 7;
   for (let i = 0; i < handSize; i++) drawCard(room.host, room);
   for (let i = 0; i < handSize; i++) drawCard(room.guest, room);
   room.gameLog = [];
-  log(room, `${opts.guestName} (${opts.deckName}) ist beigetreten — Spiel beginnt!`);
-  log(room, `Beide Spieler haben ${handSize} Karten gezogen`);
-  log(room, `Runde 1 — ${room.activePlayer} beginnt (Aufklärungsphase)`);
+  log(room, `${opts.guestName} (${opts.deckName}) ist beigetreten!`);
+  log(room, `Beide Spieler haben 7 Karten erhalten — Eröffnungshand prüfen`);
+  log(room, `${room.host.name} beginnt das Spiel (Startspieler)`);
+  log(room, `⚠ Entscheide: Hand halten oder Mulligan?`);
 
-  // Auto advance past untap
-  room.host.board.battlefield.forEach(c => { c.tapped = false; });
-  room.phase = "upkeep";
-  log(room, `${room.activePlayer}: Vorbereitungsphase`);
+  // NOTE: Do NOT auto-advance to upkeep — wait for both players to confirm hand
 
   return room;
 }
@@ -406,6 +452,7 @@ type ClientMsg =
   | { type: "add_counter"; instanceId: string; counter: string; delta: number }
   | { type: "next_phase" }
   | { type: "mulligan" }
+  | { type: "confirm_hand" }
   | { type: "reset_game" }
   | { type: "ping" };
 
@@ -470,7 +517,6 @@ export function handleWsMessage(ws: WebSocket, raw: string) {
     if (isGuest) room.guestWs = ws;
     (ws as any).__roomCode = room.code;
     (ws as any).__role = isHost ? "host" : "guest";
-    // Broadcast to both players so the opponent also knows the player reconnected
     broadcast(room);
     return;
   }
@@ -510,6 +556,10 @@ export function handleWsMessage(ws: WebSocket, raw: string) {
   }
 
   if (msg.type === "draw_card") {
+    if (!bothHandsConfirmed(room)) {
+      send({ type: "error", message: "Bitte zuerst die Eröffnungshand bestätigen" });
+      return;
+    }
     if (!drawCard(player, room)) {
       send({ type: "error", message: "Deck leer — keine Karte mehr vorhanden!" });
       return;
@@ -519,20 +569,45 @@ export function handleWsMessage(ws: WebSocket, raw: string) {
   }
 
   if (msg.type === "play_card") {
+    if (!bothHandsConfirmed(room)) {
+      send({ type: "error", message: "Bitte zuerst die Eröffnungshand bestätigen" });
+      return;
+    }
     const idx = player.board.hand.findIndex(c => c.instanceId === msg.instanceId);
     if (idx === -1) { send({ type: "error", message: "Karte nicht in der Hand" }); return; }
-    const [card] = player.board.hand.splice(idx, 1);
+
+    const card = player.board.hand[idx];
     const zone = msg.zone ?? "battlefield";
+    const isLand = isLandCard(card);
+
+    // Land-specific rules (only enforce in the active player's main phases)
+    if (isLand && zone === "battlefield" && room.activePlayer === player.name) {
+      if (room.phase !== "main1" && room.phase !== "main2") {
+        send({ type: "error", message: `Länder können nur in der Hauptphase gespielt werden (aktuell: ${PHASE_NAMES_DE[room.phase]})` });
+        return;
+      }
+      if (player.landPlayedThisTurn) {
+        send({ type: "error", message: "Du hast bereits ein Land gespielt — nur 1 Land pro Zug erlaubt!" });
+        return;
+      }
+      player.landPlayedThisTurn = true;
+      log(room, `${player.name}: spielt Land ${card.name} (Land-Limit für diesen Zug erreicht)`);
+    } else if (!isLand && zone === "battlefield") {
+      log(room, `${player.name}: spielt ${card.name}`);
+    } else if (zone === "graveyard") {
+      log(room, `${player.name}: ${card.name} → Friedhof`);
+    } else {
+      log(room, `${player.name}: ${card.name} → Exil`);
+    }
+
+    player.board.hand.splice(idx, 1);
     if (zone === "battlefield") {
       card.tapped = false;
       player.board.battlefield.push(card);
-      log(room, `${player.name}: spielt ${card.name}`);
     } else if (zone === "graveyard") {
       player.board.graveyard.push(card);
-      log(room, `${player.name}: ${card.name} → Friedhof`);
     } else {
       player.board.exile.push(card);
-      log(room, `${player.name}: ${card.name} → Exil`);
     }
     broadcast(room);
     return;
@@ -583,27 +658,63 @@ export function handleWsMessage(ws: WebSocket, raw: string) {
     ].find((c: GameCard) => c.instanceId === msg.instanceId);
     if (!card) { send({ type: "error", message: "Karte nicht gefunden" }); return; }
     card.counters[msg.counter] = Math.max(0, (card.counters[msg.counter] ?? 0) + msg.delta);
-    log(room, `${player.name}: ${card.name} bekommt ${msg.counter} Marker (${card.counters[msg.counter]})`);
+    log(room, `${player.name}: ${card.name} → ${msg.counter} Marke (${card.counters[msg.counter]})`);
     broadcast(room);
     return;
   }
 
   if (msg.type === "next_phase") {
+    if (!bothHandsConfirmed(room)) {
+      send({ type: "error", message: "Bitte zuerst die Eröffnungshand bestätigen" });
+      return;
+    }
     advancePhase(room, role);
     broadcast(room);
     return;
   }
 
   if (msg.type === "mulligan") {
-    // Return hand to deck, shuffle, draw one fewer
-    const handSize = player.board.hand.length;
-    if (handSize === 0) { send({ type: "error", message: "Hand leer" }); return; }
-    player.board.deck.push(...player.board.hand);
-    player.board.hand = [];
-    player.board.deck = shuffle(player.board.deck);
-    const newSize = Math.max(1, handSize - 1);
-    for (let i = 0; i < newSize; i++) drawCard(player, room);
-    log(room, `${player.name}: Mull auf ${newSize} Karten`);
+    // Only allowed before hands are confirmed
+    if (!bothHandsConfirmed(room)) {
+      const handSize = player.board.hand.length;
+      if (handSize === 0) { send({ type: "error", message: "Hand leer" }); return; }
+      player.mulliganCount += 1;
+      player.board.deck.push(...player.board.hand);
+      player.board.hand = [];
+      player.board.deck = shuffle(player.board.deck);
+      const newSize = Math.max(1, handSize - 1);
+      for (let i = 0; i < newSize; i++) drawCard(player, room);
+      log(room, `${player.name}: Mulligan (${player.mulliganCount}×) → ${newSize} Karten`);
+      broadcast(room);
+    } else {
+      // During game: free mulligan (no card reduction)
+      const handSize = player.board.hand.length;
+      if (handSize === 0) { send({ type: "error", message: "Hand leer" }); return; }
+      player.board.deck.push(...player.board.hand);
+      player.board.hand = [];
+      player.board.deck = shuffle(player.board.deck);
+      const newSize = Math.max(1, handSize - 1);
+      for (let i = 0; i < newSize; i++) drawCard(player, room);
+      log(room, `${player.name}: Mull → ${newSize} Karten`);
+      broadcast(room);
+    }
+    return;
+  }
+
+  if (msg.type === "confirm_hand") {
+    if (player.handConfirmed) return; // already confirmed
+    player.handConfirmed = true;
+    log(room, `${player.name}: Eröffnungshand gehalten (${player.board.hand.length} Karten${player.mulliganCount > 0 ? `, ${player.mulliganCount}× Mull` : ""})`);
+
+    // Check if both players have now confirmed
+    if (bothHandsConfirmed(room)) {
+      log(room, `✓ Beide Spieler bereit — Spiel beginnt!`);
+      log(room, `${room.activePlayer}: Vorbereitungsphase`);
+      room.phase = "upkeep";
+      if (room.turn === 1) {
+        log(room, `ℹ ${room.firstPlayerName} zieht in Runde 1 keine Karte (Startspieler-Regel)`);
+      }
+    }
     broadcast(room);
     return;
   }
@@ -620,18 +731,21 @@ export function handleWsMessage(ws: WebSocket, raw: string) {
       p.life = room.startingLife;
       p.poison = 0;
       p.commanderDamageReceived = {};
+      p.landPlayedThisTurn = false;
+      p.handConfirmed = false;
+      p.mulliganCount = 0;
     };
     resetPlayer(room.host);
     if (room.guest) resetPlayer(room.guest);
     room.turn = 1;
     room.phase = "untap";
     room.activePlayer = room.host.name;
+    room.firstPlayerName = room.host.name;
     room.gameLog = [];
-    // Deal hands
+    // Deal starting hands
     for (let i = 0; i < 7; i++) drawCard(room.host, room);
     if (room.guest) for (let i = 0; i < 7; i++) drawCard(room.guest, room);
-    room.phase = "upkeep";
-    log(room, "Spiel neu gestartet");
+    log(room, "Spiel neu gestartet — Eröffnungshand prüfen");
     broadcast(room);
     return;
   }
