@@ -20,20 +20,26 @@ if (Number.isNaN(port) || port <= 0) {
 
 const httpServer = createServer(app);
 
-const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
+const wss = new WebSocketServer({ server: httpServer, path: "/api/ws" });
 
-wss.on("connection", (ws) => {
+wss.on("connection", (ws, req) => {
+  logger.info({ url: req.url, origin: req.headers.origin }, "WebSocket client connected");
   ws.on("message", (data) => {
     handleWsMessage(ws, data.toString());
   });
 
   ws.on("close", () => {
+    logger.info("WebSocket client disconnected");
     handleWsClose(ws);
   });
 
   ws.on("error", (err) => {
     logger.warn({ err }, "WebSocket error");
   });
+});
+
+wss.on("error", (err) => {
+  logger.error({ err }, "WebSocketServer error");
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────

@@ -39,7 +39,7 @@ function getApiBase(): string {
 }
 
 function getWsUrl(): string {
-  return getApiBase().replace("https://", "wss://").replace("http://", "ws://") + "/ws";
+  return getApiBase().replace("https://", "wss://").replace("http://", "ws://") + "/api/ws";
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
