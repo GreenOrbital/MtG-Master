@@ -589,7 +589,7 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
 
           {/* ── Sticky create button ── */}
           {homeMode === "create" && (
-            <View style={[s.stickyFooter, { borderTopColor: colors.border, paddingBottom: asScreen ? insets.bottom + 10 : 16, backgroundColor: colors.background }]}>
+            <View style={[s.stickyFooter, { borderTopColor: colors.border, paddingBottom: asScreen ? 10 : 16, backgroundColor: colors.background }]}>
               <TouchableOpacity
                 style={[s.primaryBtn, { backgroundColor: colors.primary, opacity: connecting ? 0.7 : 1, marginTop: 0 }]}
                 onPress={handleCreate} disabled={connecting}
