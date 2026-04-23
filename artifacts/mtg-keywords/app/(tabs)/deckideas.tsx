@@ -810,6 +810,7 @@ export default function DeckIdeasScreen() {
   const [preconYearFilter, setPreconYearFilter] = useState<string>("all");
   const [showExampleSection, setShowExampleSection] = useState(false);
   const [selectedExampleId, setSelectedExampleId] = useState<string | null>(null);
+  const [importedExampleIds, setImportedExampleIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     AsyncStorage.getItem(SELECTED_EXAMPLE_DECK_KEY).then(v => {
@@ -826,6 +827,30 @@ export default function DeckIdeasScreen() {
       await AsyncStorage.removeItem(SELECTED_EXAMPLE_DECK_KEY);
     }
   }, [selectedExampleId]);
+
+  const handleImportExampleDeck = useCallback((deck: ExampleCommanderDeck) => {
+    const deckCards = deck.cards.map(c => ({
+      id: c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+      name: c.name,
+      type_line: c.type_line,
+      mana_cost: c.mana_cost,
+      count: c.count,
+    }));
+    const newDeck: Deck = {
+      id: `example-${deck.id}-${Date.now()}`,
+      name: deck.name,
+      format: "commander",
+      cards: deckCards,
+      lands: deck.lands,
+      savedAt: Date.now(),
+    };
+    importDeck(newDeck);
+    setImportedExampleIds(prev => new Set([...prev, deck.id]));
+    setImportFeedback(showEnglish
+      ? `"${deck.name}" added to your decks!`
+      : `"${deck.name}" zu deinen Decks hinzugefügt!`);
+    setTimeout(() => setImportFeedback(null), 4000);
+  }, [importDeck, showEnglish]);
 
   const preconYears = Array.from(new Set(COMMANDER_PRECONS.map(d => d.year))).sort((a, b) => Number(b) - Number(a));
   const filteredPrecons = preconYearFilter === "all"
@@ -1049,7 +1074,6 @@ export default function DeckIdeasScreen() {
               ))}
             </View>
           )}
-          </>}
 
           {/* ── Beispiel Commander Decks (spielbar) ────────────────────── */}
           <TouchableOpacity
@@ -1154,16 +1178,44 @@ export default function DeckIdeasScreen() {
                         </Text>
                       </View>
                     </View>
-                    {/* Checkmark */}
-                    {isSelected
-                      ? <Ionicons name="checkmark-circle" size={24} color="#c8a96e" />
-                      : <Ionicons name="ellipse-outline" size={24} color={colors.border} />
-                    }
+                    {/* Lobby-Select + Import buttons */}
+                    <View style={{ alignItems: "center", gap: 6 }}>
+                      {isSelected
+                        ? <Ionicons name="checkmark-circle" size={26} color="#c8a96e" />
+                        : <Ionicons name="ellipse-outline" size={26} color={colors.border} />
+                      }
+                      <TouchableOpacity
+                        onPress={(e) => { e.stopPropagation?.(); handleImportExampleDeck(deck); }}
+                        style={{
+                          flexDirection: "row", alignItems: "center", gap: 4,
+                          paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8,
+                          backgroundColor: importedExampleIds.has(deck.id) ? "#16a34a22" : colors.primary + "22",
+                          borderWidth: 1,
+                          borderColor: importedExampleIds.has(deck.id) ? "#16a34a55" : colors.primary + "55",
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons
+                          name={importedExampleIds.has(deck.id) ? "checkmark" : "add"}
+                          size={13}
+                          color={importedExampleIds.has(deck.id) ? "#16a34a" : colors.primary}
+                        />
+                        <Text style={{
+                          fontSize: 10, fontFamily: "Inter_500Medium",
+                          color: importedExampleIds.has(deck.id) ? "#16a34a" : colors.primary,
+                        }}>
+                          {importedExampleIds.has(deck.id)
+                            ? (showEnglish ? "Added" : "Hinzugefügt")
+                            : (showEnglish ? "Add" : "Hinzufügen")}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   </TouchableOpacity>
                 );
               })}
             </View>
           )}
+          </>}
 
           {archetypes.map((a) => (
             <TouchableOpacity
