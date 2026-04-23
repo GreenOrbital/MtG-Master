@@ -28,7 +28,6 @@ import { AnimatedCard } from "@/components/AnimatedCard";
 import { KeywordCard } from "@/components/KeywordCard";
 import { ShopNearbyModal } from "@/components/ShopNearbyModal";
 import { LanguageToggle } from "@/components/LanguageToggle";
-import GameLobby from "@/components/GameLobby";
 import { type CompactCard, useCardHistory } from "@/context/CardHistoryContext";
 import { useDecks } from "@/context/DeckContext";
 import { useSettings } from "@/context/SettingsContext";
@@ -655,7 +654,6 @@ export default function CardSearchScreen() {
   const [loadingPrints, setLoadingPrints] = useState(false);
   const [selectedPrint, setSelectedPrint] = useState<CardPrint | null>(null);
   const [zoomedPrint, setZoomedPrint] = useState<CardPrint | null>(null);
-  const [showGameLobby, setShowGameLobby] = useState(false);
 
   async function expandCombo(comboId: string, description: string) {
     const isOpening = expandedComboId !== comboId;
@@ -911,32 +909,6 @@ export default function CardSearchScreen() {
       </View>
 
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-
-        {/* ── Spielen-Banner ── */}
-        {!card && !loadingCard && (
-          <TouchableOpacity
-            style={[styles.playBanner, { backgroundColor: colors.card, borderColor: colors.primary + "44" }]}
-            onPress={() => setShowGameLobby(true)}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.playBannerIcon, { backgroundColor: colors.primary + "18" }]}>
-              <Ionicons name="game-controller" size={22} color={colors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: colors.foreground }}>
-                {showEnglish ? "Play MtG Online" : "MtG Online spielen"}
-              </Text>
-              <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
-                {showEnglish ? "Virtual game table · test your decks vs. real opponents" : "Virtueller Spieltisch · Decks gegen echte Gegner testen"}
-              </Text>
-            </View>
-            <View style={[styles.playBannerBadge, { backgroundColor: colors.primary + "22", borderColor: colors.primary + "55" }]}>
-              <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: colors.primary }}>
-                {showEnglish ? "Play" : "Spielen"}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        )}
 
         {loadingCard && (
           <View style={styles.loadingBox}>
@@ -2039,7 +2011,6 @@ export default function CardSearchScreen() {
         )}
       </ScrollView>
       <ShopNearbyModal visible={showShopModal} onClose={() => setShowShopModal(false)} />
-      <GameLobby visible={showGameLobby} onClose={() => setShowGameLobby(false)} />
     </View>
   );
 }
@@ -2048,9 +2019,6 @@ export default function CardSearchScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  playBanner: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, borderWidth: 1, marginBottom: 16 },
-  playBannerIcon: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  playBannerBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1 },
   header: { paddingHorizontal: 16, paddingBottom: 10, borderBottomWidth: 1, zIndex: 10 },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   title: { fontSize: 26, fontFamily: "Inter_700Bold" },

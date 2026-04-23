@@ -76,6 +76,13 @@ function WebSidebar() {
       badge: true,
     },
     {
+      route: "/play",
+      iconDefault: "game-controller-outline" as const,
+      iconActive: "game-controller" as const,
+      labelDe: "Spielen",
+      labelEn: "Play",
+    },
+    {
       route: "/settings",
       iconDefault: "settings-outline" as const,
       iconActive: "settings" as const,
@@ -142,36 +149,31 @@ function WebSidebar() {
 // ─── Native Tab Layout ────────────────────────────────────────────────────────
 
 function NativeTabLayout() {
-  const { showEnglish } = useSettings();
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="scan">
         <Icon sf={{ default: "magnifyingglass.circle", selected: "magnifyingglass.circle.fill" }} />
-        <Label>{showEnglish ? "Card Search" : "Karte suchen"}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="keywords">
         <Icon sf={{ default: "list.bullet", selected: "list.bullet" }} />
-        <Label>{showEnglish ? "Keywords" : "Schlüsselwörter"}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="manapool">
         <Icon sf={{ default: "rectangle.stack", selected: "rectangle.stack.fill" }} />
-        <Label>Decks</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="deckideas">
         <Icon sf={{ default: "lightbulb", selected: "lightbulb.fill" }} />
-        <Label>{showEnglish ? "Deck Ideas" : "Ideen"}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="rules">
         <Icon sf={{ default: "questionmark.circle", selected: "questionmark.circle.fill" }} />
-        <Label>{showEnglish ? "Rules FAQ" : "Regelwerk"}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="partner">
         <Icon sf={{ default: "storefront", selected: "storefront.fill" }} />
-        <Label>{showEnglish ? "Partners" : "Partner"}</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="play">
+        <Icon sf={{ default: "gamecontroller", selected: "gamecontroller.fill" }} />
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
         <Icon sf={{ default: "gear", selected: "gear" }} />
-        <Label>{showEnglish ? "Settings" : "Einstellungen"}</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -196,6 +198,7 @@ function ClassicTabLayout() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
         headerShown: false,
+        tabBarShowLabel: isDesktop,
         tabBarStyle: isDesktop
           ? { display: "none" }
           : {
@@ -299,6 +302,18 @@ function ClassicTabLayout() {
           ),
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.primary,
+        }}
+      />
+      <Tabs.Screen
+        name="play"
+        options={{
+          title: showEnglish ? "Play" : "Spielen",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="gamecontroller" tintColor={color} size={24} />
+            ) : (
+              <Ionicons name="game-controller-outline" size={22} color={color} />
+            ),
         }}
       />
       <Tabs.Screen

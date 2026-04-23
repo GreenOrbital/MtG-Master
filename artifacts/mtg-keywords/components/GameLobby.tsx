@@ -162,9 +162,9 @@ function CardBack({ width = 44, height = 62 }: { width?: number; height?: number
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-interface Props { visible: boolean; onClose: () => void; }
+interface Props { visible: boolean; onClose: () => void; asScreen?: boolean; }
 
-export default function GameLobby({ visible, onClose }: Props) {
+export default function GameLobby({ visible, onClose, asScreen = false }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { showEnglish } = useSettings();
@@ -381,13 +381,7 @@ export default function GameLobby({ visible, onClose }: Props) {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle={screen === "game" ? "fullScreen" : "pageSheet"}
-      onRequestClose={() => screen === "home" ? onClose() : handleLeave()}
-    >
+  const content = (
       <View style={[s.root, { backgroundColor: colors.background }]}>
 
         {/* ── HOME SCREEN ── */}
@@ -626,6 +620,18 @@ export default function GameLobby({ visible, onClose }: Props) {
           />
         )}
       </View>
+  );
+
+  if (asScreen) return content;
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle={screen === "game" ? "fullScreen" : "pageSheet"}
+      onRequestClose={() => screen === "home" ? onClose() : handleLeave()}
+    >
+      {content}
     </Modal>
   );
 }
