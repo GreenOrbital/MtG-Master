@@ -513,27 +513,32 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
     setSelectedBfCard(null);
   }
 
+  function confirmDialog(title: string, message: string, onConfirm: () => void) {
+    if (Platform.OS === "web") {
+      if (window.confirm(`${title}\n${message}`)) onConfirm();
+    } else {
+      Alert.alert(title, message, [
+        { text: showEnglish ? "Cancel" : "Abbrechen", style: "cancel" },
+        { text: showEnglish ? "OK" : "OK", style: "destructive", onPress: onConfirm },
+      ]);
+    }
+  }
+
   function handleLeave() {
     // On the waiting screen: just navigate home — lobby stays alive on the server
     if (screenRef.current === "waiting") { goScreen("home"); return; }
-    Alert.alert(
+    confirmDialog(
       showEnglish ? "Leave Game?" : "Spiel verlassen?",
-      showEnglish ? "You will disconnect." : "Du trennst dich vom Spiel.",
-      [
-        { text: showEnglish ? "Cancel" : "Abbrechen", style: "cancel" },
-        { text: showEnglish ? "Leave" : "Verlassen", style: "destructive", onPress: doLeave },
-      ]
+      showEnglish ? "You will disconnect from the game." : "Du trennst dich vom Spiel.",
+      doLeave
     );
   }
 
   function handleReset() {
-    Alert.alert(
+    confirmDialog(
       showEnglish ? "Restart Game?" : "Spiel neu starten?",
       showEnglish ? "All life totals, cards and log will be reset." : "Alle Lebenspunkte, Karten und das Protokoll werden zurückgesetzt.",
-      [
-        { text: showEnglish ? "Cancel" : "Abbrechen", style: "cancel" },
-        { text: showEnglish ? "Restart" : "Neu starten", style: "destructive", onPress: () => send({ type: "reset_game" }) },
-      ]
+      () => send({ type: "reset_game" })
     );
   }
 
