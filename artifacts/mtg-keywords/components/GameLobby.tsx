@@ -1228,8 +1228,8 @@ function GameBoard({
             </Text>
             <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#888", lineHeight: 18 }}>
               {showEnglish
-                ? "1st mulligan: draw 6 cards\n2nd mulligan: draw 5 cards\n3rd mulligan: draw 4 cards, etc."
-                : "1. Mulligan: 6 Karten\n2. Mulligan: 5 Karten\n3. Mulligan: 4 Karten, usw."}
+                ? "1st mulligan: draw 7 cards again\n2nd mulligan: draw 6 cards\n3rd mulligan: draw 5 cards, etc."
+                : "1. Mulligan: erneut 7 Karten\n2. Mulligan: 6 Karten\n3. Mulligan: 5 Karten, usw."}
             </Text>
           </View>
 

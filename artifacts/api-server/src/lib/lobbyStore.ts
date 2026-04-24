@@ -683,8 +683,8 @@ export function handleWsMessage(ws: WebSocket, raw: string) {
       player.board.deck.push(...player.board.hand);
       player.board.hand = [];
       player.board.deck = shuffle(player.board.deck);
-      // Each mulligan reduces hand by 1: 1st mull→6, 2nd→5, 3rd→4, etc.
-      const newSize = Math.max(1, 7 - player.mulliganCount);
+      // London mulligan: 1st mull→7 again, 2nd mull→6, 3rd→5, etc.
+      const newSize = Math.max(1, 8 - player.mulliganCount);
       for (let i = 0; i < newSize; i++) drawCard(player, room);
       log(room, `${player.name}: Mulligan (${player.mulliganCount}×) → ${newSize} Karten`);
       broadcast(room);
