@@ -1,4 +1,4 @@
-import { useOAuth, useUser, useAuth } from "@clerk/expo";
+import { useOAuth, useSignIn, useUser, useAuth } from "@clerk/expo";
 import * as Linking from "expo-linking";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
@@ -20,6 +20,7 @@ export function GoogleSignIn() {
   const colors = useColors();
   const { showEnglish } = useSettings();
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
+  const { signIn, isLoaded: signInLoaded } = useSignIn();
   const { isSignedIn, signOut } = useAuth();
   const { user } = useUser();
   const [loading, setLoading] = useState(false);
@@ -27,19 +28,25 @@ export function GoogleSignIn() {
   const handleSignIn = async () => {
     try {
       setLoading(true);
-      // On web (mobile or desktop browser) we must redirect back to the current
-      // origin's root URL — the "/(tabs)" Expo Router group is not a real web
-      // route, so the OAuth provider would land on a 404. On native iOS/Android
-      // we use the custom URL scheme so the OS hands the callback back to the app.
-      const redirectUrl =
-        Platform.OS === "web"
-          ? typeof window !== "undefined"
-            ? window.location.origin + "/"
-            : "/"
-          : Linking.createURL("/", { scheme: "mtg-keywords" });
 
+      if (Platform.OS === "web") {
+        // Mobile browsers block OAuth popups. Use a full-page redirect via
+        // Clerk's signIn.authenticateWithRedirect so the browser navigates
+        // to Google directly and returns to /sso-callback to finalize.
+        if (!signInLoaded || !signIn) return;
+        const origin =
+          typeof window !== "undefined" ? window.location.origin : "";
+        await signIn.authenticateWithRedirect({
+          strategy: "oauth_google",
+          redirectUrl: origin + "/sso-callback",
+          redirectUrlComplete: origin + "/",
+        });
+        return;
+      }
+
+      // Native iOS/Android — use the in-app browser flow.
       const { createdSessionId, setActive } = await startOAuthFlow({
-        redirectUrl,
+        redirectUrl: Linking.createURL("/", { scheme: "mtg-keywords" }),
       });
       if (createdSessionId && setActive) {
         await setActive({ session: createdSessionId });
