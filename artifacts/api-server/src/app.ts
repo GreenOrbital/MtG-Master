@@ -44,7 +44,10 @@ app.use("/api", router);
 if (process.env["NODE_ENV"] === "production") {
   const distDir = path.resolve(process.cwd(), "artifacts/mtg-keywords/dist");
   if (fs.existsSync(distDir)) {
-    app.use(express.static(distDir));
+    // dotfiles: "allow" is required because Expo's web bundle stores fonts
+    // and other assets under paths like /assets/__node_modules/.pnpm/...
+    // — express.static would otherwise block any path containing a dot-prefixed segment.
+    app.use(express.static(distDir, { dotfiles: "allow" }));
     app.get("/*splat", (_req, res) => {
       const indexPath = path.join(distDir, "index.html");
       if (fs.existsSync(indexPath)) {
