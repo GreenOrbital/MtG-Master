@@ -30,6 +30,9 @@ args = ["node", "--enable-source-maps", "artifacts/api-server/dist/index.mjs"]
 PORT = "25770"
 NODE_ENV = "production"
 
+[services.production.health.startup]
+path = "/api/healthz"
+
 [services.env]
 PORT = "25770"
 BASE_PATH = "/"

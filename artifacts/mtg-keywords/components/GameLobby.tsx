@@ -218,6 +218,7 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [serverOnline, setServerOnline] = useState<boolean | null>(null);
   const [savedLobby, setSavedLobby] = useState<SavedLobby | null>(null);
 
   // Game UI state
@@ -228,6 +229,16 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
   const [showLifeMenu, setShowLifeMenu] = useState(false);
   const [showCounterMenu, setShowCounterMenu] = useState<string | null>(null);
 
+  async function checkServer() {
+    setServerOnline(null);
+    try {
+      const res = await fetch(`${getApiBase()}/api/healthz`, { signal: AbortSignal.timeout(5000) });
+      setServerOnline(res.ok);
+    } catch {
+      setServerOnline(false);
+    }
+  }
+
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_PLAYER_NAME).then(v => { if (v) setPlayerName(v); });
     AsyncStorage.getItem(STORAGE_ACTIVE_LOBBY).then(v => {
@@ -235,6 +246,7 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
     });
     AsyncStorage.getItem(SELECTED_EXAMPLE_DECK_KEY).then(v => { if (v) setSelectedExampleId(v); });
     if (decks.length > 0 && !selectedDeckId) setSelectedDeckId(decks[0].id);
+    checkServer();
   }, []);
 
   function saveLobby(lobby: SavedLobby) {
@@ -352,9 +364,10 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
       console.warn("[WS] onerror", e);
       if (screenRef.current !== "game") {
         setError(showEnglish
-          ? `Connection error — server unreachable`
-          : `Verbindungsfehler — Server nicht erreichbar`);
+          ? `Connection failed — tap ↻ to retry`
+          : `Verbindung fehlgeschlagen — ↻ zum Wiederholen`);
         setConnecting(false);
+        setServerOnline(false);
       }
     };
     ws.onclose = () => {
@@ -634,10 +647,33 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
               </View>
             )}
 
+            {serverOnline === false && !error && (
+              <View style={[s.errorBox, { backgroundColor: "#ef444418", borderColor: "#ef4444" }]}>
+                <Ionicons name="cloud-offline-outline" size={15} color="#ef4444" />
+                <Text style={{ flex: 1, fontSize: 13, color: "#ef4444", fontFamily: "Inter_400Regular" }}>
+                  {showEnglish ? "Server not reachable — multiplayer unavailable" : "Server nicht erreichbar — Mehrspieler nicht verfügbar"}
+                </Text>
+                <TouchableOpacity onPress={checkServer} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="refresh" size={16} color="#ef4444" />
+                </TouchableOpacity>
+              </View>
+            )}
+            {serverOnline === null && !error && (
+              <View style={[s.errorBox, { backgroundColor: "#c8a96e11", borderColor: "#c8a96e44" }]}>
+                <ActivityIndicator size="small" color="#c8a96e" />
+                <Text style={{ flex: 1, fontSize: 13, color: "#c8a96e", fontFamily: "Inter_400Regular" }}>
+                  {showEnglish ? "Checking server…" : "Server wird geprüft…"}
+                </Text>
+              </View>
+            )}
+
             {error && (
               <View style={[s.errorBox, { backgroundColor: "#ef444418", borderColor: "#ef4444" }]}>
                 <Ionicons name="warning-outline" size={15} color="#ef4444" />
                 <Text style={{ flex: 1, fontSize: 13, color: "#ef4444", fontFamily: "Inter_400Regular" }}>{error}</Text>
+                <TouchableOpacity onPress={() => { setError(null); checkServer(); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="refresh" size={16} color="#ef4444" />
+                </TouchableOpacity>
               </View>
             )}
 
