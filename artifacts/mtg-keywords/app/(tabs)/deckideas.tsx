@@ -1136,114 +1136,84 @@ export default function DeckIdeasScreen() {
               </View>
               {EXAMPLE_COMMANDER_DECKS.map((deck, i) => {
                 const isSelected = selectedExampleId === deck.id;
-                const cardCount = totalCardCount(deck);
+                const isImported = importedExampleIds.has(deck.id);
+                const isImporting = importingExampleId === deck.id;
                 return (
                   <TouchableOpacity
                     key={deck.id}
                     onPress={() => handleSelectExampleDeck(deck)}
-                    activeOpacity={0.75}
+                    activeOpacity={0.7}
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
                       paddingHorizontal: 14,
-                      paddingVertical: 12,
-                      gap: 12,
+                      paddingVertical: 10,
+                      gap: 10,
                       borderTopWidth: i === 0 ? 0 : StyleSheet.hairlineWidth,
                       borderTopColor: colors.border,
                       backgroundColor: isSelected ? "#c8a96e12" : "transparent",
                     }}
                   >
+                    {/* Index */}
+                    <Text style={{
+                      width: 22, textAlign: "right",
+                      fontSize: 11, fontFamily: "Inter_500Medium",
+                      color: colors.mutedForeground,
+                    }}>
+                      {i + 1}.
+                    </Text>
                     {/* Color dot */}
                     <View style={{
-                      width: 36, height: 36, borderRadius: 18,
-                      backgroundColor: deck.colorHex + "33",
-                      alignItems: "center", justifyContent: "center",
-                      borderWidth: 1, borderColor: deck.colorHex + "66",
-                    }}>
-                      <Ionicons name="layers-outline" size={18} color={deck.colorHex} />
-                    </View>
-                    {/* Info */}
-                    <View style={{ flex: 1, gap: 2 }}>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                        <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: colors.foreground }}>
-                          {deck.name}
-                        </Text>
-                        <View style={{
-                          paddingHorizontal: 6, paddingVertical: 1,
-                          borderRadius: 6, borderWidth: 1,
-                          borderColor: deck.difficultyDe === "Einsteiger" ? "#16a34a55" : deck.difficultyDe === "Mittel" ? "#f59e0b55" : "#ef444455",
-                          backgroundColor: deck.difficultyDe === "Einsteiger" ? "#16a34a15" : deck.difficultyDe === "Mittel" ? "#f59e0b15" : "#ef444415",
-                        }}>
-                          <Text style={{
-                            fontSize: 10, fontFamily: "Inter_500Medium",
-                            color: deck.difficultyDe === "Einsteiger" ? "#16a34a" : deck.difficultyDe === "Mittel" ? "#f59e0b" : "#ef4444",
-                          }}>
-                            {showEnglish ? deck.difficultyEn : deck.difficultyDe}
-                          </Text>
-                        </View>
-                      </View>
-                      <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground }} numberOfLines={1}>
+                      width: 10, height: 10, borderRadius: 5,
+                      backgroundColor: deck.colorHex,
+                    }} />
+                    {/* Name + Commander */}
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text
+                        style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.foreground }}
+                        numberOfLines={1}
+                      >
+                        {deck.name}
+                      </Text>
+                      <Text
+                        style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}
+                        numberOfLines={1}
+                      >
                         {deck.commanderName}
                       </Text>
-                      <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: deck.colorHex, fontStyle: "italic" }} numberOfLines={1}>
-                        {showEnglish ? deck.themeEn : deck.themeDe}
-                      </Text>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
-                        {deck.colors.map(c => (
-                          <View key={c} style={[styles.colorPip, { backgroundColor: COLOR_HEX[c] ?? "#888" }]}>
-                            <Text style={[styles.colorPipText, { color: COLOR_TEXT[c] ?? "#fff" }]}>{c}</Text>
-                          </View>
-                        ))}
-                        <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginLeft: 4 }}>
-                          {cardCount} {showEnglish ? "cards" : "Karten"}
-                        </Text>
-                      </View>
                     </View>
-                    {/* Lobby-Select + Import buttons */}
-                    <View style={{ alignItems: "center", gap: 6 }}>
-                      {isSelected
-                        ? <Ionicons name="checkmark-circle" size={26} color="#c8a96e" />
-                        : <Ionicons name="ellipse-outline" size={26} color={colors.border} />
-                      }
-                      <TouchableOpacity
-                        onPress={() => handleImportExampleDeck(deck)}
-                        disabled={importingExampleId === deck.id || importedExampleIds.has(deck.id)}
-                        style={{
-                          flexDirection: "row", alignItems: "center", gap: 4,
-                          paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8,
-                          backgroundColor: importedExampleIds.has(deck.id) ? "#16a34a22"
-                            : importingExampleId === deck.id ? "#c8a96e22"
-                            : colors.primary + "22",
-                          borderWidth: 1,
-                          borderColor: importedExampleIds.has(deck.id) ? "#16a34a55"
-                            : importingExampleId === deck.id ? "#c8a96e55"
-                            : colors.primary + "55",
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        {importingExampleId === deck.id ? (
-                          <ActivityIndicator size={12} color="#c8a96e" />
-                        ) : (
-                          <Ionicons
-                            name={importedExampleIds.has(deck.id) ? "checkmark" : "add"}
-                            size={13}
-                            color={importedExampleIds.has(deck.id) ? "#16a34a" : colors.primary}
-                          />
-                        )}
-                        <Text style={{
-                          fontSize: 10, fontFamily: "Inter_500Medium",
-                          color: importedExampleIds.has(deck.id) ? "#16a34a"
-                            : importingExampleId === deck.id ? "#c8a96e"
-                            : colors.primary,
-                        }}>
-                          {importingExampleId === deck.id
-                            ? (showEnglish ? "Loading…" : "Lädt…")
-                            : importedExampleIds.has(deck.id)
-                              ? (showEnglish ? "Added" : "Hinzugefügt")
-                              : (showEnglish ? "Add to decks" : "Zu Decks")}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
+                    {/* Selected indicator */}
+                    {isSelected && (
+                      <Ionicons name="checkmark-circle" size={18} color="#c8a96e" />
+                    )}
+                    {/* Compact import button */}
+                    <TouchableOpacity
+                      onPress={() => handleImportExampleDeck(deck)}
+                      disabled={isImporting || isImported}
+                      hitSlop={8}
+                      style={{
+                        width: 30, height: 30, borderRadius: 15,
+                        alignItems: "center", justifyContent: "center",
+                        backgroundColor: isImported ? "#16a34a22"
+                          : isImporting ? "#c8a96e22"
+                          : colors.primary + "22",
+                        borderWidth: 1,
+                        borderColor: isImported ? "#16a34a55"
+                          : isImporting ? "#c8a96e55"
+                          : colors.primary + "55",
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      {isImporting ? (
+                        <ActivityIndicator size={12} color="#c8a96e" />
+                      ) : (
+                        <Ionicons
+                          name={isImported ? "checkmark" : "add"}
+                          size={15}
+                          color={isImported ? "#16a34a" : colors.primary}
+                        />
+                      )}
+                    </TouchableOpacity>
                   </TouchableOpacity>
                 );
               })}

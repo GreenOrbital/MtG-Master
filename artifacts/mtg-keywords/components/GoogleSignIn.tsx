@@ -20,7 +20,7 @@ export function GoogleSignIn() {
   const colors = useColors();
   const { showEnglish } = useSettings();
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
-  const { signIn, isLoaded: signInLoaded } = useSignIn();
+  const { signIn } = useSignIn();
   const { isSignedIn, signOut } = useAuth();
   const { user } = useUser();
   const [loading, setLoading] = useState(false);
@@ -31,16 +31,19 @@ export function GoogleSignIn() {
 
       if (Platform.OS === "web") {
         // Mobile browsers block OAuth popups. Use a full-page redirect via
-        // Clerk's signIn.authenticateWithRedirect so the browser navigates
-        // to Google directly and returns to /sso-callback to finalize.
-        if (!signInLoaded || !signIn) return;
+        // Clerk's signIn.sso so the browser navigates to Google directly and
+        // returns to /sso-callback to finalize.
+        if (!signIn) return;
         const origin =
           typeof window !== "undefined" ? window.location.origin : "";
-        await signIn.authenticateWithRedirect({
+        const result = await signIn.sso({
           strategy: "oauth_google",
-          redirectUrl: origin + "/sso-callback",
-          redirectUrlComplete: origin + "/",
+          redirectUrl: origin + "/",
+          redirectCallbackUrl: origin + "/sso-callback",
         });
+        if (result?.error) {
+          console.error("Google Sign-In Fehler:", result.error);
+        }
         return;
       }
 
