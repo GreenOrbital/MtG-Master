@@ -2,7 +2,7 @@ import { useOAuth, useUser, useAuth } from "@clerk/expo";
 import * as Linking from "expo-linking";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { useSettings } from "@/context/SettingsContext";
 
@@ -27,8 +27,19 @@ export function GoogleSignIn() {
   const handleSignIn = async () => {
     try {
       setLoading(true);
+      // On web (mobile or desktop browser) we must redirect back to the current
+      // origin's root URL — the "/(tabs)" Expo Router group is not a real web
+      // route, so the OAuth provider would land on a 404. On native iOS/Android
+      // we use the custom URL scheme so the OS hands the callback back to the app.
+      const redirectUrl =
+        Platform.OS === "web"
+          ? typeof window !== "undefined"
+            ? window.location.origin + "/"
+            : "/"
+          : Linking.createURL("/", { scheme: "mtg-keywords" });
+
       const { createdSessionId, setActive } = await startOAuthFlow({
-        redirectUrl: Linking.createURL("/(tabs)", { scheme: "mtg-keywords" }),
+        redirectUrl,
       });
       if (createdSessionId && setActive) {
         await setActive({ session: createdSessionId });
