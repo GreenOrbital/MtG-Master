@@ -31,16 +31,15 @@ const SELECTED_EXAMPLE_DECK_KEY = "selected_example_deck_v1";
 function getApiBase(): string {
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
-    // Dev: Expo preview domain → strip .expo to reach the API server domain
+    // Dev: Expo preview domain (.expo.riker.replit.dev) → strip .expo to reach API server
     if (host.includes(".expo.riker.replit.dev")) {
       return `https://${host.replace(".expo.riker.replit.dev", ".riker.replit.dev")}`;
     }
-    // Dev on riker domain → same origin, /api/* routed to API server
-    if (host.includes(".riker.replit.dev")) {
-      return `https://${host}`;
-    }
+    // All other web contexts (dev browser on .riker.replit.dev, production *.replit.app)
+    // → use same origin; path-based proxy routes /api/* to the API server
+    return window.location.origin;
   }
-  // Deployed app & local fallback → use the API server's stable dev domain
+  // Non-browser fallback (SSR/local tools)
   return "https://57d2c256-8628-427d-8d8a-603da6b0641d-00-3mfkn8k0aya4z.riker.replit.dev";
 }
 
@@ -228,7 +227,6 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
   const [showZone, setShowZone] = useState<"graveyard" | "exile" | "oppGraveyard" | "oppExile" | null>(null);
   const [showLifeMenu, setShowLifeMenu] = useState(false);
   const [showCounterMenu, setShowCounterMenu] = useState<string | null>(null);
-  const [zoomMulliganCard, setZoomMulliganCard] = useState<GameCard | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_PLAYER_NAME).then(v => { if (v) setPlayerName(v); });
@@ -1067,6 +1065,7 @@ function GameBoard({
   const me = gs.me;
   const opp = gs.opponent;
   const [cardDetail, setCardDetail] = useState<{ card: GameCard; zone: "hand" | "bf" } | null>(null);
+  const [zoomMulliganCard, setZoomMulliganCard] = useState<GameCard | null>(null);
 
   function lifeBtn(delta: number, who: "me" | "opp") {
     haptic(delta < 0 ? "medium" : "light");
