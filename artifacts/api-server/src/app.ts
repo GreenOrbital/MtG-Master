@@ -45,7 +45,7 @@ if (process.env["NODE_ENV"] === "production") {
   const distDir = path.resolve(process.cwd(), "artifacts/mtg-keywords/dist");
   if (fs.existsSync(distDir)) {
     app.use(express.static(distDir));
-    app.get("*", (_req, res) => {
+    app.get("/*splat", (_req, res) => {
       const indexPath = path.join(distDir, "index.html");
       if (fs.existsSync(indexPath)) {
         res.sendFile(indexPath);
