@@ -52,7 +52,7 @@ catalog:
   '@vitejs/plugin-react': ^5.0.4
   class-variance-authority: ^0.7.1
   clsx: ^2.1.1
-  drizzle-orm: ^0.45.1
+  drizzle-orm: ^0.45.2
   framer-motion: ^12.23.24
   lucide-react: ^0.545.0
   # Must be this exact version because expo requires it
@@ -62,7 +62,7 @@ catalog:
   tailwind-merge: ^3.3.1
   tailwindcss: ^4.1.14
   tsx: ^4.21.0
-  vite: ^7.3.0
+  vite: ^7.3.2
   zod: ^3.25.76
 
 autoInstallPeers: false
@@ -157,3 +157,22 @@ overrides:
   # drizzle-kit uses esbuild internally on an older version that's vulnerable, this overrides it
   "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0"
   esbuild: "0.27.3"
+  # ── Security vulnerability patches ──────────────────────────────────────────
+  # CRITICAL: @clerk/shared createRouteMatcher bypass (GHSA-vqx2-fgx2-5wq9)
+  "@clerk/shared": ">=4.8.1"
+  # HIGH: @xmldom/xmldom multiple CVEs (GHSA-2v35, GHSA-f6ww, GHSA-j759, GHSA-x6wf)
+  "@xmldom/xmldom": ">=0.8.13"
+  # HIGH: picomatch ReDoS / path traversal (GHSA-c2c7, GHSA-3v7f)
+  picomatch: ">=4.0.4"
+  # HIGH: path-to-regexp ReDoS (GHSA-j3q9, GHSA-27v5)
+  path-to-regexp: ">=8.4.0"
+  # HIGH: vite arbitrary file read (GHSA-p9ff, GHSA-v2wj)
+  vite: ">=7.3.2"
+  # MODERATE: postcss line hijacking (GHSA-qx2v)
+  postcss: ">=8.5.10"
+  # MODERATE: brace-expansion ReDoS (GHSA-f886)
+  brace-expansion: ">=2.0.3"
+  # MODERATE: follow-redirects info leak (GHSA-r4q5)
+  follow-redirects: ">=1.16.0"
+  # MODERATE: yaml ReDoS (GHSA-48c2)
+  yaml: ">=2.8.3"

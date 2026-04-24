@@ -8,8 +8,7 @@ id = "artifacts/mockup-sandbox"
 
 [deployment]
 router = "application"
-deploymentTarget = "static"
-publicDir = "artifacts/mtg-keywords/dist"
+deploymentTarget = "gce"
 
 [deployment.postBuild]
 args = ["pnpm", "store", "prune"]
