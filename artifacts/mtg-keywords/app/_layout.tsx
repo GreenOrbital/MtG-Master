@@ -27,7 +27,13 @@ import { SettingsProvider, useSettings } from "@/context/SettingsContext";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const CLERK_KEY = "pk_test_ZGVmaW5pdGUtYm9hci0zNC5jbGVyay5hY2NvdW50cy5kZXYk";
+// Use the Clerk publishable key injected at build time. The hardcoded key is
+// only a development fallback for local dev — production deploys MUST get the
+// pk_live_* key from EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY (set from the Replit
+// Auth pane via $CLERK_PUBLISHABLE_KEY in the build script).
+const CLERK_KEY =
+  process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ??
+  "pk_test_ZGVmaW5pdGUtYm9hci0zNC5jbGVyay5hY2NvdW50cy5kZXYk";
 
 SplashScreen.preventAutoHideAsync();
 
