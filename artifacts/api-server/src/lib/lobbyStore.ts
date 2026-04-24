@@ -454,6 +454,7 @@ type ClientMsg =
   | { type: "mulligan" }
   | { type: "confirm_hand" }
   | { type: "reset_game" }
+  | { type: "close_room" }
   | { type: "ping" };
 
 export function handleWsMessage(ws: WebSocket, raw: string) {
@@ -682,7 +683,8 @@ export function handleWsMessage(ws: WebSocket, raw: string) {
       player.board.deck.push(...player.board.hand);
       player.board.hand = [];
       player.board.deck = shuffle(player.board.deck);
-      const newSize = Math.max(1, handSize - 1);
+      // Each mulligan reduces hand by 1: 1st mull→6, 2nd→5, 3rd→4, etc.
+      const newSize = Math.max(1, 7 - player.mulliganCount);
       for (let i = 0; i < newSize; i++) drawCard(player, room);
       log(room, `${player.name}: Mulligan (${player.mulliganCount}×) → ${newSize} Karten`);
       broadcast(room);
@@ -747,6 +749,21 @@ export function handleWsMessage(ws: WebSocket, raw: string) {
     if (room.guest) for (let i = 0; i < 7; i++) drawCard(room.guest, room);
     log(room, "Spiel neu gestartet — Eröffnungshand prüfen");
     broadcast(room);
+    return;
+  }
+
+  if (msg.type === "close_room") {
+    if (!room) return;
+    // Only host may close the room
+    const roleCheck: string = (ws as any).__role;
+    if (roleCheck !== "host") { send({ type: "error", message: "Nur der Host kann den Raum schließen" }); return; }
+    // Notify all connected players
+    const closeMsg = JSON.stringify({ type: "room_closed" });
+    if (room.hostWs && room.hostWs.readyState === 1) room.hostWs.send(closeMsg);
+    if (room.guestWs && room.guestWs.readyState === 1) room.guestWs.send(closeMsg);
+    // Remove from memory and DB
+    rooms.delete(room.code);
+    db.delete(gameRoomsTable).where(eq(gameRoomsTable.code, room.code)).catch(() => {});
     return;
   }
 }

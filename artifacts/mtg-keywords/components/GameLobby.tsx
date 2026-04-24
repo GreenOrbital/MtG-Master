@@ -228,6 +228,7 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
   const [showZone, setShowZone] = useState<"graveyard" | "exile" | "oppGraveyard" | "oppExile" | null>(null);
   const [showLifeMenu, setShowLifeMenu] = useState(false);
   const [showCounterMenu, setShowCounterMenu] = useState<string | null>(null);
+  const [zoomMulliganCard, setZoomMulliganCard] = useState<GameCard | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_PLAYER_NAME).then(v => { if (v) setPlayerName(v); });
@@ -320,6 +321,12 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
           if (state.status === "finished") clearSavedLobby();
           if (state.status === "playing" && screenRef.current !== "game") goScreen("game");
           else if (state.status === "waiting" && screenRef.current !== "waiting") goScreen("waiting");
+        } else if (msg.type === "room_closed") {
+          clearSavedLobby();
+          reconnectDataRef.current = null;
+          disconnectWs();
+          setError(showEnglish ? "The host closed the room." : "Der Host hat den Raum geschlossen.");
+          goScreen("home");
         } else if (msg.type === "error") {
           // Clear saved lobby on any rejoin-related error
           if (
@@ -902,6 +909,28 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
                 <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 16 }}>
                   Format: {fmt?.label ?? gameState?.format}  ·  {gameState?.startingLife} LP
                 </Text>
+
+                <TouchableOpacity
+                  style={{ marginTop: 24, flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10, borderWidth: 1, borderColor: "#5a2020", backgroundColor: "#2a100e" }}
+                  onPress={() => confirmDialog(
+                    showEnglish ? "Close room?" : "Raum schließen?",
+                    showEnglish ? "This will remove the room for all players." : "Der Raum wird für alle Spieler geschlossen.",
+                    () => {
+                      send({ type: "close_room" });
+                      clearSavedLobby();
+                      disconnectWs();
+                      setError(null);
+                      setGameState(null);
+                      setRole(null);
+                      goScreen("home");
+                    }
+                  )}
+                >
+                  <Ionicons name="trash-outline" size={16} color="#c07070" />
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#c07070" }}>
+                    {showEnglish ? "Close room" : "Raum schließen"}
+                  </Text>
+                </TouchableOpacity>
               </>
             ) : (
               <>
@@ -1173,14 +1202,17 @@ function GameBoard({
               </Text>
             )}
           </Text>
+          <Text style={{ fontSize: 10, color: "#666", fontFamily: "Inter_400Regular", marginBottom: 8 }}>
+            {showEnglish ? "Tap a card to zoom in" : "Karte antippen zum Vergrößern"}
+          </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
             {myHand.map(card => (
-              <View key={card.instanceId} style={{ alignItems: "center" }}>
-                <MiniCard card={card} colors={colors} width={72} height={100} />
-                <Text style={{ fontSize: 8, color: "#888", fontFamily: "Inter_400Regular", marginTop: 3, maxWidth: 72 }} numberOfLines={2}>
+              <TouchableOpacity key={card.instanceId} style={{ alignItems: "center" }} onPress={() => setZoomMulliganCard(card)} activeOpacity={0.75}>
+                <MiniCard card={card} colors={colors} width={80} height={112} />
+                <Text style={{ fontSize: 8, color: "#888", fontFamily: "Inter_400Regular", marginTop: 3, maxWidth: 80 }} numberOfLines={2}>
                   {card.name}
                 </Text>
-              </View>
+              </TouchableOpacity>
             ))}
             {myHand.length === 0 && (
               <Text style={{ color: "#555", fontFamily: "Inter_400Regular", fontSize: 13 }}>
@@ -1196,8 +1228,8 @@ function GameBoard({
             </Text>
             <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#888", lineHeight: 18 }}>
               {showEnglish
-                ? "1st mulligan: draw 7 cards again\n2nd mulligan: draw 6 cards\n3rd mulligan: draw 5 cards, etc."
-                : "1. Mulligan: erneut 7 Karten ziehen\n2. Mulligan: 6 Karten\n3. Mulligan: 5 Karten, usw."}
+                ? "1st mulligan: draw 6 cards\n2nd mulligan: draw 5 cards\n3rd mulligan: draw 4 cards, etc."
+                : "1. Mulligan: 6 Karten\n2. Mulligan: 5 Karten\n3. Mulligan: 4 Karten, usw."}
             </Text>
           </View>
 
@@ -1239,6 +1271,33 @@ function GameBoard({
             </View>
           )}
         </ScrollView>
+
+        {/* Card zoom modal */}
+        <Modal visible={!!zoomMulliganCard} transparent animationType="fade" onRequestClose={() => setZoomMulliganCard(null)}>
+          <TouchableOpacity style={{ flex: 1, backgroundColor: "#000000cc", alignItems: "center", justifyContent: "center" }} activeOpacity={1} onPress={() => setZoomMulliganCard(null)}>
+            {zoomMulliganCard && (
+              <View style={{ alignItems: "center", gap: 16 }}>
+                <MiniCard card={zoomMulliganCard} colors={colors} width={240} height={336} />
+                <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: "#c8a96e", textAlign: "center", maxWidth: 240 }}>
+                  {zoomMulliganCard.name}
+                </Text>
+                {zoomMulliganCard.type_line && (
+                  <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: "#aaa", textAlign: "center", maxWidth: 240 }}>
+                    {zoomMulliganCard.type_line}
+                  </Text>
+                )}
+                {zoomMulliganCard.mana_cost && (
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#c8a96e" }}>
+                    {zoomMulliganCard.mana_cost}
+                  </Text>
+                )}
+                <Text style={{ fontSize: 11, color: "#555", fontFamily: "Inter_400Regular" }}>
+                  {showEnglish ? "Tap anywhere to close" : "Antippen zum Schließen"}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </Modal>
       </View>
     );
   }
