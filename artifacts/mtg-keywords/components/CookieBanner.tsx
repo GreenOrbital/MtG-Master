@@ -89,7 +89,7 @@ export function CookieBanner({ showEnglish }: { showEnglish: boolean }) {
         </View>
 
         <TouchableOpacity
-          onPress={() => Linking.openURL("https://magic-keyword-explainer.replit.app/datenschutz")}
+          onPress={() => Linking.openURL("https://mt-g-master.replit.app/datenschutz")}
           style={styles.link}
         >
           <Text style={styles.linkText}>

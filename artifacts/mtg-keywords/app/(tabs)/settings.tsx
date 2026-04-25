@@ -238,7 +238,7 @@ export default function SettingsScreen() {
           </Text>
           <TouchableOpacity
             style={[styles.row, { borderBottomColor: colors.border }]}
-            onPress={() => Linking.openURL("https://magic-keyword-explainer.replit.app/impressum")}
+            onPress={() => Linking.openURL("https://mt-g-master.replit.app/impressum")}
           >
             <View style={styles.rowLeft}>
               <Text style={[styles.rowLabel, { color: colors.foreground }]}>
@@ -252,7 +252,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.row, { borderBottomWidth: 0, borderBottomColor: colors.border }]}
-            onPress={() => Linking.openURL("https://magic-keyword-explainer.replit.app/datenschutz")}
+            onPress={() => Linking.openURL("https://mt-g-master.replit.app/datenschutz")}
           >
             <View style={styles.rowLeft}>
               <Text style={[styles.rowLabel, { color: colors.foreground }]}>

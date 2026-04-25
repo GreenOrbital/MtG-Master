@@ -518,8 +518,8 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
     if (!gameState?.code) return;
     Share.share({
       message: showEnglish
-        ? `Join my MtG Master game! Room code: ${gameState.code}\n\nhttps://magic-keyword-explainer.replit.app`
-        : `Tritt meinem MtG Master Spiel bei! Raumcode: ${gameState.code}\n\nhttps://magic-keyword-explainer.replit.app`,
+        ? `Join my MtG Master game! Room code: ${gameState.code}\n\nhttps://mt-g-master.replit.app`
+        : `Tritt meinem MtG Master Spiel bei! Raumcode: ${gameState.code}\n\nhttps://mt-g-master.replit.app`,
     });
   }
 

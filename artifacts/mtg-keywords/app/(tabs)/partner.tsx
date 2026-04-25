@@ -20,7 +20,7 @@ import { ShopNearbyModal } from "@/components/ShopNearbyModal";
 import { LanguageToggle } from "@/components/LanguageToggle";
 
 const CONTACT_EMAIL = "info@greenorbital.de";
-const APP_URL = "https://magic-keyword-explainer.replit.app";
+const APP_URL = "https://mt-g-master.replit.app";
 
 // ── Registration email ────────────────────────────────────────────────────────
 
