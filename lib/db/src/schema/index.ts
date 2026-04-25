@@ -21,3 +21,4 @@ export * from "./user-cloud-data";
 export * from "./card-parallax-cache";
 export * from "./partner-shops";
 export * from "./game-rooms";
+export * from "./friendships";

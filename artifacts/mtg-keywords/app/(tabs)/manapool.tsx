@@ -17,6 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Switch } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Svg, { G, Line, Rect, Text as SvgText } from "react-native-svg";
@@ -791,7 +792,7 @@ export default function ManapoolScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { showEnglish, setShowEnglish } = useSettings();
-  const { decks, freeCards, createDeck, updateDeck, deleteDeck, removeCardFromDeck, adjustCardCount, importDeck, removeFromFreeCards, moveFromFreeCardsToDeck, adjustFreeCardCount } = useDecks();
+  const { decks, freeCards, createDeck, updateDeck, deleteDeck, removeCardFromDeck, adjustCardCount, setDeckShared, importDeck, removeFromFreeCards, moveFromFreeCardsToDeck, adjustFreeCardCount } = useDecks();
 
   const router = useRouter();
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
@@ -3028,6 +3029,26 @@ export default function ManapoolScreen() {
             </View>
 
 
+            {/* ── Share with friends ── */}
+            <View style={[styles.shareRow, { borderColor: colors.border, backgroundColor: colors.card }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.shareLabel, { color: colors.foreground }]}>
+                  {showEnglish ? "Share with friends" : "Mit Freunden teilen"}
+                </Text>
+                <Text style={[styles.shareSub, { color: colors.mutedForeground }]}>
+                  {showEnglish
+                    ? "Lets your friends pick this deck in Play mode."
+                    : "Damit Freunde dieses Deck im Spielmodus auswählen können."}
+                </Text>
+              </View>
+              <Switch
+                value={!!activeDeck.shared}
+                onValueChange={(v) => setDeckShared(activeDeck.id, v)}
+                trackColor={{ false: colors.muted, true: colors.primary }}
+                thumbColor={Platform.OS === "android" ? colors.primaryForeground : undefined}
+              />
+            </View>
+
             {/* ── Delete Deck ── */}
             <TouchableOpacity style={[styles.deleteDeckBtn, { borderColor: colors.destructive }]}
               onPress={() => {
@@ -3852,6 +3873,9 @@ const styles = StyleSheet.create({
   curveCmc: { fontSize: 9, fontFamily: "Inter_400Regular", marginTop: 2 },
   deleteDeckBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 12, borderWidth: 1, paddingVertical: 12 },
   deleteDeckText: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  shareRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 12 },
+  shareLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  shareSub: { fontSize: 11, marginTop: 2, lineHeight: 14 },
   deckActionBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 16 },
   deckActionBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   savedStatusBox: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 12, borderWidth: 1, paddingHorizontal: 13, paddingVertical: 10 },

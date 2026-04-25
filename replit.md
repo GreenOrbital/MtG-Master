@@ -33,7 +33,8 @@ Expo mobile app (+ PWA) for Magic: The Gathering keyword lookup. Fully client-si
 - Cardmarket links for buying
 - Deck builder with mana/speed analysis
 - Synergy groups with card images + detail modals
-- **Deck Ideas** tab — 5 formats (Modern/Standard/Pioneer/Commander/Pauper), 40+ archetypes loaded locally (no network for list), card images fetched from Scryfall; **Beispiel Decks** collapsible section with 20 complete Commander decks (each ~100 cards) selectable for the game lobby via AsyncStorage key `selected_example_deck_v1`
+- **Deck Ideas** tab — 5 formats (Modern/Standard/Pioneer/Commander/Pauper), 40+ archetypes loaded locally (no network for list), card images fetched from Scryfall; **Beispiel Decks** collapsible section with 20 complete Commander decks (each ~100 cards)
+- **Spielmodus** tab — deck-vs-friend matchup simulator (replaced the old WebSocket multiplayer playmat). Picks own deck + a friend's shared deck, runs heuristic + Monte-Carlo simulation, shows win-rate + improvement tips. Friends managed in `app/friends.tsx`; per-deck "Mit Freunden teilen" toggle in deck list.
 - **Freie Karten (Free Cards Pool)** — cards removed from decks go here instead of being deleted; can be reassigned to any deck or deleted permanently; stored in separate AsyncStorage key `mtg_free_cards_v1`; accessible via button in deck list with count badge
 - **Regelwerk (Rules FAQ)** tab — 41 pre-written Q&A entries in 6 categories; DE/EN; verdict badges; searchable with category filter chips
 - 137 keywords with DE/EN descriptions
@@ -62,6 +63,12 @@ All other routes (deck-suggestion, card-combos, card-parallax) are now client-si
 **Active routes:**
 - `GET/PUT /api/user-data` — Clerk JWT auth, saves/loads decks + favorites + history to PostgreSQL
 - `GET /api/health` — health check
+- `GET /api/geo-language` — returns `{language: "de"|"en"}` from `cf-ipcountry` / `x-vercel-ip-country` / `accept-language` headers (DACH → de). Used by mobile app on first load when no language preference is stored.
+- `GET /api/friends`, `POST /api/friends/request`, `POST /api/friends/respond`, `DELETE /api/friends/:friendUserId`, `GET /api/friends/:friendUserId/decks` — Clerk-authenticated friends list + per-deck sharing for the matchup simulator. Friend lookup uses `clerkClient.users.getUserList` by email/username.
+
+**Database:**
+- `friendships` table with undirected unique pair index (`LEAST/GREATEST` of the two user IDs) so `(A,B)` and `(B,A)` can never coexist.
+- Old WebSocket multiplayer + `game_rooms` are gone (lobbyStore, lobby route, ws wiring all removed).
 
 ## Key Commands
 
