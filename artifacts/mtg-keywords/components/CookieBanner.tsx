@@ -89,7 +89,7 @@ export function CookieBanner({ showEnglish }: { showEnglish: boolean }) {
         </View>
 
         <TouchableOpacity
-          onPress={() => Linking.openURL("https://mt-g-master.replit.app/datenschutz")}
+          onPress={() => Linking.openURL(APP_URL_DATENSCHUTZ)}
           style={styles.link}
         >
           <Text style={styles.linkText}>

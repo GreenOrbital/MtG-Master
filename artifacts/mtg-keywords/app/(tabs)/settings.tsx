@@ -16,6 +16,7 @@ import { useSettings } from "@/context/SettingsContext";
 import { MTG_KEYWORDS } from "@/data/keywords";
 import { useColors } from "@/hooks/useColors";
 import { AdBanner } from "@/components/AdBanner";
+import { APP_URL_IMPRESSUM, APP_URL_DATENSCHUTZ } from "@/lib/appUrl";
 
 function SettingRow({
   label,
@@ -238,7 +239,7 @@ export default function SettingsScreen() {
           </Text>
           <TouchableOpacity
             style={[styles.row, { borderBottomColor: colors.border }]}
-            onPress={() => Linking.openURL("https://mt-g-master.replit.app/impressum")}
+            onPress={() => Linking.openURL(APP_URL_IMPRESSUM)}
           >
             <View style={styles.rowLeft}>
               <Text style={[styles.rowLabel, { color: colors.foreground }]}>
@@ -252,7 +253,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.row, { borderBottomWidth: 0, borderBottomColor: colors.border }]}
-            onPress={() => Linking.openURL("https://mt-g-master.replit.app/datenschutz")}
+            onPress={() => Linking.openURL(APP_URL_DATENSCHUTZ)}
           >
             <View style={styles.rowLeft}>
               <Text style={[styles.rowLabel, { color: colors.foreground }]}>

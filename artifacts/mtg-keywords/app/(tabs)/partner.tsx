@@ -19,8 +19,9 @@ import { useSettings } from "@/context/SettingsContext";
 import { ShopNearbyModal } from "@/components/ShopNearbyModal";
 import { LanguageToggle } from "@/components/LanguageToggle";
 
+import { APP_URL } from "@/lib/appUrl";
+
 const CONTACT_EMAIL = "info@greenorbital.de";
-const APP_URL = "https://mt-g-master.replit.app";
 
 // ── Registration email ────────────────────────────────────────────────────────
 

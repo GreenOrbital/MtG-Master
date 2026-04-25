@@ -23,6 +23,7 @@ import { useColors } from "@/hooks/useColors";
 import { useSettings } from "@/context/SettingsContext";
 import { useDecks, type DeckCard } from "@/context/DeckContext";
 import { EXAMPLE_COMMANDER_DECKS, exampleDeckToCards, totalCardCount } from "@/data/exampleCommanderDecks";
+import { APP_URL } from "@/lib/appUrl";
 
 const SELECTED_EXAMPLE_DECK_KEY = "selected_example_deck_v1";
 
@@ -518,8 +519,8 @@ export default function GameLobby({ visible, onClose, asScreen = false }: Props)
     if (!gameState?.code) return;
     Share.share({
       message: showEnglish
-        ? `Join my MtG Master game! Room code: ${gameState.code}\n\nhttps://mt-g-master.replit.app`
-        : `Tritt meinem MtG Master Spiel bei! Raumcode: ${gameState.code}\n\nhttps://mt-g-master.replit.app`,
+        ? `Join my MtG Master game! Room code: ${gameState.code}\n\n${APP_URL}`
+        : `Tritt meinem MtG Master Spiel bei! Raumcode: ${gameState.code}\n\n${APP_URL}`,
     });
   }
 
