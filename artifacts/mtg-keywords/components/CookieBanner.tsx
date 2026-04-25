@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { grantAnalytics, denyAnalytics } from "@/utils/analytics";
+import { APP_URL_DATENSCHUTZ } from "@/lib/appUrl";
 
 const STORAGE_KEY = "cookie_consent_v2";
 
