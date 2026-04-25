@@ -10,10 +10,12 @@ import cardParallaxRouter from "./card-parallax";
 import deckSuggestionRouter from "./deck-suggestion";
 import partnerRouter from "./partner";
 import lobbyRouter from "./lobby";
+import geoLanguageRouter from "./geo-language";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(geoLanguageRouter);
 router.use(cardTipsRouter);
 router.use(cardSynergiesRouter);
 router.use(deckAnalysisRouter);

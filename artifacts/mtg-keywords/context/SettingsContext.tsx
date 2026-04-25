@@ -11,18 +11,72 @@ const SettingsContext = createContext<Settings>({
   setShowEnglish: () => {},
 });
 
+const STORAGE_KEY = "showEnglish";
+
+// Pick the API origin for the geo lookup. Mirrors the logic used elsewhere
+// in the app — works in both Expo dev preview and the deployed bundle.
+function getApiBase(): string {
+  if (typeof window !== "undefined" && window.location?.hostname) {
+    const host = window.location.hostname;
+    if (host.includes(".expo.riker.replit.dev")) {
+      return `https://${host.replace(".expo.riker.replit.dev", ".riker.replit.dev")}`;
+    }
+    return window.location.origin;
+  }
+  return "";
+}
+
+async function detectInitialLanguage(): Promise<boolean | null> {
+  try {
+    const base = getApiBase();
+    if (!base) return null;
+    const res = await fetch(`${base}/api/geo-language`, {
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { language?: string };
+    if (data?.language === "en") return true;
+    if (data?.language === "de") return false;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [showEnglish, setShowEnglishState] = useState<boolean>(false);
 
   useEffect(() => {
-    AsyncStorage.getItem("showEnglish").then((val) => {
-      if (val === "true") setShowEnglishState(true);
-    });
+    let cancelled = false;
+    (async () => {
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      if (cancelled) return;
+
+      // Honour an explicit user choice — don't override.
+      if (stored === "true") {
+        setShowEnglishState(true);
+        return;
+      }
+      if (stored === "false") {
+        setShowEnglishState(false);
+        return;
+      }
+
+      // No stored preference yet → ask the server which default fits this visitor.
+      const detected = await detectInitialLanguage();
+      if (cancelled) return;
+      if (detected !== null) {
+        setShowEnglishState(detected);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function setShowEnglish(v: boolean) {
     setShowEnglishState(v);
-    AsyncStorage.setItem("showEnglish", v ? "true" : "false");
+    AsyncStorage.setItem(STORAGE_KEY, v ? "true" : "false");
   }
 
   return (
