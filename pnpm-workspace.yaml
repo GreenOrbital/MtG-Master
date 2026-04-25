@@ -179,4 +179,4 @@ overrides:
   # HIGH: lodash prototype pollution / ReDoS (GHSA-r5fr-rjxr-66jc, GHSA-f23m-r3pf-42rh)
   lodash: "4.18.1"
   # MODERATE: uuid insecure randomness (GHSA-w5hq-g745-h8pq)
-  uuid: "9.0.0"
+  uuid: "9.0.1"
