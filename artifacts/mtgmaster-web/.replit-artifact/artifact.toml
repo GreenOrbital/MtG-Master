@@ -18,7 +18,7 @@ localPort = 25330
 run = "pnpm --filter @workspace/mtgmaster-web run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/mtgmaster-web", "run", "build" ]
+build = [ "sh", "-c", "BASE_PATH=/ pnpm --filter @workspace/mtgmaster-web run build" ]
 publicDir = "artifacts/mtgmaster-web/dist/public"
 serve = "static"
 
