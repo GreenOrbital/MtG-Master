@@ -1,4 +1,4 @@
-import { useSignIn, useSignUp, useUser, useAuth } from "@clerk/expo";
+import { useSignIn, useSignUp, useUser, useAuth, isClerkAPIResponseError } from "@clerk/expo";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
@@ -43,6 +43,54 @@ function friendlyError(code: string | undefined, message: string | undefined, de
   }
 }
 
+type ErrInfo = { code?: string; message?: string; raw: string };
+
+// Normalize an error from either a thrown exception or a Future-API
+// `{ error: ClerkError }` result into a single shape we can render.
+function extractError(e: unknown): ErrInfo {
+  // Future API result shape: { error: ClerkError | null }
+  if (e && typeof e === "object" && "code" in (e as Record<string, unknown>)) {
+    const c = e as { code?: string; message?: string; longMessage?: string };
+    return {
+      code: c.code,
+      message: c.longMessage ?? c.message,
+      raw: JSON.stringify(c, Object.getOwnPropertyNames(c)),
+    };
+  }
+  if (isClerkAPIResponseError(e)) {
+    const first = e.errors?.[0];
+    return {
+      code: first?.code,
+      message: first?.longMessage ?? first?.message,
+      raw: JSON.stringify(e.errors),
+    };
+  }
+  if (e instanceof Error) {
+    return { message: e.message, raw: e.message };
+  }
+  return { message: String(e), raw: String(e) };
+}
+
+// Wrap a promise with a hard timeout so the UI never hangs forever.
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(
+      () => reject(new Error(`Timeout (${label}) nach ${ms / 1000}s`)),
+      ms,
+    );
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (err) => {
+        clearTimeout(t);
+        reject(err);
+      },
+    );
+  });
+}
+
 export function EmailSignIn() {
   const colors = useColors();
   const { showEnglish } = useSettings();
@@ -58,6 +106,7 @@ export function EmailSignIn() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [errorDetail, setErrorDetail] = useState("");
   const [info, setInfo] = useState("");
 
   const reset = () => {
@@ -65,14 +114,58 @@ export function EmailSignIn() {
     setMode("signin");
     setCode("");
     setError("");
+    setErrorDetail("");
     setInfo("");
+  };
+
+  const showError = (e: unknown, prefixDe: string, prefixEn: string) => {
+    const x = extractError(e);
+    setError((de ? prefixDe : prefixEn) + ": " + friendlyError(x.code, x.message, de));
+    setErrorDetail(x.code ? `[${x.code}] ${x.raw}` : x.raw);
+    // eslint-disable-next-line no-console
+    console.error("[EmailSignIn]", prefixEn, x);
+  };
+
+  // Try sign-in first; if the email is unknown, automatically switch to sign-up.
+  const startSignInOrSignUp = async (identifier: string): Promise<Mode> => {
+    const created = await withTimeout(
+      signIn.create({ identifier }),
+      15000,
+      "signIn.create",
+    );
+    if (created.error) {
+      if (created.error.code === "form_identifier_not_found") {
+        const su1 = await withTimeout(
+          signUp.create({ emailAddress: identifier }),
+          15000,
+          "signUp.create",
+        );
+        if (su1.error) throw su1.error;
+        const su2 = await withTimeout(
+          signUp.verifications.sendEmailCode(),
+          15000,
+          "signUp.verifications.sendEmailCode",
+        );
+        if (su2.error) throw su2.error;
+        return "signup";
+      }
+      throw created.error;
+    }
+    const sent = await withTimeout(
+      signIn.emailCode.sendCode(),
+      15000,
+      "signIn.emailCode.sendCode",
+    );
+    if (sent.error) throw sent.error;
+    return "signin";
   };
 
   const sendCode = async () => {
     setError("");
+    setErrorDetail("");
     setInfo("");
     if (!signIn || !signUp) {
-      setError(de ? "Anmeldung nicht bereit" : "Auth not ready");
+      setError(de ? "Anmeldung wird noch geladen…" : "Auth still loading…");
       return;
     }
     const trimmed = email.trim();
@@ -82,40 +175,12 @@ export function EmailSignIn() {
     }
     setLoading(true);
     try {
-      const signInRes = await signIn.create({ identifier: trimmed });
-      if (signInRes.error) {
-        const c = signInRes.error.code;
-        if (c === "form_identifier_not_found") {
-          const upRes = await signUp.create({ emailAddress: trimmed });
-          if (upRes.error) {
-            setError(friendlyError(upRes.error.code, upRes.error.message, de));
-            return;
-          }
-          const sendRes = await signUp.verifications.sendEmailCode();
-          if (sendRes.error) {
-            setError(friendlyError(sendRes.error.code, sendRes.error.message, de));
-            return;
-          }
-          setMode("signup");
-          setStep("code");
-          setInfo(de ? "Code an deine E-Mail gesendet." : "Code sent to your email.");
-          return;
-        }
-        setError(friendlyError(c, signInRes.error.message, de));
-        return;
-      }
-
-      const sendRes = await signIn.emailCode.sendCode();
-      if (sendRes.error) {
-        setError(friendlyError(sendRes.error.code, sendRes.error.message, de));
-        return;
-      }
-      setMode("signin");
+      const finalMode = await startSignInOrSignUp(trimmed);
+      setMode(finalMode);
       setStep("code");
       setInfo(de ? "Code an deine E-Mail gesendet." : "Code sent to your email.");
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setError(de ? `Verbindung fehlgeschlagen: ${msg}` : `Connection failed: ${msg}`);
+      showError(e, "Code-Versand fehlgeschlagen", "Send code failed");
     } finally {
       setLoading(false);
     }
@@ -123,6 +188,7 @@ export function EmailSignIn() {
 
   const verifyCode = async () => {
     setError("");
+    setErrorDetail("");
     setInfo("");
     if (!signIn || !signUp) return;
     const trimmed = code.trim();
@@ -133,31 +199,32 @@ export function EmailSignIn() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const res = await signUp.verifications.verifyEmailCode({ code: trimmed });
-        if (res.error) {
-          setError(friendlyError(res.error.code, res.error.message, de));
-          return;
+        const v = await withTimeout(
+          signUp.verifications.verifyEmailCode({ code: trimmed }),
+          15000,
+          "signUp.verifications.verifyEmailCode",
+        );
+        if (v.error) throw v.error;
+        if (signUp.status !== "complete") {
+          throw new Error("Verifizierung unvollständig (status=" + String(signUp.status) + ")");
         }
-        const fin = await signUp.finalize();
-        if (fin.error) {
-          setError(friendlyError(fin.error.code, fin.error.message, de));
-          return;
-        }
+        const f = await withTimeout(signUp.finalize(), 15000, "signUp.finalize");
+        if (f.error) throw f.error;
       } else {
-        const res = await signIn.emailCode.verifyCode({ code: trimmed });
-        if (res.error) {
-          setError(friendlyError(res.error.code, res.error.message, de));
-          return;
+        const v = await withTimeout(
+          signIn.emailCode.verifyCode({ code: trimmed }),
+          15000,
+          "signIn.emailCode.verifyCode",
+        );
+        if (v.error) throw v.error;
+        if (signIn.status !== "complete") {
+          throw new Error("Verifizierung unvollständig (status=" + String(signIn.status) + ")");
         }
-        const fin = await signIn.finalize();
-        if (fin.error) {
-          setError(friendlyError(fin.error.code, fin.error.message, de));
-          return;
-        }
+        const f = await withTimeout(signIn.finalize(), 15000, "signIn.finalize");
+        if (f.error) throw f.error;
       }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setError(de ? `Anmeldung fehlgeschlagen: ${msg}` : `Sign-in failed: ${msg}`);
+      showError(e, "Anmeldung fehlgeschlagen", "Sign-in failed");
     } finally {
       setLoading(false);
     }
@@ -247,6 +314,11 @@ export function EmailSignIn() {
           />
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {errorDetail ? (
+            <Text style={[styles.errorText, { fontSize: 10, opacity: 0.6 }]} selectable>
+              {errorDetail}
+            </Text>
+          ) : null}
 
           <TouchableOpacity
             style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: loading ? 0.7 : 1 }]}
@@ -302,6 +374,11 @@ export function EmailSignIn() {
 
           {info ? <Text style={[styles.infoText, { color: colors.primary }]}>{info}</Text> : null}
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {errorDetail ? (
+            <Text style={[styles.errorText, { fontSize: 10, opacity: 0.6 }]} selectable>
+              {errorDetail}
+            </Text>
+          ) : null}
 
           <TouchableOpacity
             style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: loading ? 0.7 : 1 }]}
