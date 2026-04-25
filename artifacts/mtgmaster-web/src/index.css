@@ -1,0 +1,133 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   MtG Master — Grimoire Theme
+   Parchment + Gold on near-black. Mana-color accents per section.
+--------------------------------------------------------------------------- */
+
+:root {
+  --mtg-bg: #0f0d0a;
+  --mtg-bg-soft: #15110c;
+  --mtg-bg-deep: #0a0806;
+  --mtg-parchment: #f3e9d2;
+  --mtg-gold: #c8a96e;
+  --mtg-gold-bright: #e8c989;
+  --mtg-gold-dark: #8a6e16;
+
+  /* Mana colors */
+  --mana-w: #f8f6d8;
+  --mana-u: #a6d2eb;
+  --mana-b: #b388ff;
+  --mana-r: #e69489;
+  --mana-g: #a3c095;
+}
+
+html,
+body,
+#root {
+  background: var(--mtg-bg);
+  color: var(--mtg-parchment);
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+::selection {
+  background: var(--mtg-gold);
+  color: var(--mtg-bg);
+}
+
+/* Typography helpers used by Grimoire components */
+.font-cinzel {
+  font-family: "Cinzel", "Times New Roman", serif;
+}
+.font-inter {
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+/* Drop cap for editorial paragraphs */
+.drop-cap::first-letter {
+  font-family: "Cinzel", serif;
+  font-size: 3.5em;
+  float: left;
+  line-height: 0.8;
+  margin-right: 0.1em;
+  color: inherit;
+}
+
+/* Art-deco border */
+.art-deco-border {
+  position: relative;
+  border: 1px solid currentColor;
+  padding: 2px;
+}
+.art-deco-border::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border: 1px solid currentColor;
+  opacity: 0.4;
+  pointer-events: none;
+}
+.art-deco-corner {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border: 1px solid currentColor;
+  background: var(--mtg-bg);
+}
+
+/* Glow effect */
+.glow-effect {
+  box-shadow: 0 0 40px rgba(200, 169, 110, 0.15);
+  transition: box-shadow 0.4s ease;
+}
+.glow-effect:hover {
+  box-shadow: 0 0 60px rgba(200, 169, 110, 0.3);
+}
+
+/* Mana pip */
+.mana-pip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: bold;
+  font-family: sans-serif;
+  color: #111;
+  box-shadow:
+    inset -2px -2px 4px rgba(0, 0, 0, 0.3),
+    inset 2px 2px 4px rgba(255, 255, 255, 0.5);
+}
+
+/* Ornamental divider */
+.ornamental-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin: 4rem 0;
+}
+.ornamental-divider::before,
+.ornamental-divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    currentColor,
+    transparent
+  );
+  opacity: 0.3;
+}
+
+/* Smooth scroll for anchor nav */
+html {
+  scroll-behavior: smooth;
+}

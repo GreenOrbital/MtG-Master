@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/web/"
+title = "MtG Master Webseite"
+version = "1.0.0"
+id = "artifacts/mtgmaster-web"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/web/" ]
+localPort = 25330
+
+[services.development]
+run = "pnpm --filter @workspace/mtgmaster-web run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/mtgmaster-web", "run", "build" ]
+publicDir = "artifacts/mtgmaster-web/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25330"
+BASE_PATH = "/web/"
