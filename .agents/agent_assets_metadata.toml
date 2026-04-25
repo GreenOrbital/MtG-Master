@@ -18,6 +18,12 @@ uri = "file://artifacts/mtg-keywords/assets/images/icon-grimoire.png"
 type = "image"
 title = "mtg app icon grimoire book"
 
+[[generated]]
+id = "gdF_MUFKccg6eqqZd3KYA"
+uri = "file://artifacts/mockup-sandbox/public/images/editorial-hero.png"
+type = "image"
+title = "Golden lotus editorial style"
+
 [[outputs]]
 id = "iY5w2VYOyzUd6AW1o8_VB"
 uri = "file://netlify-deploy.tar.gz"
