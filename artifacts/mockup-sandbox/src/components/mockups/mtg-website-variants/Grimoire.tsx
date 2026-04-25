@@ -138,7 +138,7 @@ export function Grimoire() {
               <span className="text-[#c8a96e]/40">|</span>
               <button onClick={() => setLang('EN')} className={`${lang === 'EN' ? 'text-[#e8c989] border-b border-[#e8c989]' : 'text-[#f3e9d2]/50 hover:text-[#f3e9d2]'} transition-colors`}>EN</button>
             </div>
-            <a href="https://mt-g-master.replit.app" target="_blank" rel="noreferrer" className="hidden sm:flex items-center gap-2 px-5 py-2 bg-gradient-to-b from-[#15110c] to-[#0f0d0a] border border-[#c8a96e]/50 hover:border-[#e8c989] text-[#e8c989] font-cinzel text-xs tracking-wider uppercase transition-all glow-effect group">
+            <a href="https://app.mtgmaster.de" target="_blank" rel="noreferrer" className="hidden sm:flex items-center gap-2 px-5 py-2 bg-gradient-to-b from-[#15110c] to-[#0f0d0a] border border-[#c8a96e]/50 hover:border-[#e8c989] text-[#e8c989] font-cinzel text-xs tracking-wider uppercase transition-all glow-effect group">
               <span>{t('App öffnen', 'Open App')}</span>
             </a>
             <button className="lg:hidden text-[#c8a96e]" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>

@@ -163,7 +163,7 @@ export function Cinematic() {
               <span className={lang === 'EN' ? 'text-[#c8a96e]' : ''}>EN</span>
             </button>
             <Button className="bg-[#c8a96e]/10 text-[#e8c989] border border-[#c8a96e]/30 hover:bg-[#c8a96e]/20 hover:border-[#c8a96e] rounded-full px-6 transition-all shadow-[0_0_15px_rgba(200,169,110,0.1)]"
-                    onClick={() => window.location.href = 'https://mt-g-master.replit.app'}>
+                    onClick={() => window.location.href = 'https://app.mtgmaster.de'}>
               {t('App öffnen', 'Open App')}
             </Button>
           </div>
@@ -189,7 +189,7 @@ export function Cinematic() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
             <Button size="lg" className="bg-[#c8a96e] hover:bg-[#e8c989] text-black font-bold text-lg rounded-full px-10 h-14 shadow-[0_0_30px_rgba(200,169,110,0.3)] transition-all transform hover:scale-105"
-                    onClick={() => window.location.href = 'https://mt-g-master.replit.app'}>
+                    onClick={() => window.location.href = 'https://app.mtgmaster.de'}>
               {t('Web App Starten', 'Launch Web App')}
             </Button>
           </div>

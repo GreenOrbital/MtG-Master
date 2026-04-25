@@ -58,7 +58,7 @@ const Editorial = () => {
               <button onClick={() => setLang("EN")} className={`transition-opacity ${lang === "EN" ? "opacity-100" : "opacity-40 hover:opacity-80"}`}>EN</button>
             </div>
             <Button asChild variant="outline" className="hidden md:flex border-[#c8a96e]/40 text-[#c8a96e] hover:bg-[#c8a96e] hover:text-[#0f0d0a] rounded-none px-6 tracking-widest text-xs uppercase h-10 transition-all duration-300">
-              <a href="https://mt-g-master.replit.app" target="_blank" rel="noreferrer">{t("App öffnen", "Open App")}</a>
+              <a href="https://app.mtgmaster.de" target="_blank" rel="noreferrer">{t("App öffnen", "Open App")}</a>
             </Button>
             <button className="xl:hidden text-[#c8a96e]">
               <Menu size={24} />
@@ -92,7 +92,7 @@ const Editorial = () => {
               </p>
               <div className="flex flex-col sm:flex-row gap-6 pt-6">
                 <Button asChild className="bg-[#c8a96e] text-[#0f0d0a] hover:bg-[#e8c989] rounded-none px-10 py-7 text-sm uppercase tracking-widest transition-colors font-semibold">
-                  <a href="https://mt-g-master.replit.app" target="_blank" rel="noreferrer">{t("Web-App starten", "Launch Web App")}</a>
+                  <a href="https://app.mtgmaster.de" target="_blank" rel="noreferrer">{t("Web-App starten", "Launch Web App")}</a>
                 </Button>
                 <Button variant="ghost" className="border-none text-[#c8a96e] hover:bg-transparent hover:text-[#e8c989] rounded-none px-4 py-7 text-sm uppercase tracking-widest flex items-center gap-3 group">
                   {t("Entdecken", "Discover")} <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
