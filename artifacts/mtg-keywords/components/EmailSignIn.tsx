@@ -379,6 +379,13 @@ export function EmailSignIn() {
             </Text>
           ) : null}
 
+          {/* Clerk renders an invisible bot-protection (Cloudflare Turnstile)
+              widget into this element when bot protection is enabled in the
+              Clerk dashboard. Without it, signIn.create() silently waits for
+              a captcha token and never resolves — the request hangs until
+              our 15s timeout fires. On native this view is a no-op. */}
+          <View nativeID="clerk-captcha" style={styles.captchaSlot} />
+
           <TouchableOpacity
             style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: loading ? 0.7 : 1 }]}
             onPress={sendCode}
@@ -523,6 +530,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
+  },
+  captchaSlot: {
+    minHeight: 0,
+    alignItems: "center",
+    justifyContent: "center",
   },
   primaryBtn: {
     flexDirection: "row",
