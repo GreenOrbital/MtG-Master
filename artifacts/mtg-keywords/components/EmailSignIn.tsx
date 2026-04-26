@@ -47,7 +47,21 @@ type ErrInfo = { code?: string; message?: string; raw: string };
 
 // Normalize an error from either a thrown exception or a Future-API
 // `{ error: ClerkError }` result into a single shape we can render.
+//
+// Note: a thrown `ClerkAPIResponseError` ALSO has a top-level `code` field
+// (usually "api_response_error"), so we MUST check the response-error shape
+// FIRST and dig into `e.errors[0]` to get the meaningful inner code like
+// "form_identifier_not_found". Otherwise the generic top-level code wins
+// and the auto-fallback to sign-up never triggers.
 function extractError(e: unknown): ErrInfo {
+  if (isClerkAPIResponseError(e)) {
+    const first = e.errors?.[0];
+    return {
+      code: first?.code,
+      message: first?.longMessage ?? first?.message,
+      raw: JSON.stringify(e.errors),
+    };
+  }
   // Future API result shape: { error: ClerkError | null }
   if (e && typeof e === "object" && "code" in (e as Record<string, unknown>)) {
     const c = e as { code?: string; message?: string; longMessage?: string };
@@ -55,14 +69,6 @@ function extractError(e: unknown): ErrInfo {
       code: c.code,
       message: c.longMessage ?? c.message,
       raw: JSON.stringify(c, Object.getOwnPropertyNames(c)),
-    };
-  }
-  if (isClerkAPIResponseError(e)) {
-    const first = e.errors?.[0];
-    return {
-      code: first?.code,
-      message: first?.longMessage ?? first?.message,
-      raw: JSON.stringify(e.errors),
     };
   }
   if (e instanceof Error) {
@@ -126,38 +132,91 @@ export function EmailSignIn() {
     console.error("[EmailSignIn]", prefixEn, x);
   };
 
-  // Try sign-in first; if the email is unknown, automatically switch to sign-up.
-  const startSignInOrSignUp = async (identifier: string): Promise<Mode> => {
-    const created = await withTimeout(
-      signIn.create({ identifier }),
+  // Inner Clerk error code is in two possible places depending on whether the
+  // SDK threw an exception or returned a Future-API `{error}` shape.
+  const innerCode = (e: unknown): string | undefined => extractError(e).code;
+
+  const doSignUp = async (identifier: string): Promise<void> => {
+    try {
+      const su1 = await withTimeout(
+        signUp.create({ emailAddress: identifier }),
+        15000,
+        "signUp.create",
+      );
+      // Future API shape: { error }
+      if (su1 && typeof su1 === "object" && "error" in su1 && (su1 as { error?: unknown }).error) {
+        throw (su1 as { error: unknown }).error;
+      }
+    } catch (e) {
+      // If user already exists in this instance, fall back to sign-in instead.
+      if (innerCode(e) === "form_identifier_exists") {
+        const si = await withTimeout(
+          signIn.create({ identifier }),
+          15000,
+          "signIn.create (fallback)",
+        );
+        if (si && typeof si === "object" && "error" in si && (si as { error?: unknown }).error) {
+          throw (si as { error: unknown }).error;
+        }
+        const sent = await withTimeout(
+          signIn.emailCode.sendCode(),
+          15000,
+          "signIn.emailCode.sendCode",
+        );
+        if (sent && typeof sent === "object" && "error" in sent && (sent as { error?: unknown }).error) {
+          throw (sent as { error: unknown }).error;
+        }
+        return;
+      }
+      throw e;
+    }
+    const su2 = await withTimeout(
+      signUp.verifications.sendEmailCode(),
       15000,
-      "signIn.create",
+      "signUp.verifications.sendEmailCode",
     );
-    if (created.error) {
-      if (created.error.code === "form_identifier_not_found") {
-        const su1 = await withTimeout(
-          signUp.create({ emailAddress: identifier }),
-          15000,
-          "signUp.create",
-        );
-        if (su1.error) throw su1.error;
-        const su2 = await withTimeout(
-          signUp.verifications.sendEmailCode(),
-          15000,
-          "signUp.verifications.sendEmailCode",
-        );
-        if (su2.error) throw su2.error;
+    if (su2 && typeof su2 === "object" && "error" in su2 && (su2 as { error?: unknown }).error) {
+      throw (su2 as { error: unknown }).error;
+    }
+  };
+
+  // Try sign-in first; if the email is unknown, automatically switch to sign-up.
+  // Handles BOTH the Future-API `{error}` shape and SDKs that throw.
+  const startSignInOrSignUp = async (identifier: string): Promise<Mode> => {
+    try {
+      const created = await withTimeout(
+        signIn.create({ identifier }),
+        15000,
+        "signIn.create",
+      );
+      // Future API result shape: `{ error: ClerkError | null }`.
+      if (created && typeof created === "object" && "error" in created) {
+        const err = (created as { error?: unknown }).error;
+        if (err) {
+          if (innerCode(err) === "form_identifier_not_found") {
+            await doSignUp(identifier);
+            return "signup";
+          }
+          throw err;
+        }
+      }
+      const sent = await withTimeout(
+        signIn.emailCode.sendCode(),
+        15000,
+        "signIn.emailCode.sendCode",
+      );
+      if (sent && typeof sent === "object" && "error" in sent && (sent as { error?: unknown }).error) {
+        throw (sent as { error: unknown }).error;
+      }
+      return "signin";
+    } catch (e) {
+      // SDKs that throw instead of returning `{error}` end up here.
+      if (innerCode(e) === "form_identifier_not_found") {
+        await doSignUp(identifier);
         return "signup";
       }
-      throw created.error;
+      throw e;
     }
-    const sent = await withTimeout(
-      signIn.emailCode.sendCode(),
-      15000,
-      "signIn.emailCode.sendCode",
-    );
-    if (sent.error) throw sent.error;
-    return "signin";
   };
 
   const sendCode = async () => {
