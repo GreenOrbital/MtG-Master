@@ -18,6 +18,7 @@ import { useSettings } from "@/context/SettingsContext";
 import { useDecks, type Deck } from "@/context/DeckContext";
 import { simulateMatchup, type MatchupResult } from "@/utils/playSim";
 import { listFriends, getFriendDecks, type Friend } from "@/lib/friendsApi";
+import { EmailSignIn } from "@/components/EmailSignIn";
 
 import { MatchupResultPanel } from "./MatchupResult";
 
@@ -180,26 +181,23 @@ export function MatchupSimulator() {
 
   // ── Empty / signed-out states ─────────────────────────────────────────
   if (!isSignedIn) {
+    // Embed the sign-in form directly so the user can authenticate without
+    // navigating away (and without hitting a non-existent /(auth) route).
     return (
-      <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <Ionicons name="lock-closed-outline" size={32} color={colors.mutedForeground} />
-        <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-          {t("Anmeldung nötig", "Sign in required")}
-        </Text>
-        <Text style={[styles.emptyBody, { color: colors.mutedForeground }]}>
-          {t(
-            "Um gegen die Decks deiner Freunde zu testen, melde dich an.",
-            "Sign in to play against your friends' decks.",
-          )}
-        </Text>
-        <TouchableOpacity
-          style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
-          onPress={() => router.push("/(auth)" as never)}
-        >
-          <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>
-            {t("Anmelden", "Sign in")}
+      <View style={{ gap: 12 }}>
+        <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Ionicons name="lock-closed-outline" size={32} color={colors.mutedForeground} />
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+            {t("Anmeldung nötig", "Sign in required")}
           </Text>
-        </TouchableOpacity>
+          <Text style={[styles.emptyBody, { color: colors.mutedForeground }]}>
+            {t(
+              "Um gegen die Decks deiner Freunde zu testen, melde dich an.",
+              "Sign in to play against your friends' decks.",
+            )}
+          </Text>
+        </View>
+        <EmailSignIn />
       </View>
     );
   }

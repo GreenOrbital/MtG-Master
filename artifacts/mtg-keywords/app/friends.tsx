@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
 import { useSettings } from "@/context/SettingsContext";
+import { EmailSignIn } from "@/components/EmailSignIn";
 import {
   listFriends,
   sendFriendRequest,
@@ -114,20 +115,30 @@ export default function FriendsScreen() {
     return (
       <View style={[styles.root, { backgroundColor: colors.background, paddingTop: insets.top }]}>
         <Stack.Screen options={{ title: t("Freunde", "Friends") }} />
-        <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border, margin: 16 }]}>
-          <Ionicons name="lock-closed-outline" size={32} color={colors.mutedForeground} />
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-            {t("Anmeldung nötig", "Sign in required")}
-          </Text>
-          <TouchableOpacity
-            style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
-            onPress={() => router.push("/(auth)" as never)}
-          >
-            <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>
-              {t("Anmelden", "Sign in")}
+        <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
+          <View style={styles.headerRow}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+              <Ionicons name="chevron-back" size={20} color={colors.foreground} />
+              <Text style={[styles.backTxt, { color: colors.foreground }]}>{t("Zurück", "Back")}</Text>
+            </TouchableOpacity>
+            <Text style={[styles.title, { color: colors.foreground }]}>
+              {t("Freunde", "Friends")}
             </Text>
-          </TouchableOpacity>
-        </View>
+          </View>
+          <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Ionicons name="lock-closed-outline" size={32} color={colors.mutedForeground} />
+            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+              {t("Anmeldung nötig", "Sign in required")}
+            </Text>
+            <Text style={{ color: colors.mutedForeground, fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 4 }}>
+              {t(
+                "Melde dich an, um Freunde hinzuzufügen und ihre geteilten Decks zu sehen.",
+                "Sign in to add friends and see their shared decks.",
+              )}
+            </Text>
+          </View>
+          <EmailSignIn />
+        </ScrollView>
       </View>
     );
   }
