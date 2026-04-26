@@ -27,13 +27,23 @@ import { SettingsProvider, useSettings } from "@/context/SettingsContext";
 
 WebBrowser.maybeCompleteAuthSession();
 
-// Use the Clerk publishable key injected at build time. The hardcoded key is
-// only a development fallback for local dev — production deploys MUST get the
-// pk_live_* key from EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY (set from the Replit
-// Auth pane via $CLERK_PUBLISHABLE_KEY in the build script).
-const CLERK_KEY =
-  process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ??
+// Clerk publishable key. pk_live_* is a PUBLIC key (it ships in every browser
+// bundle by design — its only job is to identify the Clerk instance), so it
+// is safe to hardcode. We hardcode the production key because the Replit
+// deploy environment historically held a stale CLERK_PUBLISHABLE_KEY override
+// that quietly clobbered the workspace value at build time.
+//
+// Production = whenever the build runs in production (expo export sets
+//   NODE_ENV=production). It always gets the live key for clerk.mtgmaster.de.
+// Development = local Metro / dev server. Respects the env var so developers
+//   can plug in their own dev instance, falling back to the shared dev key.
+const PROD_CLERK_KEY = "pk_live_Y2xlcmsubXRnbWFzdGVyLmRlJA";
+const DEV_CLERK_KEY_FALLBACK =
   "pk_test_ZGVmaW5pdGUtYm9hci0zNC5jbGVyay5hY2NvdW50cy5kZXYk";
+const CLERK_KEY =
+  process.env.NODE_ENV === "production"
+    ? PROD_CLERK_KEY
+    : (process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? DEV_CLERK_KEY_FALLBACK);
 
 SplashScreen.preventAutoHideAsync();
 
