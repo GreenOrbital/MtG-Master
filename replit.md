@@ -39,7 +39,7 @@ Expo mobile app (+ PWA) for Magic: The Gathering keyword lookup. Fully client-si
 - **Regelwerk (Rules FAQ)** tab — 41 pre-written Q&A entries in 6 categories; DE/EN; verdict badges; searchable with category filter chips
 - 137 keywords with DE/EN descriptions
 - Booster packs tab
-- Clerk auth for cross-device sync (uses minimal api-server for /api/user-data)
+- Clerk auth for cross-device sync (uses minimal api-server for /api/user-data). Production uses an **external Clerk account** with `pk_live_*` key targeting `clerk.app.mtgmaster.de` — that hostname must be set up as a CNAME by the user in their DNS provider, otherwise every Clerk call hangs (15s timeout). Sign-in form is embedded inline in `scan.tsx`, `friends.tsx`, and the play tab via `<EmailSignIn />`; no separate `/sign-in` route — the `app/(auth)/*` files are stub redirects.
 - Dark purple/arcane theme (#050510 bg, #7c3aed primary, #06b6d4 accent)
 
 **Key files:**
