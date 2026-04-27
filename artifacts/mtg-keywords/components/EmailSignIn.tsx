@@ -136,87 +136,62 @@ export function EmailSignIn() {
   // SDK threw an exception or returned a Future-API `{error}` shape.
   const innerCode = (e: unknown): string | undefined => extractError(e).code;
 
+  // Helper to throw if a Future-API call returns `{error: ...}`.
+  const throwIfErr = (r: unknown) => {
+    if (r && typeof r === "object" && "error" in r && (r as { error?: unknown }).error) {
+      throw (r as { error: unknown }).error;
+    }
+  };
+
   const doSignUp = async (identifier: string): Promise<void> => {
+    // Future API: signUp.create() returns {error: form_identifier_exists}
+    // for an existing email; we fall back to sign-in in that case.
     try {
-      const su1 = await withTimeout(
+      throwIfErr(await withTimeout(
         signUp.create({ emailAddress: identifier }),
         15000,
         "signUp.create",
-      );
-      // Future API shape: { error }
-      if (su1 && typeof su1 === "object" && "error" in su1 && (su1 as { error?: unknown }).error) {
-        throw (su1 as { error: unknown }).error;
-      }
+      ));
     } catch (e) {
-      // If user already exists in this instance, fall back to sign-in instead.
       if (innerCode(e) === "form_identifier_exists") {
-        const si = await withTimeout(
-          signIn.create({ identifier }),
+        throwIfErr(await withTimeout(
+          signIn.emailCode.sendCode({ emailAddress: identifier }),
           15000,
-          "signIn.create (fallback)",
-        );
-        if (si && typeof si === "object" && "error" in si && (si as { error?: unknown }).error) {
-          throw (si as { error: unknown }).error;
-        }
-        const sent = await withTimeout(
-          signIn.emailCode.sendCode(),
-          15000,
-          "signIn.emailCode.sendCode",
-        );
-        if (sent && typeof sent === "object" && "error" in sent && (sent as { error?: unknown }).error) {
-          throw (sent as { error: unknown }).error;
-        }
+          "signIn.emailCode.sendCode (fallback)",
+        ));
         return;
       }
       throw e;
     }
-    const su2 = await withTimeout(
+    throwIfErr(await withTimeout(
       signUp.verifications.sendEmailCode(),
       15000,
       "signUp.verifications.sendEmailCode",
-    );
-    if (su2 && typeof su2 === "object" && "error" in su2 && (su2 as { error?: unknown }).error) {
-      throw (su2 as { error: unknown }).error;
-    }
+    ));
   };
 
-  // Try sign-in first; if the email is unknown, automatically switch to sign-up.
-  // Handles BOTH the Future-API `{error}` shape and SDKs that throw.
+  // Future API for sign-in with email code: a single
+  // `signIn.emailCode.sendCode({ emailAddress })` does identifier-create
+  // AND email-prepare in one step. Calling `signIn.create()` separately
+  // would consume / shadow the verification slot and cause the verify
+  // step to fail with `verification_already_verified` later.
   const startSignInOrSignUp = async (identifier: string): Promise<Mode> => {
-    try {
-      const created = await withTimeout(
-        signIn.create({ identifier }),
-        15000,
-        "signIn.create",
-      );
-      // Future API result shape: `{ error: ClerkError | null }`.
-      if (created && typeof created === "object" && "error" in created) {
-        const err = (created as { error?: unknown }).error;
-        if (err) {
-          if (innerCode(err) === "form_identifier_not_found") {
-            await doSignUp(identifier);
-            return "signup";
-          }
-          throw err;
+    const sent = await withTimeout(
+      signIn.emailCode.sendCode({ emailAddress: identifier }),
+      15000,
+      "signIn.emailCode.sendCode",
+    );
+    if (sent && typeof sent === "object" && "error" in sent) {
+      const err = (sent as { error?: unknown }).error;
+      if (err) {
+        if (innerCode(err) === "form_identifier_not_found") {
+          await doSignUp(identifier);
+          return "signup";
         }
+        throw err;
       }
-      const sent = await withTimeout(
-        signIn.emailCode.sendCode(),
-        15000,
-        "signIn.emailCode.sendCode",
-      );
-      if (sent && typeof sent === "object" && "error" in sent && (sent as { error?: unknown }).error) {
-        throw (sent as { error: unknown }).error;
-      }
-      return "signin";
-    } catch (e) {
-      // SDKs that throw instead of returning `{error}` end up here.
-      if (innerCode(e) === "form_identifier_not_found") {
-        await doSignUp(identifier);
-        return "signup";
-      }
-      throw e;
     }
+    return "signin";
   };
 
   const sendCode = async () => {
@@ -272,8 +247,16 @@ export function EmailSignIn() {
             15000,
             "signIn.emailCode.verifyCode",
           );
-      if (result && typeof result === "object" && "error" in result && (result as { error?: unknown }).error) {
-        throw (result as { error: unknown }).error;
+      if (result && typeof result === "object" && "error" in result) {
+        const err = (result as { error?: unknown }).error;
+        if (err) {
+          // `verification_already_verified` is effectively success — the
+          // verification slot was already consumed (often because the SDK
+          // auto-completed it). The session is already active.
+          if (innerCode(err) !== "verification_already_verified") {
+            throw err;
+          }
+        }
       }
     } catch (e) {
       showError(e, "Anmeldung fehlgeschlagen", "Sign-in failed");
