@@ -195,7 +195,9 @@ router.post("/friends/respond", requireAuth, async (req: AuthedRequest, res: Res
 router.delete("/friends/:friendUserId", requireAuth, async (req: AuthedRequest, res: Response) => {
   try {
     const me = req.userId!;
-    const other = req.params.friendUserId;
+    // Express types `req.params[x]` as `string | string[]`; we always have
+    // a single value here, but narrow explicitly so drizzle is happy.
+    const other = String(req.params.friendUserId);
     await db.delete(friendshipsTable).where(
       or(
         and(eq(friendshipsTable.requesterUserId, me), eq(friendshipsTable.recipientUserId, other)),
@@ -214,7 +216,7 @@ router.delete("/friends/:friendUserId", requireAuth, async (req: AuthedRequest, 
 router.get("/friends/:friendUserId/decks", requireAuth, async (req: AuthedRequest, res: Response) => {
   try {
     const me = req.userId!;
-    const other = req.params.friendUserId;
+    const other = String(req.params.friendUserId);
 
     // Confirm friendship.
     const fr = await db

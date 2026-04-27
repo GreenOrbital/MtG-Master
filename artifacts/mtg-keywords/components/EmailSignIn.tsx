@@ -257,30 +257,34 @@ export function EmailSignIn() {
     }
     setLoading(true);
     try {
+      let createdSessionId: string | null = null;
       if (mode === "signup") {
-        const v = await withTimeout(
-          signUp.verifications.verifyEmailCode({ code: trimmed }),
+        const result = await withTimeout(
+          signUp.attemptEmailAddressVerification({ code: trimmed }),
           15000,
-          "signUp.verifications.verifyEmailCode",
+          "signUp.attemptEmailAddressVerification",
         );
-        if (v.error) throw v.error;
-        if (signUp.status !== "complete") {
-          throw new Error("Verifizierung unvollständig (status=" + String(signUp.status) + ")");
+        if (result.status !== "complete") {
+          throw new Error("Verifizierung unvollständig (status=" + String(result.status) + ")");
         }
-        const f = await withTimeout(signUp.finalize(), 15000, "signUp.finalize");
-        if (f.error) throw f.error;
+        createdSessionId = result.createdSessionId ?? null;
       } else {
-        const v = await withTimeout(
-          signIn.emailCode.verifyCode({ code: trimmed }),
+        const result = await withTimeout(
+          signIn.attemptFirstFactor({ strategy: "email_code", code: trimmed }),
           15000,
-          "signIn.emailCode.verifyCode",
+          "signIn.attemptFirstFactor",
         );
-        if (v.error) throw v.error;
-        if (signIn.status !== "complete") {
-          throw new Error("Verifizierung unvollständig (status=" + String(signIn.status) + ")");
+        if (result.status !== "complete") {
+          throw new Error("Verifizierung unvollständig (status=" + String(result.status) + ")");
         }
-        const f = await withTimeout(signIn.finalize(), 15000, "signIn.finalize");
-        if (f.error) throw f.error;
+        createdSessionId = result.createdSessionId ?? null;
+      }
+      if (createdSessionId) {
+        await withTimeout(
+          setActive({ session: createdSessionId }),
+          15000,
+          "setActive",
+        );
       }
     } catch (e) {
       showError(e, "Anmeldung fehlgeschlagen", "Sign-in failed");

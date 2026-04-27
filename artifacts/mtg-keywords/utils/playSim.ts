@@ -173,6 +173,7 @@ type SimDeck = {
   battlefield: DeckCard[]; // non-land permanents only
   lands: number;            // number of lands in play
   damageDealt: number;
+  outOfCards: boolean;      // true once the player tried to draw on an empty library
 };
 
 function shuffle<T>(arr: T[]): T[] {
@@ -204,6 +205,7 @@ function makeSimDeck(deck: Deck): SimDeck {
     battlefield: [],
     lands: 0,
     damageDealt: 0,
+    outOfCards: false,
   };
 }
 
@@ -215,7 +217,13 @@ function draw(s: SimDeck, n = 1): void {
 }
 
 function takeTurn(s: SimDeck, _turn: number): void {
-  // Draw.
+  // Draw. If the library is empty before drawing, we treat this as decking out
+  // and the player loses. The caller short-circuits the rest of the turn by
+  // checking `outOfCards` after invoking us.
+  if (s.library.length === 0) {
+    s.outOfCards = true;
+    return;
+  }
   draw(s);
   // Play a land if we have one.
   const landIdx = s.hand.findIndex(isLand);
@@ -264,8 +272,11 @@ function playOneGame(
     const firstLabel: "A" | "B" = aGoesFirst ? "A" : "B";
     const secondLabel: "A" | "B" = aGoesFirst ? "B" : "A";
     takeTurn(first, t);
+    // Decking out → opponent wins.
+    if (first.outOfCards) return secondLabel;
     if (first.damageDealt >= 20) return firstLabel;
     takeTurn(second, t);
+    if (second.outOfCards) return firstLabel;
     if (second.damageDealt >= 20) return secondLabel;
   }
   // Tally on time-out.

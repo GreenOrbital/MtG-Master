@@ -24,8 +24,12 @@ import { MatchupResultPanel } from "./MatchupResult";
 
 // Lightweight inline picker — opens an absolutely-positioned overlay listing
 // all options. Avoids pulling in a picker dependency.
-type PickerOption = { id: string; label: string; subtitle?: string; [k: string]: unknown };
-function Picker({
+//
+// Generic over the option type so callers can pass strongly-typed payloads
+// (e.g. `{deck: Deck}` or `{friend: Friend}`) and consume them in `onChange`
+// without `as unknown as` casts.
+type PickerOption = { id: string; label: string; subtitle?: string };
+function Picker<T extends PickerOption>({
   value,
   options,
   placeholder,
@@ -33,9 +37,9 @@ function Picker({
   disabled,
 }: {
   value: { id: string; label: string; subtitle?: string } | null;
-  options: PickerOption[];
+  options: T[];
   placeholder: string;
-  onChange: (v: PickerOption) => void;
+  onChange: (v: T) => void;
   disabled?: boolean;
 }) {
   const colors = useColors();
@@ -150,15 +154,17 @@ export function MatchupSimulator() {
       .finally(() => setLoadingFriendDecks(false));
   }, [friend]);
 
-  const myOptions = useMemo(
+  type DeckOption = { id: string; label: string; subtitle: string; deck: Deck };
+  type FriendOption = { id: string; label: string; subtitle: undefined; friend: Friend };
+  const myOptions = useMemo<DeckOption[]>(
     () => decks.map((d) => ({ id: d.id, label: d.name, subtitle: `${d.cards.reduce((s, c) => s + c.count, 0)} ${t("Karten", "cards")}`, deck: d })),
     [decks, showEnglish],
   );
-  const friendOptions = useMemo(
+  const friendOptions = useMemo<FriendOption[]>(
     () => friends.map((f) => ({ id: f.userId, label: f.displayName, subtitle: undefined, friend: f })),
     [friends],
   );
-  const friendDeckOptions = useMemo(
+  const friendDeckOptions = useMemo<DeckOption[]>(
     () => friendDecks.map((d) => ({ id: d.id, label: d.name, subtitle: `${d.cards.reduce((s, c) => s + c.count, 0)} ${t("Karten", "cards")}`, deck: d })),
     [friendDecks, showEnglish],
   );
@@ -251,7 +257,7 @@ export function MatchupSimulator() {
           value={myDeck ? { id: myDeck.id, label: myDeck.name } : null}
           options={myOptions}
           placeholder={t("Eigenes Deck wählen", "Pick your deck")}
-          onChange={(o) => { setMyDeck((o as unknown as { deck: Deck }).deck); setResult(null); }}
+          onChange={(o) => { setMyDeck(o.deck); setResult(null); }}
         />
       </View>
 
@@ -263,7 +269,7 @@ export function MatchupSimulator() {
           placeholder={friends.length === 0
             ? t("Noch keine Freunde — füge welche hinzu", "No friends yet — add some")
             : t("Freund wählen", "Pick a friend")}
-          onChange={(o) => { setFriend((o as unknown as { friend: Friend }).friend); setResult(null); }}
+          onChange={(o) => { setFriend(o.friend); setResult(null); }}
           disabled={friends.length === 0}
         />
       </View>
@@ -282,7 +288,7 @@ export function MatchupSimulator() {
               ? t("Dieser Freund teilt noch keine Decks", "This friend isn't sharing any decks yet")
               : t("Geteiltes Deck wählen", "Pick a shared deck")
           }
-          onChange={(o) => { setFriendDeck((o as unknown as { deck: Deck }).deck); setResult(null); }}
+          onChange={(o) => { setFriendDeck(o.deck); setResult(null); }}
           disabled={!friend || loadingFriendDecks || friendDecks.length === 0}
         />
       </View>
