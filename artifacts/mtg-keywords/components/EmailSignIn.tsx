@@ -1,4 +1,4 @@
-import { useSignIn, useSignUp, useUser, useAuth, isClerkAPIResponseError } from "@clerk/expo";
+import { useSignIn, useSignUp, useUser, useAuth, useClerk, isClerkAPIResponseError } from "@clerk/expo";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
@@ -105,6 +105,7 @@ export function EmailSignIn() {
   const { signUp } = useSignUp();
   const { isSignedIn, signOut } = useAuth();
   const { user } = useUser();
+  const clerk = useClerk();
 
   const [step, setStep] = useState<Step>("email");
   const [mode, setMode] = useState<Mode>("signin");
@@ -259,30 +260,52 @@ export function EmailSignIn() {
         }
       }
 
-      // Future API: verifyCode does NOT activate the session. We must
-      // explicitly call `finalize()` to set the new session as the active
-      // one — without it, `isSignedIn` never flips and the form keeps
-      // showing, prompting the user to click "Verify" again and trip
-      // the rate limit.
-      const finalized = mode === "signup"
-        ? await withTimeout(
-            signUp.finalize(),
-            15000,
-            "signUp.finalize",
-          )
-        : await withTimeout(
-            signIn.finalize(),
-            15000,
-            "signIn.finalize",
-          );
-      if (finalized && typeof finalized === "object" && "error" in finalized) {
-        const ferr = (finalized as { error?: unknown }).error;
-        if (ferr) {
-          // If the session is already active, finalize may report this —
-          // treat as success.
-          const code = innerCode(ferr);
-          if (code !== "session_exists" && code !== "verification_already_verified") {
-            throw ferr;
+      // Future API: verifyCode does NOT activate the session by itself.
+      // We must explicitly activate it. The cleanest way is to take the
+      // `createdSessionId` from whichever resource produced one and pass
+      // it to `clerk.setActive`. This is robust against mode confusion
+      // (signin vs signup) and against `signXxx.finalize()` choking on a
+      // local state mismatch (e.g. "Cannot finalize sign-up without a
+      // created session").
+      const sessionId =
+        signIn?.createdSessionId ??
+        signIn?.existingSession?.sessionId ??
+        signUp?.createdSessionId ??
+        null;
+      if (sessionId) {
+        await withTimeout(
+          clerk.setActive({ session: sessionId }),
+          15000,
+          "clerk.setActive",
+        );
+      } else {
+        // Fall back to finalize() — try both because `mode` may not
+        // accurately reflect which resource holds the active state.
+        const tryFinalize = async (label: string, fn: () => Promise<unknown>) => {
+          try {
+            const r = await withTimeout(fn(), 15000, label);
+            if (r && typeof r === "object" && "error" in r) {
+              const e = (r as { error?: unknown }).error;
+              if (e) throw e;
+            }
+            return true;
+          } catch {
+            return false;
+          }
+        };
+        const okPrimary = mode === "signup"
+          ? await tryFinalize("signUp.finalize", () => signUp.finalize())
+          : await tryFinalize("signIn.finalize", () => signIn.finalize());
+        if (!okPrimary) {
+          const okSecondary = mode === "signup"
+            ? await tryFinalize("signIn.finalize (fallback)", () => signIn.finalize())
+            : await tryFinalize("signUp.finalize (fallback)", () => signUp.finalize());
+          if (!okSecondary) {
+            throw new Error(
+              de
+                ? "Sitzung konnte nicht aktiviert werden. Bitte Seite neu laden und nochmal versuchen."
+                : "Could not activate the session. Please reload the page and try again.",
+            );
           }
         }
       }
