@@ -257,34 +257,23 @@ export function EmailSignIn() {
     }
     setLoading(true);
     try {
-      let createdSessionId: string | null = null;
-      if (mode === "signup") {
-        const result = await withTimeout(
-          signUp.attemptEmailAddressVerification({ code: trimmed }),
-          15000,
-          "signUp.attemptEmailAddressVerification",
-        );
-        if (result.status !== "complete") {
-          throw new Error("Verifizierung unvollständig (status=" + String(result.status) + ")");
-        }
-        createdSessionId = result.createdSessionId ?? null;
-      } else {
-        const result = await withTimeout(
-          signIn.attemptFirstFactor({ strategy: "email_code", code: trimmed }),
-          15000,
-          "signIn.attemptFirstFactor",
-        );
-        if (result.status !== "complete") {
-          throw new Error("Verifizierung unvollständig (status=" + String(result.status) + ")");
-        }
-        createdSessionId = result.createdSessionId ?? null;
-      }
-      if (createdSessionId) {
-        await withTimeout(
-          setActive({ session: createdSessionId }),
-          15000,
-          "setActive",
-        );
+      // Clerk Future-API (`@clerk/expo` v3.x): verifyCode lives under
+      // `signUp.verifications.verifyEmailCode` / `signIn.emailCode.verifyCode`,
+      // returns `{error}` instead of throwing, and auto-activates the session
+      // when status becomes "complete" — no manual setActive needed.
+      const result = mode === "signup"
+        ? await withTimeout(
+            signUp.verifications.verifyEmailCode({ code: trimmed }),
+            15000,
+            "signUp.verifications.verifyEmailCode",
+          )
+        : await withTimeout(
+            signIn.emailCode.verifyCode({ code: trimmed }),
+            15000,
+            "signIn.emailCode.verifyCode",
+          );
+      if (result && typeof result === "object" && "error" in result && (result as { error?: unknown }).error) {
+        throw (result as { error: unknown }).error;
       }
     } catch (e) {
       showError(e, "Anmeldung fehlgeschlagen", "Sign-in failed");
