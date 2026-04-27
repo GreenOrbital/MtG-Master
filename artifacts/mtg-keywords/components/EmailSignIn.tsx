@@ -252,9 +252,37 @@ export function EmailSignIn() {
         if (err) {
           // `verification_already_verified` is effectively success — the
           // verification slot was already consumed (often because the SDK
-          // auto-completed it). The session is already active.
+          // auto-completed it). Continue to the finalize step.
           if (innerCode(err) !== "verification_already_verified") {
             throw err;
+          }
+        }
+      }
+
+      // Future API: verifyCode does NOT activate the session. We must
+      // explicitly call `finalize()` to set the new session as the active
+      // one — without it, `isSignedIn` never flips and the form keeps
+      // showing, prompting the user to click "Verify" again and trip
+      // the rate limit.
+      const finalized = mode === "signup"
+        ? await withTimeout(
+            signUp.finalize(),
+            15000,
+            "signUp.finalize",
+          )
+        : await withTimeout(
+            signIn.finalize(),
+            15000,
+            "signIn.finalize",
+          );
+      if (finalized && typeof finalized === "object" && "error" in finalized) {
+        const ferr = (finalized as { error?: unknown }).error;
+        if (ferr) {
+          // If the session is already active, finalize may report this —
+          // treat as success.
+          const code = innerCode(ferr);
+          if (code !== "session_exists" && code !== "verification_already_verified") {
+            throw ferr;
           }
         }
       }
