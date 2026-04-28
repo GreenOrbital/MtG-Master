@@ -261,17 +261,34 @@ export function EmailSignIn() {
       }
 
       // Future API: verifyCode does NOT activate the session by itself.
-      // We must explicitly activate it. The cleanest way is to take the
-      // `createdSessionId` from whichever resource produced one and pass
-      // it to `clerk.setActive`. This is robust against mode confusion
-      // (signin vs signup) and against `signXxx.finalize()` choking on a
-      // local state mismatch (e.g. "Cannot finalize sign-up without a
-      // created session").
+      // We must explicitly activate it. The hook-destructured `signIn`/
+      // `signUp` are render-time snapshots and may be stale — read the
+      // LIVE state from `clerk.client` instead.
+      const liveSignIn = (clerk as unknown as {
+        client?: { signIn?: { createdSessionId?: string | null } };
+      }).client?.signIn;
+      const liveSignUp = (clerk as unknown as {
+        client?: { signUp?: { createdSessionId?: string | null } };
+      }).client?.signUp;
       const sessionId =
+        liveSignIn?.createdSessionId ??
+        liveSignUp?.createdSessionId ??
         signIn?.createdSessionId ??
         signIn?.existingSession?.sessionId ??
         signUp?.createdSessionId ??
         null;
+
+      // eslint-disable-next-line no-console
+      console.log("[EmailSignIn] post-verify state", {
+        mode,
+        sessionId,
+        liveSignInCreated: liveSignIn?.createdSessionId ?? null,
+        liveSignUpCreated: liveSignUp?.createdSessionId ?? null,
+        snapshotSignInCreated: signIn?.createdSessionId ?? null,
+        snapshotSignUpCreated: signUp?.createdSessionId ?? null,
+        existingSession: signIn?.existingSession?.sessionId ?? null,
+      });
+
       if (sessionId) {
         await withTimeout(
           clerk.setActive({ session: sessionId }),
@@ -286,10 +303,16 @@ export function EmailSignIn() {
             const r = await withTimeout(fn(), 15000, label);
             if (r && typeof r === "object" && "error" in r) {
               const e = (r as { error?: unknown }).error;
-              if (e) throw e;
+              if (e) {
+                // eslint-disable-next-line no-console
+                console.warn("[EmailSignIn]", label, "returned error", e);
+                throw e;
+              }
             }
             return true;
-          } catch {
+          } catch (err) {
+            // eslint-disable-next-line no-console
+            console.warn("[EmailSignIn]", label, "threw", err);
             return false;
           }
         };
