@@ -278,16 +278,31 @@ export function EmailSignIn() {
         signUp?.createdSessionId ??
         null;
 
-      // eslint-disable-next-line no-console
-      console.log("[EmailSignIn] post-verify state", {
+      // Read full diagnostic state so we can both log it AND surface it
+      // on screen if no session is found.
+      const liveSignInFull = (clerk as unknown as {
+        client?: { signIn?: Record<string, unknown> };
+      }).client?.signIn ?? {};
+      const liveSignUpFull = (clerk as unknown as {
+        client?: { signUp?: Record<string, unknown> };
+      }).client?.signUp ?? {};
+      const diag = {
         mode,
         sessionId,
-        liveSignInCreated: liveSignIn?.createdSessionId ?? null,
-        liveSignUpCreated: liveSignUp?.createdSessionId ?? null,
+        signInStatus: (liveSignInFull as { status?: unknown }).status ?? null,
+        signUpStatus: (liveSignUpFull as { status?: unknown }).status ?? null,
+        signUpMissingFields: (liveSignUpFull as { missingFields?: unknown }).missingFields ?? null,
+        signUpRequiredFields: (liveSignUpFull as { requiredFields?: unknown }).requiredFields ?? null,
+        signUpUnverifiedFields: (liveSignUpFull as { unverifiedFields?: unknown }).unverifiedFields ?? null,
+        liveSignInCreated: (liveSignInFull as { createdSessionId?: unknown }).createdSessionId ?? null,
+        liveSignUpCreated: (liveSignUpFull as { createdSessionId?: unknown }).createdSessionId ?? null,
+        liveSignUpCreatedUserId: (liveSignUpFull as { createdUserId?: unknown }).createdUserId ?? null,
         snapshotSignInCreated: signIn?.createdSessionId ?? null,
         snapshotSignUpCreated: signUp?.createdSessionId ?? null,
         existingSession: signIn?.existingSession?.sessionId ?? null,
-      });
+      };
+      // eslint-disable-next-line no-console
+      console.log("[EmailSignIn] post-verify state", diag);
 
       if (sessionId) {
         await withTimeout(
@@ -324,11 +339,15 @@ export function EmailSignIn() {
             ? await tryFinalize("signIn.finalize (fallback)", () => signIn.finalize())
             : await tryFinalize("signUp.finalize (fallback)", () => signUp.finalize());
           if (!okSecondary) {
-            throw new Error(
-              de
+            const detail = JSON.stringify(diag);
+            const err = new Error(
+              (de
                 ? "Sitzung konnte nicht aktiviert werden. Bitte Seite neu laden und nochmal versuchen."
-                : "Could not activate the session. Please reload the page and try again.",
+                : "Could not activate the session. Please reload the page and try again.") +
+                " | DIAG: " +
+                detail,
             );
+            throw err;
           }
         }
       }
