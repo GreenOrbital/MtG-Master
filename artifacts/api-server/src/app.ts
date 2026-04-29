@@ -36,6 +36,36 @@ app.use(cors({ credentials: true, origin: true }));
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
+// Diagnose Clerk env so we can confirm the deployed server has the right
+// keys for the live Clerk instance (clerk.mtgmaster.de).
+{
+  const pk = process.env["CLERK_PUBLISHABLE_KEY"] ?? "";
+  const sk = process.env["CLERK_SECRET_KEY"] ?? "";
+  logger.info(
+    {
+      hasPublishable: !!pk,
+      publishableKind: pk.startsWith("pk_live_")
+        ? "live"
+        : pk.startsWith("pk_test_")
+          ? "test"
+          : pk
+            ? "other"
+            : "missing",
+      publishablePrefix: pk.slice(0, 12),
+      hasSecret: !!sk,
+      secretKind: sk.startsWith("sk_live_")
+        ? "live"
+        : sk.startsWith("sk_test_")
+          ? "test"
+          : sk
+            ? "other"
+            : "missing",
+      secretPrefix: sk.slice(0, 12),
+    },
+    "Clerk env at boot",
+  );
+}
+
 app.use(clerkMiddleware());
 
 app.use("/api", router);
