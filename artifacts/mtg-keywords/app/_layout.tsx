@@ -21,6 +21,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import OfflineGuard from "@/components/OfflineGuard";
 import { CookieBanner } from "@/components/CookieBanner";
 import { DisclaimerModal } from "@/components/DisclaimerModal";
+import { AccountProvider } from "@/context/AccountContext";
 import { CardHistoryProvider } from "@/context/CardHistoryContext";
 import { DeckProvider } from "@/context/DeckContext";
 import { SettingsProvider, useSettings } from "@/context/SettingsContext";
@@ -73,7 +74,9 @@ function AppProviders({ children }: { children: React.ReactNode }) {
     <SettingsProvider>
       <DeckProvider>
         <CardHistoryProvider>
-          <AppInner>{children}</AppInner>
+          <AccountProvider>
+            <AppInner>{children}</AppInner>
+          </AccountProvider>
         </CardHistoryProvider>
       </DeckProvider>
     </SettingsProvider>
