@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useSettings } from "@/context/SettingsContext";
+import { useAccount } from "@/context/AccountContext";
 import { MTG_KEYWORDS } from "@/data/keywords";
 import { useColors } from "@/hooks/useColors";
 import { AdBanner } from "@/components/AdBanner";
@@ -25,7 +26,7 @@ function SettingRow({
 }: {
   label: string;
   subtitle?: string;
-  right: React.ReactNode;
+  right?: React.ReactNode;
 }) {
   const colors = useColors();
   return (
@@ -37,6 +38,147 @@ function SettingRow({
         )}
       </View>
       {right}
+    </View>
+  );
+}
+
+function formatRelativeTime(date: Date | null, showEnglish: boolean): string {
+  if (!date) return showEnglish ? "never" : "noch nie";
+  const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  if (seconds < 5) return showEnglish ? "just now" : "gerade eben";
+  if (seconds < 60) return showEnglish ? `${seconds}s ago` : `vor ${seconds}\u202fs`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return showEnglish ? `${minutes} min ago` : `vor ${minutes}\u202fMin.`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return showEnglish ? `${hours}h ago` : `vor ${hours}\u202fStd.`;
+  const days = Math.floor(hours / 24);
+  return showEnglish ? `${days}d ago` : `vor ${days}\u202fT.`;
+}
+
+function CloudSyncSection({
+  showEnglish,
+  colors,
+}: {
+  showEnglish: boolean;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const { isSignedIn, userEmail, isSyncing, lastSyncedAt, syncError, loadFromCloud, syncToCloud } = useAccount();
+  const [, force] = React.useReducer((x: number) => x + 1, 0);
+
+  // Re-render every 20s so the "X min ago" label stays fresh.
+  React.useEffect(() => {
+    if (!lastSyncedAt) return;
+    const id = setInterval(force, 20_000);
+    return () => clearInterval(id);
+  }, [lastSyncedAt]);
+
+  if (!isSignedIn) {
+    return (
+      <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
+          {showEnglish ? "ACCOUNT" : "KONTO"}
+        </Text>
+        <View style={[styles.row, { borderBottomWidth: 0 }]}>
+          <View style={styles.rowLeft}>
+            <Text style={[styles.rowLabel, { color: colors.foreground }]}>
+              {showEnglish ? "Not signed in" : "Nicht angemeldet"}
+            </Text>
+            <Text style={[styles.rowSub, { color: colors.mutedForeground }]}>
+              {showEnglish
+                ? "Sign in on the deck screen to sync decks across your devices."
+                : "Auf dem Deck-Bildschirm anmelden, um Decks zwischen Geräten zu synchronisieren."}
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  const lastLabel = formatRelativeTime(lastSyncedAt, showEnglish);
+
+  return (
+    <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
+        {showEnglish ? "ACCOUNT & CLOUD SYNC" : "KONTO & CLOUD-SYNC"}
+      </Text>
+      <View style={[styles.row, { borderBottomColor: colors.border }]}>
+        <View style={styles.rowLeft}>
+          <Text style={[styles.rowLabel, { color: colors.foreground }]}>
+            {showEnglish ? "Signed in as" : "Angemeldet als"}
+          </Text>
+          <Text style={[styles.rowSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+            {userEmail ?? "—"}
+          </Text>
+        </View>
+      </View>
+      <View style={[styles.row, { borderBottomColor: colors.border }]}>
+        <View style={styles.rowLeft}>
+          <Text style={[styles.rowLabel, { color: colors.foreground }]}>
+            {showEnglish ? "Last sync" : "Letzte Synchronisierung"}
+          </Text>
+          <Text
+            style={[
+              styles.rowSub,
+              { color: syncError ? "#d97757" : colors.mutedForeground },
+            ]}
+          >
+            {syncError
+              ? (showEnglish ? `Error: ${syncError}` : `Fehler: ${syncError}`)
+              : (isSyncing
+                  ? (showEnglish ? "Syncing…" : "Wird synchronisiert…")
+                  : lastLabel)}
+          </Text>
+        </View>
+      </View>
+      <View style={{ flexDirection: "row", gap: 8, padding: 12 }}>
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: colors.primary,
+            paddingVertical: 12,
+            borderRadius: 10,
+            alignItems: "center",
+            opacity: isSyncing ? 0.6 : 1,
+          }}
+          activeOpacity={0.75}
+          disabled={isSyncing}
+          onPress={() => { loadFromCloud(); }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Ionicons name="cloud-download-outline" size={16} color="#fff" />
+            <Text style={{ color: "#fff", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>
+              {showEnglish ? "Refresh from cloud" : "Vom Server laden"}
+            </Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: colors.muted,
+            paddingVertical: 12,
+            borderRadius: 10,
+            alignItems: "center",
+            opacity: isSyncing ? 0.6 : 1,
+          }}
+          activeOpacity={0.75}
+          disabled={isSyncing}
+          onPress={() => { syncToCloud(); }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Ionicons name="cloud-upload-outline" size={16} color={colors.foreground} />
+            <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>
+              {showEnglish ? "Save to cloud" : "Auf Server sichern"}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+      <View style={{ paddingHorizontal: 14, paddingBottom: 12 }}>
+        <Text style={[styles.rowSub, { color: colors.mutedForeground }]}>
+          {showEnglish
+            ? "Decks, favorites and history sync automatically a few seconds after each change. Tap \"Refresh\" to manually pull the latest data from the server."
+            : "Decks, Favoriten und Verlauf werden wenige Sekunden nach jeder Änderung automatisch synchronisiert. Mit \u201eVom Server laden\u201c kannst du die aktuellsten Daten manuell holen."}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -161,6 +303,8 @@ export default function SettingsScreen() {
         contentContainerStyle={{ paddingBottom: bottomPad }}
         showsVerticalScrollIndicator={false}
       >
+        <CloudSyncSection showEnglish={showEnglish} colors={colors} />
+
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
             {showEnglish ? "LANGUAGE" : "SPRACHE"}

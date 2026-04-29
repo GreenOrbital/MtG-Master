@@ -1,8 +1,9 @@
-import { useUser } from "@clerk/expo";
+import { useAuth, useUser } from "@clerk/expo";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useCardHistory } from "./CardHistoryContext";
 import { useDecks } from "./DeckContext";
 import { getUserData, putUserData } from "@/lib/userDataApi";
+import { setAuthTokenGetter } from "@/lib/apiBase";
 
 const AUTO_SYNC_DELAY = 2_000;
 
@@ -28,7 +29,19 @@ const AccountContext = createContext<AccountContextType>({
 
 export function AccountProvider({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
+  const { getToken } = useAuth();
   const isSignedIn = isLoaded && !!user;
+
+  // Register the Bearer-token getter so any API call made via `apiFetch`
+  // automatically authenticates against our server.
+  useEffect(() => {
+    if (isSignedIn && getToken) {
+      setAuthTokenGetter(() => getToken());
+    } else {
+      setAuthTokenGetter(null);
+    }
+    return () => { setAuthTokenGetter(null); };
+  }, [isSignedIn, getToken]);
   const { decks, loadCloudDecks } = useDecks();
   const { recentCards, favorites, loadCloudData } = useCardHistory();
 

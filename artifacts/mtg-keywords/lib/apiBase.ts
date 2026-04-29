@@ -11,3 +11,52 @@ export function getApiBase(): string {
   }
   return "";
 }
+
+// ─── Auth token registration ────────────────────────────────────────────────
+//
+// Clerk's session cookie is not always sent along with API requests in
+// production (cross-subdomain Set-Cookie semantics differ between browsers,
+// PWA installs, and native shells). To make `/api/...` requests authenticate
+// reliably, we send a Bearer token. The token getter is registered once at
+// app boot from a component that has access to Clerk's `useAuth()`.
+
+type TokenGetter = () => Promise<string | null>;
+
+let currentTokenGetter: TokenGetter | null = null;
+
+export function setAuthTokenGetter(getter: TokenGetter | null): void {
+  currentTokenGetter = getter;
+}
+
+async function getBearerHeader(): Promise<Record<string, string>> {
+  if (!currentTokenGetter) return {};
+  try {
+    const token = await currentTokenGetter();
+    if (!token) return {};
+    return { Authorization: `Bearer ${token}` };
+  } catch {
+    return {};
+  }
+}
+
+export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const url = `${getApiBase()}${path}`;
+  const authHeader = await getBearerHeader();
+  const res = await fetch(url, {
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeader,
+      ...(init?.headers ?? {}),
+    },
+    ...init,
+  });
+  const text = await res.text();
+  let data: unknown = null;
+  try { data = text ? JSON.parse(text) : null; } catch { /* keep null */ }
+  if (!res.ok) {
+    const err = (data as { error?: string })?.error ?? `HTTP ${res.status}`;
+    throw new Error(err);
+  }
+  return data as T;
+}
