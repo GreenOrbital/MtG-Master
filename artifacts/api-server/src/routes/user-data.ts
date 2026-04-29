@@ -5,21 +5,39 @@ import { db, userCloudDataTable, cloudDataSchema } from "@workspace/db";
 
 const router = Router();
 
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const payload = parts[1];
+    if (!payload) return null;
+    const padded = payload.padEnd(payload.length + ((4 - (payload.length % 4)) % 4), "=");
+    const json = Buffer.from(padded, "base64").toString("utf8");
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 function requireAuth(req: any, res: any, next: any) {
   const auth = getAuth(req);
   const userId = auth?.userId;
   if (!userId) {
-    const authHeader = req.headers["authorization"];
-    const tokenPreview = typeof authHeader === "string"
-      ? `${authHeader.slice(0, 16)}…(len=${authHeader.length})`
-      : "<none>";
+    const authHeader = req.headers["authorization"] as string | undefined;
+    const bearer = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    const claims = bearer ? decodeJwtPayload(bearer) : null;
     req.log?.warn({
-      path: req.path,
       hasAuthHeader: !!authHeader,
-      tokenPreview,
-      cookieKeys: Object.keys(req.cookies ?? {}),
+      tokenLen: bearer?.length ?? 0,
+      claimsIss: claims?.["iss"],
+      claimsAzp: claims?.["azp"],
+      claimsSub: claims?.["sub"],
+      claimsExp: claims?.["exp"],
+      claimsIat: claims?.["iat"],
+      nowSec: Math.floor(Date.now() / 1000),
       authReason: (auth as any)?.reason,
-      authState: (auth as any)?.sessionStatus,
+      authMessage: (auth as any)?.message,
+      authToken: (auth as any)?.token ? "present" : "absent",
     }, "user-data: requireAuth rejected");
     return res.status(401).json({ error: "Nicht angemeldet" });
   }
