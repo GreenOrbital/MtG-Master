@@ -8,7 +8,21 @@ const router = Router();
 function requireAuth(req: any, res: any, next: any) {
   const auth = getAuth(req);
   const userId = auth?.userId;
-  if (!userId) return res.status(401).json({ error: "Nicht angemeldet" });
+  if (!userId) {
+    const authHeader = req.headers["authorization"];
+    const tokenPreview = typeof authHeader === "string"
+      ? `${authHeader.slice(0, 16)}…(len=${authHeader.length})`
+      : "<none>";
+    req.log?.warn({
+      path: req.path,
+      hasAuthHeader: !!authHeader,
+      tokenPreview,
+      cookieKeys: Object.keys(req.cookies ?? {}),
+      authReason: (auth as any)?.reason,
+      authState: (auth as any)?.sessionStatus,
+    }, "user-data: requireAuth rejected");
+    return res.status(401).json({ error: "Nicht angemeldet" });
+  }
   req.userId = userId;
   next();
 }
