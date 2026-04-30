@@ -36,37 +36,32 @@ app.use(cors({ credentials: true, origin: true }));
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
-// Diagnose Clerk env so we can confirm the deployed server has the right
-// keys for the live Clerk instance (clerk.mtgmaster.de).
+// Resolve Clerk secret with override capability. The deployment env was
+// found to have a stale CLERK_SECRET_KEY override that could not be cleared
+// from the UI. CLERK_SK_OVERRIDE wins so we can supply the right key under
+// a fresh name without touching the broken entry.
+const RESOLVED_CLERK_SECRET =
+  process.env["CLERK_SK_OVERRIDE"] || process.env["CLERK_SECRET_KEY"] || "";
+if (process.env["CLERK_SK_OVERRIDE"]) {
+  process.env["CLERK_SECRET_KEY"] = RESOLVED_CLERK_SECRET;
+}
+
 {
   const pk = process.env["CLERK_PUBLISHABLE_KEY"] ?? "";
-  const sk = process.env["CLERK_SECRET_KEY"] ?? "";
+  const sk = RESOLVED_CLERK_SECRET;
   logger.info(
     {
       hasPublishable: !!pk,
-      publishableKind: pk.startsWith("pk_live_")
-        ? "live"
-        : pk.startsWith("pk_test_")
-          ? "test"
-          : pk
-            ? "other"
-            : "missing",
       publishablePrefix: pk.slice(0, 12),
       hasSecret: !!sk,
-      secretKind: sk.startsWith("sk_live_")
-        ? "live"
-        : sk.startsWith("sk_test_")
-          ? "test"
-          : sk
-            ? "other"
-            : "missing",
       secretPrefix: sk.slice(0, 12),
+      usingOverride: !!process.env["CLERK_SK_OVERRIDE"],
     },
     "Clerk env at boot",
   );
 }
 
-app.use(clerkMiddleware());
+app.use(clerkMiddleware({ secretKey: RESOLVED_CLERK_SECRET }));
 
 app.use("/api", router);
 
