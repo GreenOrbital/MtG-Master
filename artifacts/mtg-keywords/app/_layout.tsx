@@ -34,15 +34,21 @@ WebBrowser.maybeCompleteAuthSession();
 // deploy environment historically held a stale CLERK_PUBLISHABLE_KEY override
 // that quietly clobbered the workspace value at build time.
 //
-// Production = whenever the build runs in production (expo export sets
-//   NODE_ENV=production). It always gets the live key for clerk.mtgmaster.de.
-// Development = local Metro / dev server. Respects the env var so developers
-//   can plug in their own dev instance, falling back to the shared dev key.
+// Native (Android/iOS): the shipped app always points at the live API on
+//   app.mtgmaster.de (see lib/apiBase.ts), so it must always use the live
+//   Clerk instance — otherwise tokens issued on-device fail signature
+//   verification on the server in ~10 ms (we hit this exact bug: EAS
+//   preview builds did not set NODE_ENV=production reliably, the fallback
+//   then picked the dev Clerk instance, and every cloud-sync call returned
+//   HTTP 401).
+// Web production builds: live key, same reason as above.
+// Web dev / local Metro: respect EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY for
+//   developers, fall back to the shared dev instance.
 const PROD_CLERK_KEY = "pk_live_Y2xlcmsubXRnbWFzdGVyLmRlJA";
 const DEV_CLERK_KEY_FALLBACK =
   "pk_test_ZGVmaW5pdGUtYm9hci0zNC5jbGVyay5hY2NvdW50cy5kZXYk";
 const CLERK_KEY =
-  process.env.NODE_ENV === "production"
+  Platform.OS !== "web" || process.env.NODE_ENV === "production"
     ? PROD_CLERK_KEY
     : (process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? DEV_CLERK_KEY_FALLBACK);
 
