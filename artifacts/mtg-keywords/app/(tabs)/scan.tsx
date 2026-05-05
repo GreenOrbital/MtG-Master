@@ -282,7 +282,7 @@ function matchLocalKeywords(scryfallKeywords: string[], oracleText: string): Mtg
   return Array.from(found.values());
 }
 
-const HEADERS = { "Accept": "application/json;q=0.9,*/*;q=0.8" };
+const HEADERS = { "Accept": "application/json;q=0.9,*/*;q=0.8", "User-Agent": "MtGMaster/1.0 (https://app.mtgmaster.de)" };
 
 async function fetchAutocompleteSuggestions(query: string): Promise<Suggestion[]> {
   try {

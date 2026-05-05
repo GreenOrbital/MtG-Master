@@ -20,7 +20,7 @@ import { useColors } from "@/hooks/useColors";
 
 // ─── Scryfall ────────────────────────────────────────────────────────────────
 
-const HEADERS = { Accept: "application/json;q=0.9,*/*;q=0.8" };
+const HEADERS = { Accept: "application/json;q=0.9,*/*;q=0.8", "User-Agent": "MtGMaster/1.0 (https://app.mtgmaster.de)" };
 
 type Suggestion = { display: string; englishName: string };
 

@@ -121,7 +121,11 @@ export async function fetchCardsCollection(names: string[]): Promise<Map<string,
     try {
       const res = await fetch("https://api.scryfall.com/cards/collection", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json;q=0.9,*/*;q=0.8",
+          "User-Agent": "MtGMaster/1.0 (https://app.mtgmaster.de)",
+        },
         body: JSON.stringify({
           identifiers: chunk.map((name) => ({ name })),
         }),

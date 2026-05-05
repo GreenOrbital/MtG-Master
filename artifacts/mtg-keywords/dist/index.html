@@ -39,35 +39,6 @@
     }
   </style>
 
-  <!-- iOS PWA: hide browser chrome when added to home screen -->
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <style id="viewport-fix">
-    /*
-     * position:fixed + inset:0 locks the shell to the screen regardless
-     * of browser chrome (address bar / bottom bar) showing or hiding.
-     * This prevents the iOS Safari toolbar-slide reflow entirely.
-     */
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      overscroll-behavior: none;
-    }
-    body {
-      position: fixed;
-      inset: 0;
-    }
-    #root {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      overflow: hidden;
-    }
-  </style>
-
   <meta name="google-adsense-account" content="ca-pub-4827006761951576" />
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4827006761951576" crossorigin="anonymous"></script>
 </head>
@@ -79,6 +50,6 @@
     </noscript>
     <!-- The root element for your Expo app. -->
     <div id="root"></div>
-  <script src="_expo/static/js/web/entry-dffb0140ae91b05d08d1b5feb59f0c36.js" defer></script>
+  <script src="_expo/static/js/web/entry-eed90141bc9326911ddcd141ca56c483.js" defer></script>
 </body>
 </html>

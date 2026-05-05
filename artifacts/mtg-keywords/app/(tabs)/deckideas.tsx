@@ -259,7 +259,12 @@ function PreconRow({ deck, isLast, colors, langEn }: {
     if (deck.commander && !commanderCard && !commanderLoading) {
       setCommanderLoading(true);
       try {
-        const res = await fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(deck.commander)}`);
+        const res = await fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(deck.commander)}`, {
+          headers: {
+            "Accept": "application/json;q=0.9,*/*;q=0.8",
+            "User-Agent": "MtGMaster/1.0 (https://app.mtgmaster.de)",
+          },
+        });
         if (res.ok) {
           const d = await res.json();
           const face = d.card_faces?.[0];
