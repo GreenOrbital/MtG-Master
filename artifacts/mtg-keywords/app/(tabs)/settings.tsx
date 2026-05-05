@@ -12,12 +12,14 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useAuth } from "@clerk/expo";
 import { useSettings } from "@/context/SettingsContext";
 import { useAccount } from "@/context/AccountContext";
 import { MTG_KEYWORDS } from "@/data/keywords";
 import { useColors } from "@/hooks/useColors";
 import { AdBanner } from "@/components/AdBanner";
 import { APP_URL_IMPRESSUM, APP_URL_DATENSCHUTZ } from "@/lib/appUrl";
+import { getApiBase } from "@/lib/apiBase";
 
 function SettingRow({
   label,
@@ -63,7 +65,32 @@ function CloudSyncSection({
   colors: ReturnType<typeof useColors>;
 }) {
   const { isSignedIn, userEmail, isSyncing, lastSyncedAt, syncError, loadFromCloud, syncToCloud } = useAccount();
+  const { getToken } = useAuth();
   const [, force] = React.useReducer((x: number) => x + 1, 0);
+  const [debugInfo, setDebugInfo] = React.useState<string>("");
+
+  const runDebug = React.useCallback(async () => {
+    const url = `${getApiBase()}/api/user-data`;
+    let tokenInfo = "no getToken";
+    try {
+      const t = getToken ? await getToken() : null;
+      tokenInfo = t ? `token len=${t.length}, prefix=${t.slice(0, 12)}…` : "token=null";
+    } catch (e: any) {
+      tokenInfo = `getToken error: ${e?.message ?? e}`;
+    }
+    let fetchInfo = "";
+    try {
+      const t = getToken ? await getToken() : null;
+      const res = await fetch(url, {
+        headers: t ? { Authorization: `Bearer ${t}` } : {},
+      });
+      const body = await res.text();
+      fetchInfo = `HTTP ${res.status} | body: ${body.slice(0, 120)}`;
+    } catch (e: any) {
+      fetchInfo = `fetch threw: ${e?.message ?? e}`;
+    }
+    setDebugInfo(`URL: ${url}\n${tokenInfo}\n${fetchInfo}`);
+  }, [getToken]);
 
   // Re-render every 20s so the "X min ago" label stays fresh.
   React.useEffect(() => {
@@ -178,6 +205,35 @@ function CloudSyncSection({
             ? "Decks, favorites and history sync automatically a few seconds after each change. Tap \"Refresh\" to manually pull the latest data from the server."
             : "Decks, Favoriten und Verlauf werden wenige Sekunden nach jeder Änderung automatisch synchronisiert. Mit \u201eVom Server laden\u201c kannst du die aktuellsten Daten manuell holen."}
         </Text>
+      </View>
+      <View style={{ paddingHorizontal: 14, paddingBottom: 12 }}>
+        <TouchableOpacity
+          style={{
+            backgroundColor: "#444",
+            paddingVertical: 10,
+            borderRadius: 8,
+            alignItems: "center",
+            marginBottom: 8,
+          }}
+          onPress={runDebug}
+        >
+          <Text style={{ color: "#fff", fontSize: 12 }}>DEBUG: API + Token testen</Text>
+        </TouchableOpacity>
+        {debugInfo ? (
+          <Text
+            selectable
+            style={{
+              color: colors.foreground,
+              fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
+              fontSize: 11,
+              backgroundColor: "#222",
+              padding: 8,
+              borderRadius: 6,
+            }}
+          >
+            {debugInfo}
+          </Text>
+        ) : null}
       </View>
     </View>
   );
