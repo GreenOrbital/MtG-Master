@@ -171,7 +171,12 @@ overrides:
   # MODERATE: postcss line hijacking (GHSA-qx2v)
   postcss: ">=8.5.10"
   # MODERATE: brace-expansion ReDoS (GHSA-f886)
-  brace-expansion: ">=2.0.3"
+  # Scoped per major: forcing a single version globally breaks consumers that
+  # require the v1 API shape (e.g. minimatch@3 used by @react-native/codegen,
+  # which reads `require('brace-expansion')` as a callable function — v2+
+  # changed the export shape and removed that calling convention).
+  "brace-expansion@1": "1.1.12"
+  "brace-expansion@2": "2.0.2"
   # MODERATE: follow-redirects info leak (GHSA-r4q5)
   follow-redirects: ">=1.16.0"
   # MODERATE: yaml ReDoS (GHSA-48c2)
