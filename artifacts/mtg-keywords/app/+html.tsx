@@ -14,6 +14,13 @@ export default function Root({ children }: PropsWithChildren) {
         {/* PWA fullscreen on iOS – prevents address-bar bounce */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        {/* Google AdSense — Auto Ads (Anchor + Vignette) */}
+        <meta name="google-adsense-account" content="ca-pub-4827006761951576" />
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4827006761951576"
+          crossOrigin="anonymous"
+        />
         <style>{`
           html, body {
             height: 100%;
