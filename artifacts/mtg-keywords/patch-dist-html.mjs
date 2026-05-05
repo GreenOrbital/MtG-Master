@@ -63,6 +63,14 @@ const inject = `
 
 html = html.replace("</head>", `${inject}\n</head>`);
 
+// 5. Inject Google AdSense Auto Ads tag (must be in <head>)
+const adsense = `
+  <meta name="google-adsense-account" content="ca-pub-4827006761951576" />
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4827006761951576" crossorigin="anonymous"></script>`;
+if (!html.includes("ca-pub-4827006761951576")) {
+  html = html.replace("</head>", `${adsense}\n</head>`);
+}
+
 writeFileSync(htmlPath, html, "utf8");
 console.log("✓ dist/index.html patched (iOS Safari viewport fix + relative paths)");
 
