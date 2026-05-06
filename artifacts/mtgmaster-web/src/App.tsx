@@ -2,6 +2,7 @@ import { Switch, Route, Router as WouterRouter } from "wouter";
 import { Landing } from "@/pages/Landing";
 import { Datenschutz } from "@/pages/Datenschutz";
 import { Impressum } from "@/pages/Impressum";
+import { KontoLoeschen } from "@/pages/KontoLoeschen";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -10,6 +11,7 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/datenschutz" component={Datenschutz} />
       <Route path="/impressum" component={Impressum} />
+      <Route path="/konto-loeschen" component={KontoLoeschen} />
       <Route component={NotFound} />
     </Switch>
   );
