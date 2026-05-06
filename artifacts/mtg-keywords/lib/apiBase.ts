@@ -1,18 +1,21 @@
+import { Platform } from "react-native";
+
 // Resolve the API base URL for the current runtime.
-// Mirrors the inline helper used elsewhere — kept in one place so future
-// callers can share the logic.
 //
-// - Web: uses the current page origin so dev/preview/prod all hit their own
-//   matching API server (and dev hosted on Replit's `.expo.riker.replit.dev`
-//   subdomain redirects to the sibling `.riker.replit.dev` API host).
-// - Native (Android/iOS): no `window.location` exists. The shipped app must
-//   always talk to the live production API on app.mtgmaster.de — there is no
-//   per-build override yet, so we hardcode it. If we ever need a staging
-//   build, switch this to read `process.env.EXPO_PUBLIC_API_URL` first and
-//   fall back to the prod URL.
+// Native (Android/iOS) MUST always hit the live production API. We use
+// Platform.OS rather than `typeof window` because some RN polyfills inject a
+// fake `window.location` (e.g. pointing at `replit.com`) which previously
+// caused our cloud-sync calls to be sent to the wrong host and return 401.
+//
+// Web: use the current page origin so dev/preview/prod each hit their own
+// matching API server.
+export const API_BASE_VERSION = "v3-platformcheck-2026-05-06";
 const NATIVE_API_BASE = "https://app.mtgmaster.de";
 
 export function getApiBase(): string {
+  if (Platform.OS !== "web") {
+    return NATIVE_API_BASE;
+  }
   if (typeof window !== "undefined" && window.location?.hostname) {
     const host = window.location.hostname;
     if (host.includes(".expo.riker.replit.dev")) {

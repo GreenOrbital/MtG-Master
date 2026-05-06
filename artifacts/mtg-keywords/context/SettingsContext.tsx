@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { Platform } from "react-native";
 
 type Settings = {
   showEnglish: boolean;
@@ -15,7 +16,13 @@ const STORAGE_KEY = "showEnglish";
 
 // Pick the API origin for the geo lookup. Mirrors the logic used elsewhere
 // in the app — works in both Expo dev preview and the deployed bundle.
+// IMPORTANT: native MUST be checked via Platform.OS first, because React Native
+// polyfills `window.location` with hostname=`replit.com`, which previously
+// caused this code to misroute requests on the shipped Android app.
 function getApiBase(): string {
+  if (Platform.OS !== "web") {
+    return "https://app.mtgmaster.de";
+  }
   if (typeof window !== "undefined" && window.location?.hostname) {
     const host = window.location.hostname;
     if (host.includes(".expo.riker.replit.dev")) {

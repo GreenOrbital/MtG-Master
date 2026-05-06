@@ -19,7 +19,7 @@ import { MTG_KEYWORDS } from "@/data/keywords";
 import { useColors } from "@/hooks/useColors";
 import { AdBanner } from "@/components/AdBanner";
 import { APP_URL_IMPRESSUM, APP_URL_DATENSCHUTZ } from "@/lib/appUrl";
-import { getApiBase } from "@/lib/apiBase";
+import { getApiBase, API_BASE_VERSION } from "@/lib/apiBase";
 
 function SettingRow({
   label,
@@ -89,7 +89,7 @@ function CloudSyncSection({
     } catch (e: any) {
       fetchInfo = `fetch threw: ${e?.message ?? e}`;
     }
-    setDebugInfo(`URL: ${url}\n${tokenInfo}\n${fetchInfo}`);
+    setDebugInfo(`Build: ${API_BASE_VERSION}\nURL: ${url}\n${tokenInfo}\n${fetchInfo}`);
   }, [getToken]);
 
   // Re-render every 20s so the "X min ago" label stays fresh.
