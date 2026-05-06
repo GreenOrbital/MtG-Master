@@ -65,3 +65,9 @@ id = "4_Gy_LGSBOQwttwR4vQCy"
 uri = "file://attached_assets/playstore/feature_graphic_1024x500.png"
 type = "image"
 title = "Feature-Grafik v4 – genau 5 Icons (W/U/B/R/G)"
+
+[[outputs]]
+id = "bed3TrgKHRf7q1woEHxHI"
+uri = "file://attached_assets/playstore/store-listing.md"
+type = "text"
+title = "Play Store Listing-Texte (DE + EN)"
