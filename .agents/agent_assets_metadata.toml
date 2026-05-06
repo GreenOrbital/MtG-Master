@@ -24,6 +24,12 @@ uri = "file://artifacts/mockup-sandbox/public/images/editorial-hero.png"
 type = "image"
 title = "Golden lotus editorial style"
 
+[[generated]]
+id = "PmPGU9BjJ5TMETj0kZmdX"
+uri = "file://attached_assets/playstore/feature_graphic_1024x500.png"
+type = "image"
+title = "MtG Master Play Store feature graphic"
+
 [[outputs]]
 id = "iY5w2VYOyzUd6AW1o8_VB"
 uri = "file://netlify-deploy.tar.gz"
@@ -53,3 +59,9 @@ id = "kUpBJ3WDh5qVE_efkrgb4"
 uri = "file://artifacts/mtg-keywords/assets/images/adaptive-icon.png"
 type = "image"
 title = "Android Adaptive Icon (transparenter Hintergrund)"
+
+[[outputs]]
+id = "4_Gy_LGSBOQwttwR4vQCy"
+uri = "file://attached_assets/playstore/feature_graphic_1024x500.png"
+type = "image"
+title = "Play Store Feature-Grafik (1024x500)"
