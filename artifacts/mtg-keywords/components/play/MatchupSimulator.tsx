@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -22,8 +23,8 @@ import { EmailSignIn } from "@/components/EmailSignIn";
 
 import { MatchupResultPanel } from "./MatchupResult";
 
-// Lightweight inline picker — opens an absolutely-positioned overlay listing
-// all options. Avoids pulling in a picker dependency.
+// Picker opens a true modal sheet — avoids zIndex/overlap issues with sibling
+// pickers and other absolutely-positioned content on Android.
 //
 // Generic over the option type so callers can pass strongly-typed payloads
 // (e.g. `{deck: Deck}` or `{friend: Friend}`) and consume them in `onChange`
@@ -35,20 +36,22 @@ function Picker<T extends PickerOption>({
   placeholder,
   onChange,
   disabled,
+  title,
 }: {
   value: { id: string; label: string; subtitle?: string } | null;
   options: T[];
   placeholder: string;
   onChange: (v: T) => void;
   disabled?: boolean;
+  title?: string;
 }) {
   const colors = useColors();
   const [open, setOpen] = useState(false);
   return (
-    <View style={{ position: "relative", zIndex: open ? 5 : 1 }}>
+    <View>
       <TouchableOpacity
         disabled={disabled}
-        onPress={() => setOpen((v) => !v)}
+        onPress={() => setOpen(true)}
         style={[
           styles.pickerHead,
           {
@@ -68,33 +71,57 @@ function Picker<T extends PickerOption>({
             </Text>
           )}
         </View>
-        <Ionicons name={open ? "chevron-up" : "chevron-down"} size={18} color={colors.mutedForeground} />
+        <Ionicons name="chevron-down" size={18} color={colors.mutedForeground} />
       </TouchableOpacity>
-      {open && (
-        <View style={[styles.pickerSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          {options.length === 0 ? (
-            <Text style={[styles.pickerEmpty, { color: colors.mutedForeground }]}>—</Text>
-          ) : (
-            <ScrollView style={{ maxHeight: 220 }}>
-              {options.map((o) => (
-                <Pressable
-                  key={o.id}
-                  onPress={() => { onChange(o); setOpen(false); }}
-                  style={({ pressed }) => [
-                    styles.pickerItem,
-                    { backgroundColor: pressed ? colors.muted : "transparent", borderBottomColor: colors.border },
-                  ]}
-                >
-                  <Text style={[styles.pickerLabel, { color: colors.foreground }]} numberOfLines={1}>{o.label}</Text>
-                  {o.subtitle && (
-                    <Text style={[styles.pickerSub, { color: colors.mutedForeground }]} numberOfLines={1}>{o.subtitle}</Text>
-                  )}
-                </Pressable>
-              ))}
-            </ScrollView>
-          )}
-        </View>
-      )}
+      <Modal
+        visible={open}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setOpen(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setOpen(false)}>
+          <Pressable
+            style={[
+              styles.modalSheet,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]} numberOfLines={1}>
+                {title ?? placeholder}
+              </Text>
+              <TouchableOpacity onPress={() => setOpen(false)} hitSlop={10}>
+                <Ionicons name="close" size={22} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+            {options.length === 0 ? (
+              <Text style={[styles.pickerEmpty, { color: colors.mutedForeground }]}>—</Text>
+            ) : (
+              <ScrollView style={{ maxHeight: 360 }}>
+                {options.map((o) => (
+                  <Pressable
+                    key={o.id}
+                    onPress={() => { onChange(o); setOpen(false); }}
+                    style={({ pressed }) => [
+                      styles.pickerItem,
+                      {
+                        backgroundColor: pressed ? colors.muted : "transparent",
+                        borderBottomColor: colors.border,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.pickerLabel, { color: colors.foreground }]} numberOfLines={1}>{o.label}</Text>
+                    {o.subtitle && (
+                      <Text style={[styles.pickerSub, { color: colors.mutedForeground }]} numberOfLines={1}>{o.subtitle}</Text>
+                    )}
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -257,6 +284,7 @@ export function MatchupSimulator() {
           value={myDeck ? { id: myDeck.id, label: myDeck.name } : null}
           options={myOptions}
           placeholder={t("Eigenes Deck wählen", "Pick your deck")}
+          title={t("Dein Deck", "Your deck")}
           onChange={(o) => { setMyDeck(o.deck); setResult(null); }}
         />
       </View>
@@ -269,6 +297,7 @@ export function MatchupSimulator() {
           placeholder={friends.length === 0
             ? t("Noch keine Freunde — füge welche hinzu", "No friends yet — add some")
             : t("Freund wählen", "Pick a friend")}
+          title={t("Freund wählen", "Pick a friend")}
           onChange={(o) => { setFriend(o.friend); setResult(null); }}
           disabled={friends.length === 0}
         />
@@ -288,6 +317,7 @@ export function MatchupSimulator() {
               ? t("Dieser Freund teilt noch keine Decks", "This friend isn't sharing any decks yet")
               : t("Geteiltes Deck wählen", "Pick a shared deck")
           }
+          title={t("Deck des Freundes", "Friend's deck")}
           onChange={(o) => { setFriendDeck(o.deck); setResult(null); }}
           disabled={!friend || loadingFriendDecks || friendDecks.length === 0}
         />
@@ -352,9 +382,12 @@ const styles = StyleSheet.create({
   pickerHead: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 11, borderRadius: 10, borderWidth: 1, gap: 8, ...(Platform.OS === "web" ? ({ cursor: "pointer" } as object) : {}) },
   pickerLabel: { fontSize: 14, fontFamily: "Inter_500Medium" },
   pickerSub: { fontSize: 11, marginTop: 2 },
-  pickerSheet: { position: "absolute", top: "100%", left: 0, right: 0, marginTop: 4, borderRadius: 10, borderWidth: 1, overflow: "hidden", elevation: 4, shadowColor: "#000", shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
-  pickerItem: { paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
-  pickerEmpty: { padding: 12, fontSize: 12, textAlign: "center" },
+  pickerItem: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
+  pickerEmpty: { padding: 16, fontSize: 12, textAlign: "center" },
+  modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 20 },
+  modalSheet: { width: "100%", maxWidth: 420, borderRadius: 14, borderWidth: 1, overflow: "hidden", elevation: 12, shadowColor: "#000", shadowOpacity: 0.4, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } },
+  modalHeader: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, gap: 12 },
+  modalTitle: { flex: 1, fontSize: 15, fontFamily: "Inter_600SemiBold" },
   runBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 14, borderRadius: 12 },
   runBtnText: { fontSize: 15, fontFamily: "Inter_700Bold" },
   disclaimer: { fontSize: 11, fontStyle: "italic", lineHeight: 16, marginTop: 4 },
